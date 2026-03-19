@@ -5,6 +5,8 @@ import RoleRoute from './components/RoleRoute'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import OcorrenciasPage from './pages/OcorrenciasPage'
+import OcorrenciaDetailPage from './pages/OcorrenciaDetailPage'
 import RegistroOcorrenciaPage from './pages/RegistroOcorrenciaPage'
 import TrativasListPage from './pages/TrativasListPage'
 import TrativaDetailPage from './pages/TrativaDetailPage'
@@ -33,7 +35,9 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="perfil" element={<PerfilPage />} />
-            <Route path="registro-ocorrencia" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
+            <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
+            <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
+            <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
             <Route path="tratativas" element={<TrativasListPage />} />
             <Route path="tratativas/:tipo/:id" element={<TrativaDetailPage />} />
             <Route path="empresas" element={<EmpresaListPage />} />

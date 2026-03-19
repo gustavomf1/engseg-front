@@ -26,6 +26,11 @@ export const createNaoConformidade = async (data: NaoConformidadeRequest): Promi
   return res.data
 }
 
+export const updateNaoConformidade = async (id: string, data: NaoConformidadeRequest): Promise<NaoConformidade> => {
+  const res = await client.put<NaoConformidade>(`/nao-conformidades/${id}`, data)
+  return res.data
+}
+
 export const registrarDevolutiva = async (id: string, data: DevolutivaRequest): Promise<NaoConformidade> => {
   const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/devolutiva`, data)
   return res.data

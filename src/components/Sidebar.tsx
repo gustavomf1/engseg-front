@@ -70,9 +70,9 @@ export default function Sidebar() {
           Usuário
         </NavLink>
         {user?.perfil !== 'EXTERNO' && (
-          <NavLink to="/registro-ocorrencia" className={navItemClass}>
+          <NavLink to="/ocorrencias" className={navItemClass}>
             <FilePlus size={16} />
-            <span>Registro de<br/>Ocorrência</span>
+            Ocorrências
           </NavLink>
         )}
         <NavLink to="/tratativas" className={navItemClass}>

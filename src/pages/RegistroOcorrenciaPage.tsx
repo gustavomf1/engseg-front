@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createDesvio } from '../api/desvio'
-import { createNaoConformidade } from '../api/naoConformidade'
+import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
+import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getUsuarios } from '../api/usuario'
 import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
@@ -26,7 +26,9 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function RegistroOcorrenciaPage() {
-  const [tipo, setTipo] = useState<Tipo>('DESVIO')
+  const { tipo: tipoParam, id } = useParams<{ tipo?: string; id?: string }>()
+  const isEditing = !!id && !!tipoParam
+  const [tipo, setTipo] = useState<Tipo>(tipoParam === 'NAO_CONFORMIDADE' ? 'NAO_CONFORMIDADE' : 'DESVIO')
   const [arquivo, setArquivo] = useState<File | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -47,10 +49,49 @@ export default function RegistroOcorrenciaPage() {
   const externos = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { data: desvioData } = useQuery({
+    queryKey: ['desvio', id],
+    queryFn: () => getDesvio(id!),
+    enabled: isEditing && tipoParam === 'DESVIO',
+  })
+
+  const { data: ncData } = useQuery({
+    queryKey: ['nc', id],
+    queryFn: () => getNaoConformidade(id!),
+    enabled: isEditing && tipoParam === 'NAO_CONFORMIDADE',
+  })
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { regraDeOuro: false },
   })
+
+  useEffect(() => {
+    if (desvioData) {
+      reset({
+        titulo: desvioData.titulo,
+        localizacao: desvioData.localizacao,
+        descricao: desvioData.descricao,
+        regraDeOuro: desvioData.regraDeOuro,
+        estabelecimentoId: desvioData.estabelecimentoId,
+      })
+    }
+  }, [desvioData, reset])
+
+  useEffect(() => {
+    if (ncData) {
+      reset({
+        titulo: ncData.titulo,
+        localizacao: ncData.localizacao,
+        descricao: ncData.descricao,
+        regraDeOuro: ncData.regraDeOuro,
+        nrRelacionada: ncData.nrRelacionada,
+        estabelecimentoId: ncData.estabelecimentoId,
+        engResponsavelConstrutoraId: ncData.engResponsavelConstrutoraId ?? '',
+        engResponsavelVerificacaoId: ncData.engResponsavelVerificacaoId ?? '',
+      })
+    }
+  }, [ncData, reset])
 
   const dataLimite = new Date()
   dataLimite.setDate(dataLimite.getDate() + 30)
@@ -66,21 +107,23 @@ export default function RegistroOcorrenciaPage() {
         regraDeOuro: data.regraDeOuro ?? false,
       }
       if (tipo === 'DESVIO') {
-        return createDesvio({ ...base, orientacaoRealizada: data.descricao })
+        const req = { ...base, orientacaoRealizada: data.descricao }
+        return isEditing ? updateDesvio(id!, req) : createDesvio(req)
       } else {
-        return createNaoConformidade({
+        const req = {
           ...base,
           nrRelacionada: data.nrRelacionada || '',
-          nivelSeveridade: 'MEDIO',
+          nivelSeveridade: 'MEDIO' as const,
           engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
-        })
+        }
+        return isEditing ? updateNaoConformidade(id!, req) : createNaoConformidade(req)
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      navigate('/tratativas')
+      navigate('/ocorrencias')
     },
   })
 
@@ -90,18 +133,22 @@ export default function RegistroOcorrenciaPage() {
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Registro de Ocorrência</h2>
-          <p className="text-sm text-blue-500 mt-1">Preencha os dados da ocorrência identificada</p>
+          <h2 className="text-xl font-bold text-slate-800">
+            {isEditing ? 'Editar Ocorrência' : 'Registro de Ocorrência'}
+          </h2>
+          <p className="text-sm text-blue-500 mt-1">
+            {isEditing ? 'Altere os dados da ocorrência' : 'Preencha os dados da ocorrência identificada'}
+          </p>
         </div>
 
-        {/* Type selector */}
+        {/* Type selector — desabilitado na edição */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Ocorrência *</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setTipo('DESVIO')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'DESVIO' ? 'border-slate-800 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}
+              onClick={() => !isEditing && setTipo('DESVIO')}
+              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'DESVIO' ? 'border-slate-800 bg-slate-50' : 'border-gray-200'} ${isEditing ? 'cursor-not-allowed opacity-60' : 'hover:border-gray-300'}`}
             >
               <AlertCircle size={20} className={tipo === 'DESVIO' ? 'text-slate-800' : 'text-gray-400'} />
               <div>
@@ -111,8 +158,8 @@ export default function RegistroOcorrenciaPage() {
             </button>
             <button
               type="button"
-              onClick={() => setTipo('NAO_CONFORMIDADE')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'NAO_CONFORMIDADE' ? 'border-slate-800 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}
+              onClick={() => !isEditing && setTipo('NAO_CONFORMIDADE')}
+              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'NAO_CONFORMIDADE' ? 'border-slate-800 bg-slate-50' : 'border-gray-200'} ${isEditing ? 'cursor-not-allowed opacity-60' : 'hover:border-gray-300'}`}
             >
               <FileText size={20} className={tipo === 'NAO_CONFORMIDADE' ? 'text-slate-800' : 'text-gray-400'} />
               <div>
@@ -190,9 +237,8 @@ export default function RegistroOcorrenciaPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Norma/Regra Violada *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Norma/Regra Violada</label>
                 <input {...register('nrRelacionada')} placeholder="Ex: NR-12, Procedimento Interno 001/2024" className={inputClass} />
-                {errors.nrRelacionada && <p className="text-red-500 text-xs mt-1">{errors.nrRelacionada.message}</p>}
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
@@ -203,18 +249,20 @@ export default function RegistroOcorrenciaPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  <span className="flex items-center gap-2"><Calendar size={14} /> Data Limite para Tratativa *</span>
-                </label>
-                <input
-                  type="text"
-                  value={dataLimiteStr}
-                  readOnly
-                  className={`${inputClass} bg-gray-100 cursor-not-allowed text-blue-600 font-medium`}
-                />
-                <p className="text-xs text-blue-500 mt-1">Prazo padrão: 30 dias a partir do registro</p>
-              </div>
+              {!isEditing && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <span className="flex items-center gap-2"><Calendar size={14} /> Data Limite para Tratativa</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={dataLimiteStr}
+                    readOnly
+                    className={`${inputClass} bg-gray-100 cursor-not-allowed text-blue-600 font-medium`}
+                  />
+                  <p className="text-xs text-blue-500 mt-1">Prazo padrão: 30 dias a partir do registro</p>
+                </div>
+              )}
             </>
           )}
 
@@ -230,40 +278,51 @@ export default function RegistroOcorrenciaPage() {
           )}
 
           {/* File upload */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Evidência Fotográfica *</label>
-            <label className="block border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-slate-400 transition">
-              <input
-                type="file"
-                accept="image/png,image/jpg,image/jpeg,application/pdf"
-                className="hidden"
-                onChange={e => setArquivo(e.target.files?.[0] ?? null)}
-              />
-              <Camera size={28} className="mx-auto text-gray-400 mb-2" />
-              {arquivo ? (
-                <div className="text-sm text-slate-700 font-medium">{arquivo.name}</div>
-              ) : (
-                <>
-                  <div className="text-sm text-blue-500 font-medium">Clique para anexar foto</div>
-                  <div className="text-xs text-gray-400 mt-1">PNG, JPG até 10MB</div>
-                </>
-              )}
-            </label>
-          </div>
-
-          {mutation.isError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
-              Erro ao registrar ocorrência. Verifique os dados e tente novamente.
+          {!isEditing && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Evidência Fotográfica</label>
+              <label className="block border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-slate-400 transition">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg,application/pdf"
+                  className="hidden"
+                  onChange={e => setArquivo(e.target.files?.[0] ?? null)}
+                />
+                <Camera size={28} className="mx-auto text-gray-400 mb-2" />
+                {arquivo ? (
+                  <div className="text-sm text-slate-700 font-medium">{arquivo.name}</div>
+                ) : (
+                  <>
+                    <div className="text-sm text-blue-500 font-medium">Clique para anexar foto</div>
+                    <div className="text-xs text-gray-400 mt-1">PNG, JPG até 10MB</div>
+                  </>
+                )}
+              </label>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="w-full bg-slate-900 text-white py-3 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-60 transition flex items-center justify-center gap-2 mt-2"
-          >
-            {mutation.isPending ? 'Registrando...' : '↓ Registrar Ocorrência'}
-          </button>
+          {mutation.isError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
+              Erro ao salvar ocorrência. Verifique os dados e tente novamente.
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate('/ocorrencias')}
+              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="flex-1 bg-slate-900 text-white py-3 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-60 transition flex items-center justify-center gap-2"
+            >
+              {mutation.isPending ? 'Salvando...' : isEditing ? '✓ Salvar Alterações' : '↓ Registrar Ocorrência'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
