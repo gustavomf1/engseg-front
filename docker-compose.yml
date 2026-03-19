@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  engseg-web:
+    build: .
+    ports:
+      - "80:80"
+    networks:
+      - engseg-network
+
+networks:
+  engseg-network:
+    external: true
