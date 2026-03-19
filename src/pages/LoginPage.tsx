@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await loginApi({ email, senha })
-      login(res.token, res.nome, res.perfil)
+      login(res.id, res.token, res.nome, res.perfil)
       navigate('/dashboard')
     } catch {
       setError('Email ou senha inválidos')

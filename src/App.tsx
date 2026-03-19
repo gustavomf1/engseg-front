@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import PrivateRoute from './components/PrivateRoute'
+import RoleRoute from './components/RoleRoute'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -32,7 +33,7 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="perfil" element={<PerfilPage />} />
-            <Route path="registro-ocorrencia" element={<RegistroOcorrenciaPage />} />
+            <Route path="registro-ocorrencia" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
             <Route path="tratativas" element={<TrativasListPage />} />
             <Route path="tratativas/:tipo/:id" element={<TrativaDetailPage />} />
             <Route path="empresas" element={<EmpresaListPage />} />

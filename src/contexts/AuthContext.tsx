@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import { PerfilUsuario } from '../types'
 
 interface AuthUser {
+  id: string
   nome: string
   perfil: PerfilUsuario
   token: string
@@ -10,7 +11,7 @@ interface AuthUser {
 interface AuthContextData {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (token: string, nome: string, perfil: PerfilUsuario) => void
+  login: (id: string, token: string, nome: string, perfil: PerfilUsuario) => void
   logout: () => void
 }
 
@@ -32,8 +33,8 @@ function loadUserFromStorage(): AuthUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage)
 
-  const login = useCallback((token: string, nome: string, perfil: PerfilUsuario) => {
-    const authUser: AuthUser = { token, nome, perfil }
+  const login = useCallback((id: string, token: string, nome: string, perfil: PerfilUsuario) => {
+    const authUser: AuthUser = { id, token, nome, perfil }
     localStorage.setItem('engseg_token', token)
     localStorage.setItem('engseg_user', JSON.stringify(authUser))
     setUser(authUser)

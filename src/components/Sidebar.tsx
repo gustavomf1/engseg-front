@@ -1,10 +1,24 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
+import { getOcorrencias } from '../api/ocorrencia'
 import { Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut, Building2, MapPin, Users } from 'lucide-react'
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+
+  const { data: ocorrencias = [] } = useQuery({
+    queryKey: ['ocorrencias'],
+    queryFn: getOcorrencias,
+  })
+
+  const isEngenheiro = user?.perfil === 'ENGENHEIRO'
+
+  const pendentesValidacao = ocorrencias.filter(o => {
+    if (o.tipo !== 'NAO_CONFORMIDADE' || o.status !== 'EM_TRATAMENTO') return false
+    return isEngenheiro || o.engResponsavelVerificacaoId === user?.id
+  }).length
 
   function handleLogout() {
     logout()
@@ -55,13 +69,26 @@ export default function Sidebar() {
           <User size={16} />
           Usuário
         </NavLink>
-        <NavLink to="/registro-ocorrencia" className={navItemClass}>
-          <FilePlus size={16} />
-          <span>Registro de<br/>Ocorrência</span>
-        </NavLink>
+        {user?.perfil !== 'EXTERNO' && (
+          <NavLink to="/registro-ocorrencia" className={navItemClass}>
+            <FilePlus size={16} />
+            <span>Registro de<br/>Ocorrência</span>
+          </NavLink>
+        )}
         <NavLink to="/tratativas" className={navItemClass}>
-          <ClipboardList size={16} />
-          Tratativas
+          {({ isActive }) => (
+            <>
+              <ClipboardList size={16} />
+              <span className="flex-1">Tratativas</span>
+              {user?.perfil === 'ENGENHEIRO' && pendentesValidacao > 0 && (
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-orange-400 text-white' : 'bg-orange-500 text-white'
+                }`}>
+                  {pendentesValidacao}
+                </span>
+              )}
+            </>
+          )}
         </NavLink>
 
         {/* Admin section - ENGENHEIRO only */}

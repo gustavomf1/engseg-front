@@ -13,6 +13,8 @@ export interface OcorrenciaItem {
   nrRelacionada?: string
   nivelSeveridade?: string
   estabelecimentoNome: string
+  engResponsavelConstrutoraId?: string
+  engResponsavelVerificacaoId?: string
 }
 
 export const getOcorrencias = () =>

@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio } from '../api/desvio'
 import { createNaoConformidade } from '../api/naoConformidade'
 import { getEstabelecimentos } from '../api/estabelecimento'
+import { getUsuarios } from '../api/usuario'
 import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
 
 type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
@@ -18,6 +19,8 @@ const schema = z.object({
   nrRelacionada: z.string().optional(),
   regraDeOuro: z.boolean().optional(),
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
+  engResponsavelConstrutoraId: z.string().optional(),
+  engResponsavelVerificacaoId: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -32,6 +35,17 @@ export default function RegistroOcorrenciaPage() {
     queryKey: ['estabelecimentos'],
     queryFn: getEstabelecimentos,
   })
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: getUsuarios,
+  })
+
+  const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+    .filter(u => u.perfil === 'ENGENHEIRO' && u.ativo)
+
+  const externos = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+    .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -58,8 +72,8 @@ export default function RegistroOcorrenciaPage() {
           ...base,
           nrRelacionada: data.nrRelacionada || '',
           nivelSeveridade: 'MEDIO',
-          engResponsavelConstrutoraId: '',
-          engResponsavelVerificacaoId: '',
+          engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
+          engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
         })
       }
     },
@@ -153,6 +167,28 @@ export default function RegistroOcorrenciaPage() {
           {/* NF-only fields */}
           {tipo === 'NAO_CONFORMIDADE' && (
             <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela Tratativa</label>
+                <select {...register('engResponsavelConstrutoraId')} className={inputClass}>
+                  <option value="">Selecione o responsável pela tratativa</option>
+                  {externos.map(u => (
+                    <option key={u.id} value={u.id}>{u.nome} ({u.perfil})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Quem irá enviar o plano de ação (geralmente EXTERNO)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela NC</label>
+                <select {...register('engResponsavelVerificacaoId')} className={inputClass}>
+                  <option value="">Selecione o responsável pela verificação</option>
+                  {engenheiros.map(u => (
+                    <option key={u.id} value={u.id}>{u.nome}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Norma/Regra Violada *</label>
                 <input {...register('nrRelacionada')} placeholder="Ex: NR-12, Procedimento Interno 001/2024" className={inputClass} />

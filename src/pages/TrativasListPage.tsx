@@ -2,25 +2,61 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
+import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+
+type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
+type StatusFiltro = 'TODOS' | 'AGUARDANDO_TRATATIVA' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
 
 export default function TrativasListPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [busca, setBusca] = useState('')
-  const [filtro, setFiltro] = useState<'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'>('TODOS')
+  const [filtroTipo, setFiltroTipo] = useState<TipoFiltro>('TODOS')
+  const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('TODOS')
+
+  const isEngenheiro = user?.perfil === 'ENGENHEIRO'
 
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ['ocorrencias'],
     queryFn: getOcorrencias,
   })
 
-  const filtradas = ocorrencias.filter(o => {
-    const matchFiltro = filtro === 'TODOS' || o.tipo === filtro
+  // Filtra por visibilidade: NCs só aparecem se o usuário é o eng responsável pela tratativa ou é ENGENHEIRO
+  const visiveis = ocorrencias.filter(o => {
+    if (o.tipo === 'DESVIO') return true
+    return isEngenheiro || o.engResponsavelConstrutoraId === user?.id
+  })
+
+  function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {
+    if (item.tipo === 'DESVIO') {
+      if (item.status === 'RESOLVIDO') return 'CONCLUIDAS'
+      return 'AGUARDANDO_TRATATIVA'
+    }
+    if (item.status === 'ABERTA') return 'AGUARDANDO_TRATATIVA'
+    if (item.status === 'EM_TRATAMENTO') return 'AGUARDANDO_VALIDACAO'
+    if (item.status === 'CONCLUIDA') return 'CONCLUIDAS'
+    if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
+    const dias = getDiasRestantes(item.dataLimiteResolucao)
+    if (dias !== null && dias < 0) return 'VENCIDAS'
+    return 'TODOS'
+  }
+
+  const filtradas = visiveis.filter(o => {
+    const matchTipo = filtroTipo === 'TODOS' || o.tipo === filtroTipo
     const matchBusca = busca === '' ||
       o.titulo.toLowerCase().includes(busca.toLowerCase()) ||
       o.localizacao.toLowerCase().includes(busca.toLowerCase())
-    return matchFiltro && matchBusca
+    const matchStatus = filtroStatus === 'TODOS' || getStatusFiltroLabel(o) === filtroStatus
+    return matchTipo && matchBusca && matchStatus
   })
+
+  const contadores = {
+    AGUARDANDO_TRATATIVA: visiveis.filter(o => getStatusFiltroLabel(o) === 'AGUARDANDO_TRATATIVA').length,
+    AGUARDANDO_VALIDACAO: visiveis.filter(o => getStatusFiltroLabel(o) === 'AGUARDANDO_VALIDACAO').length,
+    CONCLUIDAS: visiveis.filter(o => getStatusFiltroLabel(o) === 'CONCLUIDAS').length,
+    VENCIDAS: visiveis.filter(o => getStatusFiltroLabel(o) === 'VENCIDAS').length,
+  }
 
   function getDiasRestantes(dataLimite?: string) {
     if (!dataLimite) return null
@@ -33,18 +69,27 @@ export default function TrativasListPage() {
   function getStatusInfo(item: OcorrenciaItem) {
     if (item.tipo === 'DESVIO') {
       if (item.status === 'RESOLVIDO') return { label: 'Resolvido', color: 'text-green-600 bg-green-50' }
-      return { label: 'Pendente', color: 'text-yellow-600 bg-yellow-50' }
+      return { label: 'Aguardando Tratativa', color: 'text-yellow-600 bg-yellow-50' }
     }
-    if (item.status === 'CONCLUIDA') return { label: 'Concluída', color: 'text-gray-600 bg-gray-100' }
+    if (item.status === 'CONCLUIDA') return { label: 'Concluída', color: 'text-green-600 bg-green-50' }
     if (item.status === 'NAO_RESOLVIDA') return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
+    if (item.status === 'EM_TRATAMENTO') return { label: 'Aguardando Validação', color: 'text-blue-600 bg-blue-50' }
     const dias = getDiasRestantes(item.dataLimiteResolucao)
-    if (dias !== null && dias >= 0) return { label: 'No Prazo', color: 'text-green-600 bg-green-50' }
-    return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
+    if (dias !== null && dias < 0) return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
+    return { label: 'Aguardando Tratativa', color: 'text-yellow-600 bg-yellow-50' }
   }
 
   function formatDate(dt: string) {
     return new Date(dt).toLocaleDateString('pt-BR')
   }
+
+  const statusTabs: { key: StatusFiltro; label: string; count?: number; activeColor: string }[] = [
+    { key: 'TODOS', label: 'Todos', activeColor: 'bg-slate-800 text-white' },
+    { key: 'AGUARDANDO_TRATATIVA', label: 'Aguardando Tratativa', count: contadores.AGUARDANDO_TRATATIVA, activeColor: 'bg-yellow-600 text-white' },
+    { key: 'AGUARDANDO_VALIDACAO', label: 'Aguardando Validação', count: contadores.AGUARDANDO_VALIDACAO, activeColor: 'bg-blue-600 text-white' },
+    { key: 'CONCLUIDAS', label: 'Concluídas', count: contadores.CONCLUIDAS, activeColor: 'bg-green-600 text-white' },
+    { key: 'VENCIDAS', label: 'Vencidas', count: contadores.VENCIDAS, activeColor: 'bg-red-600 text-white' },
+  ]
 
   return (
     <div className="space-y-5">
@@ -62,7 +107,7 @@ export default function TrativasListPage() {
         </button>
       </div>
 
-      {/* Search + filters */}
+      {/* Search + tipo filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 shadow-sm">
         <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
           <Search size={16} className="text-gray-400" />
@@ -74,16 +119,40 @@ export default function TrativasListPage() {
           />
         </div>
         <div className="flex gap-2">
-          {(['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'] as const).map(f => (
+          {(['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'] as TipoFiltro[]).map(f => (
             <button
               key={f}
-              onClick={() => setFiltro(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filtro === f ? 'bg-slate-800 text-white' : 'text-slate-600 border border-gray-200 hover:bg-gray-50'}`}
+              onClick={() => setFiltroTipo(f)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filtroTipo === f ? 'bg-slate-800 text-white' : 'text-slate-600 border border-gray-200 hover:bg-gray-50'}`}
             >
               {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'Não Conformidades'}
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Status filter tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {statusTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFiltroStatus(tab.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${
+              filtroStatus === tab.key
+                ? tab.activeColor
+                : 'text-slate-600 border border-gray-200 bg-white hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                filtroStatus === tab.key ? 'bg-white/20' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* List */}
@@ -133,7 +202,7 @@ export default function TrativasListPage() {
               {/* Right side */}
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 ${statusInfo.color}`}>
-                  ✓ {statusInfo.label}
+                  {statusInfo.label}
                 </span>
                 {dias !== null && item.status !== 'CONCLUIDA' && (
                   <div className="text-right">

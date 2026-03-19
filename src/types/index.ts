@@ -10,6 +10,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  id: string
   token: string
   nome: string
   perfil: PerfilUsuario
