@@ -106,6 +106,12 @@ export default function NaoConformidadeDetailPage() {
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Estabelecimento</p>
             <p className="text-slate-800 font-medium">{nc.estabelecimentoNome}</p>
           </div>
+          {nc.localizacaoNome && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Localização</p>
+              <p className="text-slate-800 font-medium">{nc.localizacaoNome}</p>
+            </div>
+          )}
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Data de Registro</p>
             <p className="text-slate-800">{formatDateTime(nc.dataRegistro)}</p>

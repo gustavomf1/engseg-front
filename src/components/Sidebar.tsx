@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { getOcorrencias } from '../api/ocorrencia'
-import { Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut, Building2, MapPin, Users, RefreshCw, X } from 'lucide-react'
+import { Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut, Building2, MapPin, Users, RefreshCw, X, Navigation } from 'lucide-react'
 
 interface SidebarProps {
   open: boolean
@@ -143,6 +143,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             <NavLink to="/estabelecimentos" className={navItemClass} onClick={handleNav}>
               <MapPin size={15} />
               Estabelecimentos
+            </NavLink>
+            <NavLink to="/localizacoes" className={navItemClass} onClick={handleNav}>
+              <Navigation size={15} />
+              Localizações
             </NavLink>
             <NavLink to="/usuarios" className={navItemClass} onClick={handleNav}>
               <Users size={15} />

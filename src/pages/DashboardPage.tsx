@@ -102,7 +102,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="font-medium text-slate-800 text-sm truncate">{item.titulo}</div>
-                <div className="text-xs text-slate-500 truncate">{item.localizacao} • {formatDate(item.dataRegistro)}</div>
+                <div className="text-xs text-slate-500 truncate">{item.localizacao ? `${item.localizacao} • ` : ''}{formatDate(item.dataRegistro)}</div>
               </div>
               <button
                 onClick={() => navigate(`/tratativas/${item.tipo}/${item.id}`)}

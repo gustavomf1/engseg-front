@@ -287,7 +287,7 @@ export default function TrativaDetailPage() {
           <div className="space-y-4">
             <div>
               <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><MapPin size={12} /> Localização</div>
-              <div className="text-sm text-slate-700">{(ocorrencia as any).localizacao}</div>
+              <div className="text-sm text-slate-700">{(ocorrencia as any).localizacao || '—'}</div>
             </div>
             <div>
               <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><Calendar size={12} /> Data de Registro</div>

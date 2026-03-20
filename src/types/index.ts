@@ -95,12 +95,26 @@ export interface ValidacaoResponse {
   engenheiroNome?: string
 }
 
+export interface Localizacao {
+  id: string
+  nome: string
+  estabelecimentoId: string
+  estabelecimentoNome: string
+  ativo: boolean
+}
+
+export interface LocalizacaoRequest {
+  nome: string
+  estabelecimentoId: string
+}
+
 export interface NaoConformidade {
   id: string
   estabelecimentoId: string
   estabelecimentoNome: string
   titulo: string
-  localizacao: string
+  localizacaoId: string
+  localizacaoNome: string
   descricao: string
   dataRegistro: string
   tecnicoNome?: string
@@ -123,7 +137,7 @@ export interface NaoConformidade {
 export interface NaoConformidadeRequest {
   estabelecimentoId: string
   titulo: string
-  localizacao: string
+  localizacaoId?: string
   descricao: string
   nrRelacionada: string
   nivelSeveridade: NivelSeveridade
@@ -150,7 +164,8 @@ export interface Desvio {
   estabelecimentoId: string
   estabelecimentoNome: string
   titulo: string
-  localizacao: string
+  localizacaoId: string
+  localizacaoNome: string
   descricao: string
   dataRegistro: string
   tecnicoNome?: string
@@ -162,7 +177,7 @@ export interface Desvio {
 export interface DesvioRequest {
   estabelecimentoId: string
   titulo: string
-  localizacao: string
+  localizacaoId?: string
   descricao: string
   orientacaoRealizada: string
   regraDeOuro: boolean

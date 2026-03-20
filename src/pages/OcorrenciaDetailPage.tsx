@@ -5,6 +5,7 @@ import { getDesvio, updateDesvio } from '../api/desvio'
 import { getNaoConformidade, updateNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade } from '../types'
 import { getEstabelecimentos } from '../api/estabelecimento'
+import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
@@ -52,6 +53,15 @@ export default function OcorrenciaDetailPage() {
     enabled: editando,
   })
 
+  const { data: localizacoes = [] } = useQuery({
+    queryKey: ['localizacoes'],
+    queryFn: () => getLocalizacoes(),
+    enabled: editando,
+  })
+
+  const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
+    .filter(l => l.ativo && l.estabelecimentoId === form.estabelecimentoId)
+
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
     queryFn: getUsuarios,
@@ -70,7 +80,7 @@ export default function OcorrenciaDetailPage() {
     if (desvio && isDesvio) {
       setForm({
         titulo: desvio.titulo,
-        localizacao: desvio.localizacao,
+        localizacaoId: desvio.localizacaoId || '',
         descricao: desvio.descricao,
         regraDeOuro: desvio.regraDeOuro,
         estabelecimentoId: desvio.estabelecimentoId,
@@ -82,7 +92,7 @@ export default function OcorrenciaDetailPage() {
     if (nc && !isDesvio) {
       setForm({
         titulo: nc.titulo,
-        localizacao: nc.localizacao,
+        localizacaoId: nc.localizacaoId || '',
         descricao: nc.descricao,
         regraDeOuro: nc.regraDeOuro,
         nrRelacionada: nc.nrRelacionada,
@@ -98,7 +108,7 @@ export default function OcorrenciaDetailPage() {
       if (isDesvio) {
         return updateDesvio(id!, {
           titulo: form.titulo,
-          localizacao: form.localizacao,
+          localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
           estabelecimentoId: form.estabelecimentoId,
@@ -107,7 +117,7 @@ export default function OcorrenciaDetailPage() {
       } else {
         return updateNaoConformidade(id!, {
           titulo: form.titulo,
-          localizacao: form.localizacao,
+          localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
           nrRelacionada: form.nrRelacionada || '',
@@ -241,8 +251,11 @@ export default function OcorrenciaDetailPage() {
 
             <Field label="Localização">
               {editando
-                ? <input value={form.localizacao} onChange={e => set('localizacao', e.target.value)} className={inputClass} />
-                : <div className={`${valueClass} flex items-center gap-1.5`}><MapPin size={13} className="text-slate-400" />{(ocorrencia as any).localizacao}</div>
+                ? <select value={form.localizacaoId} onChange={e => set('localizacaoId', e.target.value)} className={inputClass}>
+                    <option value="">— Nenhuma —</option>
+                    {localizacoesAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                  </select>
+                : <div className={`${valueClass} flex items-center gap-1.5`}><MapPin size={13} className="text-slate-400" />{(ocorrencia as any).localizacaoNome || '—'}</div>
               }
             </Field>
 

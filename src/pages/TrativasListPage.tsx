@@ -43,7 +43,7 @@ export default function TrativasListPage() {
     const matchTipo = filtroTipo === 'TODOS' || o.tipo === filtroTipo
     const matchBusca = busca === '' ||
       o.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-      o.localizacao.toLowerCase().includes(busca.toLowerCase())
+      (o.localizacao || '').toLowerCase().includes(busca.toLowerCase())
     const matchStatus = filtroStatus === 'TODOS' || getStatusFiltroLabel(o) === filtroStatus
     return matchTipo && matchBusca && matchStatus
   })
@@ -194,7 +194,7 @@ export default function TrativasListPage() {
                   <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
                   <div className="text-sm text-slate-500 truncate">{item.descricao}</div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-                    <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>
+                    {item.localizacao && <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>}
                     <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
                     {dias !== null && item.status !== 'CONCLUIDO' && dias >= 0 && (
                       <span className="text-green-600">{dias}d restantes</span>

@@ -18,7 +18,7 @@ export default function OcorrenciasPage() {
     const matchTipo = filtro === 'TODOS' || o.tipo === filtro
     const matchBusca = busca === '' ||
       o.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-      o.localizacao.toLowerCase().includes(busca.toLowerCase())
+      (o.localizacao || '').toLowerCase().includes(busca.toLowerCase())
     return matchTipo && matchBusca
   })
 
@@ -114,7 +114,7 @@ export default function OcorrenciasPage() {
                   </div>
                   <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-                    <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>
+                    {item.localizacao && <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>}
                     <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
                     <span className="text-slate-300 hidden sm:inline">{item.estabelecimentoNome}</span>
                   </div>

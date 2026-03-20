@@ -62,6 +62,12 @@ export default function DesvioDetailPage() {
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Status</p>
             <StatusBadge status={desvio.status} type="desvio" />
           </div>
+          {desvio.localizacaoNome && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Localização</p>
+              <p className="text-slate-800 font-medium">{desvio.localizacaoNome}</p>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição do Desvio</p>
             <p className="text-slate-800">{desvio.descricao}</p>

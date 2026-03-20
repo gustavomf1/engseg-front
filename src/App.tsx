@@ -20,6 +20,8 @@ import EstabelecimentoListPage from './pages/estabelecimento/EstabelecimentoList
 import EstabelecimentoFormPage from './pages/estabelecimento/EstabelecimentoFormPage'
 import UsuarioListPage from './pages/usuario/UsuarioListPage'
 import UsuarioFormPage from './pages/usuario/UsuarioFormPage'
+import LocalizacaoListPage from './pages/localizacao/LocalizacaoListPage'
+import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
 
 export default function App() {
   return (
@@ -57,6 +59,9 @@ export default function App() {
               <Route path="estabelecimentos" element={<EstabelecimentoListPage />} />
               <Route path="estabelecimentos/novo" element={<EstabelecimentoFormPage />} />
               <Route path="estabelecimentos/:id/editar" element={<EstabelecimentoFormPage />} />
+              <Route path="localizacoes" element={<LocalizacaoListPage />} />
+              <Route path="localizacoes/novo" element={<LocalizacaoFormPage />} />
+              <Route path="localizacoes/:id/editar" element={<LocalizacaoFormPage />} />
               <Route path="usuarios" element={<UsuarioListPage />} />
               <Route path="usuarios/novo" element={<UsuarioFormPage />} />
               <Route path="usuarios/:id/editar" element={<UsuarioFormPage />} />

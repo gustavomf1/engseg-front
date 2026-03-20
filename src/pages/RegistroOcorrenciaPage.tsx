@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
 import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
 import { getEstabelecimentos } from '../api/estabelecimento'
+import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
@@ -15,7 +16,7 @@ type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
 
 const schema = z.object({
   titulo: z.string().min(1, 'Título obrigatório'),
-  localizacao: z.string().min(1, 'Localização obrigatória'),
+  localizacaoId: z.string().optional(),
   descricao: z.string().min(1, 'Descrição obrigatória'),
   nrRelacionada: z.string().optional(),
   regraDeOuro: z.boolean().optional(),
@@ -39,6 +40,14 @@ export default function RegistroOcorrenciaPage() {
     queryKey: ['estabelecimentos'],
     queryFn: getEstabelecimentos,
   })
+
+  const { data: localizacoes = [] } = useQuery({
+    queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
+    queryFn: () => getLocalizacoes(estabelecimentoSelecionado?.id),
+  })
+
+  const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
+    .filter(l => l.ativo && l.estabelecimentoId === estabelecimentoSelecionado?.id)
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
@@ -75,7 +84,7 @@ export default function RegistroOcorrenciaPage() {
     if (desvioData) {
       reset({
         titulo: desvioData.titulo,
-        localizacao: desvioData.localizacao,
+        localizacaoId: desvioData.localizacaoId || '',
         descricao: desvioData.descricao,
         regraDeOuro: desvioData.regraDeOuro,
         estabelecimentoId: desvioData.estabelecimentoId,
@@ -87,7 +96,7 @@ export default function RegistroOcorrenciaPage() {
     if (ncData) {
       reset({
         titulo: ncData.titulo,
-        localizacao: ncData.localizacao,
+        localizacaoId: ncData.localizacaoId || '',
         descricao: ncData.descricao,
         regraDeOuro: ncData.regraDeOuro,
         nrRelacionada: ncData.nrRelacionada,
@@ -106,7 +115,7 @@ export default function RegistroOcorrenciaPage() {
     mutationFn: async (data: FormData) => {
       const base = {
         titulo: data.titulo,
-        localizacao: data.localizacao,
+        localizacaoId: data.localizacaoId || undefined,
         descricao: data.descricao,
         estabelecimentoId: data.estabelecimentoId,
         regraDeOuro: data.regraDeOuro ?? false,
@@ -197,9 +206,14 @@ export default function RegistroOcorrenciaPage() {
 
           {/* Localização */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Localização *</label>
-            <input {...register('localizacao')} placeholder="Ex: Setor A - Área de Produção" className={inputClass} />
-            {errors.localizacao && <p className="text-red-500 text-xs mt-1">{errors.localizacao.message}</p>}
+            <label className="block text-sm font-medium text-slate-700 mb-1">Localização</label>
+            <select {...register('localizacaoId')} className={inputClass}>
+              <option value="">Selecione a localização</option>
+              {localizacoesAtivas.map(l => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
+              ))}
+            </select>
+            {errors.localizacaoId && <p className="text-red-500 text-xs mt-1">{errors.localizacaoId.message}</p>}
           </div>
 
           {/* Descrição */}
