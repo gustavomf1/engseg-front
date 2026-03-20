@@ -95,12 +95,6 @@ export default function TrativasListPage() {
           <h2 className="text-2xl font-bold text-slate-800">Gestão de Tratativas</h2>
           <p className="text-sm text-slate-500">{filtradas.length} ocorrências registradas</p>
         </div>
-        <button
-          onClick={() => navigate('/ocorrencias/nova')}
-          className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition"
-        >
-          <FilePlus size={16} /> Nova Ocorrência
-        </button>
       </div>
 
       {/* Search + tipo filters */}

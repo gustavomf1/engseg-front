@@ -12,7 +12,7 @@ export default function RoleRoute({ children, allowed }: Props) {
   const { user } = useAuth()
 
   if (!user || !allowed.includes(user.perfil)) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={user?.perfil === 'EXTERNO' ? '/tratativas' : '/dashboard'} replace />
   }
 
   return <>{children}</>

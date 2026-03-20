@@ -75,8 +75,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
       </div>
 
-      {/* Workspace info */}
-      {empresa && estabelecimento && (
+      {/* Workspace info — não exibe para EXTERNO */}
+      {user?.perfil !== 'EXTERNO' && empresa && estabelecimento && (
         <div className="px-2 mb-6 pb-6 border-b border-slate-800">
           <div className="bg-slate-800 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
@@ -100,10 +100,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* Main nav */}
       <nav className="flex-1 space-y-1">
-        <NavLink to="/dashboard" className={navItemClass} onClick={handleNav}>
-          <LayoutDashboard size={16} />
-          Dashboard
-        </NavLink>
+        {user?.perfil !== 'EXTERNO' && (
+          <NavLink to="/dashboard" className={navItemClass} onClick={handleNav}>
+            <LayoutDashboard size={16} />
+            Dashboard
+          </NavLink>
+        )}
         <NavLink to="/perfil" className={navItemClass} onClick={handleNav}>
           <User size={16} />
           Usuário

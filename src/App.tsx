@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './contexts/AuthContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import PrivateRoute from './components/PrivateRoute'
@@ -23,6 +24,11 @@ import UsuarioFormPage from './pages/usuario/UsuarioFormPage'
 import LocalizacaoListPage from './pages/localizacao/LocalizacaoListPage'
 import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
 
+function DefaultRedirect() {
+  const { user } = useAuth()
+  return <Navigate to={user?.perfil === 'EXTERNO' ? '/tratativas' : '/dashboard'} replace />
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -45,8 +51,8 @@ export default function App() {
                 </PrivateRoute>
               }
             >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+              <Route index element={<DefaultRedirect />} />
+              <Route path="dashboard" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><DashboardPage /></RoleRoute>} />
               <Route path="perfil" element={<PerfilPage />} />
               <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
               <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
@@ -66,7 +72,7 @@ export default function App() {
               <Route path="usuarios/novo" element={<UsuarioFormPage />} />
               <Route path="usuarios/:id/editar" element={<UsuarioFormPage />} />
             </Route>
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<DefaultRedirect />} />
           </Routes>
         </BrowserRouter>
       </WorkspaceProvider>

@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const res = await loginApi({ email, senha })
       login(res.id, res.token, res.nome, res.perfil)
-      navigate('/selecionar')
+      navigate(res.perfil === 'EXTERNO' ? '/tratativas' : '/selecionar')
     } catch {
       setError('Email ou senha inválidos')
     } finally {
