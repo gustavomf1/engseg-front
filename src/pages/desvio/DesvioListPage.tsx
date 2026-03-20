@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDesvios, resolverDesvio } from '../../api/desvio'
+import { useQuery } from '@tanstack/react-query'
+import { getDesvios } from '../../api/desvio'
 import { Link } from 'react-router-dom'
-import { Plus, Clipboard, Eye, CheckCircle } from 'lucide-react'
+import { Plus, Clipboard, Eye } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 
@@ -9,19 +9,12 @@ const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
 
 export default function DesvioListPage() {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['desvios'],
     queryFn: getDesvios,
   })
 
-  const resolverMutation = useMutation({
-    mutationFn: resolverDesvio,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['desvios'] }),
-  })
-
   const canCreate = user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO'
-  const canResolve = user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO'
 
   return (
     <div>
@@ -46,8 +39,8 @@ export default function DesvioListPage() {
           <p className="text-slate-500">Nenhum desvio registrado</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Estabelecimento</th>
@@ -67,20 +60,9 @@ export default function DesvioListPage() {
                   <td className="px-4 py-3 text-slate-600 text-xs">{formatDateTime(item.dataRegistro)}</td>
                   <td className="px-4 py-3"><StatusBadge status={item.status} type="desvio" /></td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link to={`/desvios/${item.id}`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
-                        <Eye size={15} />
-                      </Link>
-                      {canResolve && item.status === 'REGISTRADO' && (
-                        <button
-                          onClick={() => resolverMutation.mutate(item.id)}
-                          className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded"
-                          title="Marcar como resolvido"
-                        >
-                          <CheckCircle size={15} />
-                        </button>
-                      )}
-                    </div>
+                    <Link to={`/desvios/${item.id}`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
+                      <Eye size={15} />
+                    </Link>
                   </td>
                 </tr>
               ))}

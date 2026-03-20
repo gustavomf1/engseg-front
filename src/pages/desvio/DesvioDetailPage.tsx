@@ -1,35 +1,20 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getDesvio, resolverDesvio } from '../../api/desvio'
-import { useAuth } from '../../contexts/AuthContext'
+import { getDesvio } from '../../api/desvio'
 import StatusBadge from '../../components/StatusBadge'
-import { ArrowLeft, CheckCircle, Shield } from 'lucide-react'
+import { ArrowLeft, Shield } from 'lucide-react'
 
 const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
 
 export default function DesvioDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const queryClient = useQueryClient()
 
   const { data: desvio, isLoading } = useQuery({
     queryKey: ['desvio', id],
     queryFn: () => getDesvio(id!),
     enabled: !!id,
   })
-
-  const resolverMutation = useMutation({
-    mutationFn: () => resolverDesvio(id!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['desvio', id] })
-      queryClient.invalidateQueries({ queryKey: ['desvios'] })
-    },
-  })
-
-  const canResolve =
-    desvio?.status === 'REGISTRADO' &&
-    (user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO')
 
   if (isLoading) {
     return <div className="text-slate-400 py-8 text-center">Carregando...</div>
@@ -57,20 +42,10 @@ export default function DesvioDetailPage() {
             )}
           </div>
         </div>
-        {canResolve && (
-          <button
-            onClick={() => resolverMutation.mutate()}
-            disabled={resolverMutation.isPending}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-60"
-          >
-            <CheckCircle size={16} />
-            {resolverMutation.isPending ? 'Resolvendo...' : 'Marcar como Resolvido'}
-          </button>
-        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-2 gap-6 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-sm">
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Estabelecimento</p>
             <p className="text-slate-800 font-medium">{desvio.estabelecimentoNome}</p>
@@ -87,11 +62,11 @@ export default function DesvioDetailPage() {
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Status</p>
             <StatusBadge status={desvio.status} type="desvio" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição do Desvio</p>
             <p className="text-slate-800">{desvio.descricao}</p>
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Orientação Realizada</p>
             <p className="text-slate-800">{desvio.orientacaoRealizada}</p>
           </div>

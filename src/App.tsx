@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import PrivateRoute from './components/PrivateRoute'
+import WorkspaceRoute from './components/WorkspaceRoute'
 import RoleRoute from './components/RoleRoute'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
+import SeletorPage from './pages/SeletorPage'
 import DashboardPage from './pages/DashboardPage'
 import OcorrenciasPage from './pages/OcorrenciasPage'
 import OcorrenciaDetailPage from './pages/OcorrenciaDetailPage'
@@ -21,38 +24,47 @@ import UsuarioFormPage from './pages/usuario/UsuarioFormPage'
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
+      <WorkspaceProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/selecionar" element={
               <PrivateRoute>
-                <Layout />
+                <SeletorPage />
               </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="perfil" element={<PerfilPage />} />
-            <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
-            <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
-            <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
-            <Route path="tratativas" element={<TrativasListPage />} />
-            <Route path="tratativas/:tipo/:id" element={<TrativaDetailPage />} />
-            <Route path="empresas" element={<EmpresaListPage />} />
-            <Route path="empresas/novo" element={<EmpresaFormPage />} />
-            <Route path="empresas/:id/editar" element={<EmpresaFormPage />} />
-            <Route path="estabelecimentos" element={<EstabelecimentoListPage />} />
-            <Route path="estabelecimentos/novo" element={<EstabelecimentoFormPage />} />
-            <Route path="estabelecimentos/:id/editar" element={<EstabelecimentoFormPage />} />
-            <Route path="usuarios" element={<UsuarioListPage />} />
-            <Route path="usuarios/novo" element={<UsuarioFormPage />} />
-            <Route path="usuarios/:id/editar" element={<UsuarioFormPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+            } />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <WorkspaceRoute>
+                    <Layout />
+                  </WorkspaceRoute>
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="perfil" element={<PerfilPage />} />
+              <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
+              <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
+              <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
+              <Route path="tratativas" element={<TrativasListPage />} />
+              <Route path="tratativas/:tipo/:id" element={<TrativaDetailPage />} />
+              <Route path="empresas" element={<EmpresaListPage />} />
+              <Route path="empresas/novo" element={<EmpresaFormPage />} />
+              <Route path="empresas/:id/editar" element={<EmpresaFormPage />} />
+              <Route path="estabelecimentos" element={<EstabelecimentoListPage />} />
+              <Route path="estabelecimentos/novo" element={<EstabelecimentoFormPage />} />
+              <Route path="estabelecimentos/:id/editar" element={<EstabelecimentoFormPage />} />
+              <Route path="usuarios" element={<UsuarioListPage />} />
+              <Route path="usuarios/novo" element={<UsuarioFormPage />} />
+              <Route path="usuarios/:id/editar" element={<UsuarioFormPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </WorkspaceProvider>
     </AuthProvider>
   )
 }

@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createUsuario, getUsuario, updateUsuario } from '../../api/usuario'
 import { getEmpresas } from '../../api/empresa'
+import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { ArrowLeft } from 'lucide-react'
 import MaskedInput from '../../components/MaskedInput'
 
@@ -24,6 +25,7 @@ export default function UsuarioFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { empresa: empresaSelecionada } = useWorkspace()
   const isEditing = !!id
 
   const { data: usuario } = useQuery({
@@ -39,6 +41,9 @@ export default function UsuarioFormPage() {
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      empresaId: empresaSelecionada?.id || '',
+    },
   })
 
   useEffect(() => {
@@ -75,8 +80,8 @@ export default function UsuarioFormPage() {
       </div>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Nome *</label>
             <input {...register('nome')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}

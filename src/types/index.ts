@@ -1,7 +1,7 @@
 export type PerfilUsuario = 'ENGENHEIRO' | 'TECNICO' | 'EXTERNO'
 export type NivelSeveridade = 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO'
-export type StatusNaoConformidade = 'ABERTA' | 'EM_TRATAMENTO' | 'CONCLUIDA' | 'NAO_RESOLVIDA'
-export type StatusDesvio = 'REGISTRADO' | 'RESOLVIDO'
+export type StatusNaoConformidade = 'ABERTA' | 'EM_TRATAMENTO' | 'CONCLUIDO' | 'NAO_RESOLVIDA'
+export type StatusDesvio = 'CONCLUIDO'
 export type ParecerValidacao = 'APROVADO' | 'REPROVADO'
 
 export interface LoginRequest {
@@ -108,8 +108,10 @@ export interface NaoConformidade {
   nrRelacionada: string
   nivelSeveridade: NivelSeveridade
   engResponsavelConstrutoraId: string
+  engConstruturaNome: string
   engConstrutoraEmail: string
   engResponsavelVerificacaoId: string
+  engVerificacaoNome: string
   engVerificacaoEmail: string
   dataLimiteResolucao: string
   status: StatusNaoConformidade
@@ -175,6 +177,5 @@ export interface DashboardStats {
   ncEmTratamento: number
   ncConcluidas: number
   ncNaoResolvidas: number
-  totalDesviosRegistrados: number
-  totalDesviosResolvidos: number
+  totalDesviosConcluidos: number
 }

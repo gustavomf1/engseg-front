@@ -38,7 +38,7 @@ export default function NaoConformidadeListPage() {
       </div>
 
       <div className="mb-4 flex gap-2 flex-wrap">
-        {(['', 'ABERTA', 'EM_TRATAMENTO', 'CONCLUIDA', 'NAO_RESOLVIDA'] as const).map((s) => (
+        {(['', 'ABERTA', 'EM_TRATAMENTO', 'CONCLUIDO', 'NAO_RESOLVIDA'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s as StatusNaoConformidade | '')}
@@ -61,8 +61,8 @@ export default function NaoConformidadeListPage() {
           <p className="text-slate-500">Nenhuma não conformidade encontrada</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">NR</th>

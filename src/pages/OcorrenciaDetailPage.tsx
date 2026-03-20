@@ -14,7 +14,7 @@ import {
 const statusNCMap: Record<string, { label: string; color: string }> = {
   ABERTA:        { label: 'Aberta',           color: 'bg-yellow-100 text-yellow-700' },
   EM_TRATAMENTO: { label: 'Em Tratamento',    color: 'bg-blue-100 text-blue-700' },
-  CONCLUIDA:     { label: 'Concluída',        color: 'bg-green-100 text-green-700' },
+  CONCLUIDO:     { label: 'Concluído',         color: 'bg-green-100 text-green-700' },
   NAO_RESOLVIDA: { label: 'Vencida',          color: 'bg-red-100 text-red-700' },
 }
 
@@ -210,8 +210,8 @@ export default function OcorrenciaDetailPage() {
 
           {/* Status badge */}
           {isDesvio
-            ? <span className={`text-xs font-medium px-3 py-1 rounded-full ${desvio!.status === 'RESOLVIDO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                {desvio!.status === 'RESOLVIDO' ? 'Resolvido' : 'Pendente'}
+            ? <span className="text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-700">
+                Concluído
               </span>
             : <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusNCMap[nc!.status]?.color}`}>
                 {statusNCMap[nc!.status]?.label}
@@ -227,7 +227,7 @@ export default function OcorrenciaDetailPage() {
           }
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Left column */}
           <div className="space-y-4">
             <Field label="Estabelecimento">
@@ -304,7 +304,7 @@ export default function OcorrenciaDetailPage() {
 
         {/* NC engenheiros */}
         {!isDesvio && (
-          <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6 pt-6 border-t border-gray-100">
             <Field label="Eng. Responsável pela Tratativa">
               {editando
                 ? <select value={form.engResponsavelConstrutoraId} onChange={e => set('engResponsavelConstrutoraId', e.target.value)} className={inputClass}>
@@ -313,7 +313,7 @@ export default function OcorrenciaDetailPage() {
                   </select>
                 : <div className={`${valueClass} flex items-center gap-1.5`}>
                     <User size={13} className="text-slate-400" />
-                    {nc!.engConstrutoraEmail || '—'}
+                    {nc!.engConstruturaNome ? `${nc!.engConstruturaNome} (${nc!.engConstrutoraEmail})` : nc!.engConstrutoraEmail || '—'}
                   </div>
               }
             </Field>
@@ -326,7 +326,7 @@ export default function OcorrenciaDetailPage() {
                   </select>
                 : <div className={`${valueClass} flex items-center gap-1.5`}>
                     <User size={13} className="text-slate-400" />
-                    {nc!.engVerificacaoEmail || '—'}
+                    {nc!.engVerificacaoNome ? `${nc!.engVerificacaoNome} (${nc!.engVerificacaoEmail})` : nc!.engVerificacaoEmail || '—'}
                   </div>
               }
             </Field>

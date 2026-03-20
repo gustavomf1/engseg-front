@@ -29,13 +29,10 @@ export default function TrativasListPage() {
   })
 
   function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {
-    if (item.tipo === 'DESVIO') {
-      if (item.status === 'RESOLVIDO') return 'CONCLUIDAS'
-      return 'AGUARDANDO_TRATATIVA'
-    }
+    if (item.tipo === 'DESVIO') return 'CONCLUIDAS'
     if (item.status === 'ABERTA') return 'AGUARDANDO_TRATATIVA'
     if (item.status === 'EM_TRATAMENTO') return 'AGUARDANDO_VALIDACAO'
-    if (item.status === 'CONCLUIDA') return 'CONCLUIDAS'
+    if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
     const dias = getDiasRestantes(item.dataLimiteResolucao)
     if (dias !== null && dias < 0) return 'VENCIDAS'
@@ -68,10 +65,9 @@ export default function TrativasListPage() {
 
   function getStatusInfo(item: OcorrenciaItem) {
     if (item.tipo === 'DESVIO') {
-      if (item.status === 'RESOLVIDO') return { label: 'Resolvido', color: 'text-green-600 bg-green-50' }
-      return { label: 'Aguardando Tratativa', color: 'text-yellow-600 bg-yellow-50' }
+      return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
     }
-    if (item.status === 'CONCLUIDA') return { label: 'Concluída', color: 'text-green-600 bg-green-50' }
+    if (item.status === 'CONCLUIDO') return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
     if (item.status === 'NAO_RESOLVIDA') return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
     if (item.status === 'EM_TRATAMENTO') return { label: 'Aguardando Validação', color: 'text-blue-600 bg-blue-50' }
     const dias = getDiasRestantes(item.dataLimiteResolucao)
@@ -87,7 +83,7 @@ export default function TrativasListPage() {
     { key: 'TODOS', label: 'Todos', activeColor: 'bg-slate-800 text-white' },
     { key: 'AGUARDANDO_TRATATIVA', label: 'Aguardando Tratativa', count: contadores.AGUARDANDO_TRATATIVA, activeColor: 'bg-yellow-600 text-white' },
     { key: 'AGUARDANDO_VALIDACAO', label: 'Aguardando Validação', count: contadores.AGUARDANDO_VALIDACAO, activeColor: 'bg-blue-600 text-white' },
-    { key: 'CONCLUIDAS', label: 'Concluídas', count: contadores.CONCLUIDAS, activeColor: 'bg-green-600 text-white' },
+    { key: 'CONCLUIDAS', label: 'Concluídos', count: contadores.CONCLUIDAS, activeColor: 'bg-green-600 text-white' },
     { key: 'VENCIDAS', label: 'Vencidas', count: contadores.VENCIDAS, activeColor: 'bg-red-600 text-white' },
   ]
 
@@ -100,7 +96,7 @@ export default function TrativasListPage() {
           <p className="text-sm text-slate-500">{filtradas.length} ocorrências registradas</p>
         </div>
         <button
-          onClick={() => navigate('/registro-ocorrencia')}
+          onClick={() => navigate('/ocorrencias/nova')}
           className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition"
         >
           <FilePlus size={16} /> Nova Ocorrência
@@ -108,7 +104,7 @@ export default function TrativasListPage() {
       </div>
 
       {/* Search + tipo filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm">
         <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
           <Search size={16} className="text-gray-400" />
           <input
@@ -118,26 +114,26 @@ export default function TrativasListPage() {
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'] as TipoFiltro[]).map(f => (
             <button
               key={f}
               onClick={() => setFiltroTipo(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filtroTipo === f ? 'bg-slate-800 text-white' : 'text-slate-600 border border-gray-200 hover:bg-gray-50'}`}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition ${filtroTipo === f ? 'bg-slate-800 text-white' : 'text-slate-600 border border-gray-200 hover:bg-gray-50'}`}
             >
-              {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'Não Conformidades'}
+              {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'NCs'}
             </button>
           ))}
         </div>
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
         {statusTabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setFiltroStatus(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               filtroStatus === tab.key
                 ? tab.activeColor
                 : 'text-slate-600 border border-gray-200 bg-white hover:bg-gray-50'
@@ -168,60 +164,59 @@ export default function TrativasListPage() {
           const dias = item.tipo === 'NAO_CONFORMIDADE' ? getDiasRestantes(item.dataLimiteResolucao) : null
 
           return (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-5 shadow-sm">
-              {/* Thumbnail placeholder */}
-              <div className="w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
-                <div className="space-y-1 px-2 w-full">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
-                  ))}
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
+              <div className="flex items-start gap-3 sm:gap-5">
+                {/* Thumbnail - hidden on mobile */}
+                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center">
+                  <div className="space-y-1 px-2 w-full">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle size={16} className={item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'} />
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                    {item.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'}
-                  </span>
-                  {item.regraDeOuro && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
-                      <Shield size={10} /> Regra de Ouro
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <AlertTriangle size={16} className={item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'} />
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
                     </span>
-                  )}
-                </div>
-                <div className="font-semibold text-slate-800">{item.titulo}</div>
-                <div className="text-sm text-slate-500 truncate">{item.descricao}</div>
-                <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
-                  <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>
-                  <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
-                </div>
-              </div>
-
-              {/* Right side */}
-              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 ${statusInfo.color}`}>
-                  {statusInfo.label}
-                </span>
-                {dias !== null && item.status !== 'CONCLUIDA' && (
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400">Prazo:</div>
-                    <div className="text-xs font-medium text-slate-600">
-                      {item.dataLimiteResolucao ? new Date(item.dataLimiteResolucao).toLocaleDateString('pt-BR') : '-'}
-                    </div>
-                    {dias >= 0 && (
-                      <div className="text-xs text-green-600">{dias} dias restantes</div>
+                    {item.regraDeOuro && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
+                        <Shield size={10} /> Regra de Ouro
+                      </span>
+                    )}
+                    <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 ${statusInfo.color}`}>
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                  <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
+                  <div className="text-sm text-slate-500 truncate">{item.descricao}</div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
+                    <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>
+                    <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
+                    {dias !== null && item.status !== 'CONCLUIDO' && dias >= 0 && (
+                      <span className="text-green-600">{dias}d restantes</span>
                     )}
                   </div>
-                )}
+                </div>
+
+                {/* Right side - desktop */}
                 <button
                   onClick={() => navigate(`/tratativas/${item.tipo}/${item.id}`)}
-                  className="text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition whitespace-nowrap"
+                  className="hidden sm:block text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition whitespace-nowrap flex-shrink-0"
                 >
                   Ver Tratativa →
                 </button>
               </div>
+              {/* Mobile button */}
+              <button
+                onClick={() => navigate(`/tratativas/${item.tipo}/${item.id}`)}
+                className="sm:hidden w-full mt-3 text-sm text-slate-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-center"
+              >
+                Ver Tratativa →
+              </button>
             </div>
           )
         })}

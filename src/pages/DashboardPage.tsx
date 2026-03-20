@@ -23,9 +23,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map(({ label, value, icon: Icon, bg, iconColor }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between shadow-sm">
             <div>
@@ -42,9 +42,9 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div>
         <h2 className="text-base font-semibold text-slate-700 mb-3">Ações Rápidas</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
-            onClick={() => navigate('/registro-ocorrencia')}
+            onClick={() => navigate('/ocorrencias/nova')}
             className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-slate-300 transition text-left"
           >
             <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -88,27 +88,25 @@ export default function DashboardPage() {
             </div>
           )}
           {recentes.map(item => (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <AlertTriangle size={20} className={item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'} />
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'}
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 shadow-sm min-w-0">
+              <AlertTriangle size={20} className={`flex-shrink-0 ${item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                    {item.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'}
+                  </span>
+                  {item.regraDeOuro && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
+                      <Shield size={10} /> Regra de Ouro
                     </span>
-                    {item.regraDeOuro && (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
-                        <Shield size={10} /> Regra de Ouro
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-medium text-slate-800 text-sm">{item.titulo}</div>
-                  <div className="text-xs text-slate-500">{item.localizacao} • {formatDate(item.dataRegistro)}</div>
+                  )}
                 </div>
+                <div className="font-medium text-slate-800 text-sm truncate">{item.titulo}</div>
+                <div className="text-xs text-slate-500 truncate">{item.localizacao} • {formatDate(item.dataRegistro)}</div>
               </div>
               <button
                 onClick={() => navigate(`/tratativas/${item.tipo}/${item.id}`)}
-                className="text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 whitespace-nowrap"
+                className="text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 whitespace-nowrap flex-shrink-0"
               >
                 Ver Detalhes →
               </button>

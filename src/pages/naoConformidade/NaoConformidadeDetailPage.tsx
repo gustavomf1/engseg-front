@@ -101,7 +101,7 @@ export default function NaoConformidadeDetailPage() {
       {/* Main info */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <h3 className="font-semibold text-slate-700 mb-4">Informações Gerais</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Estabelecimento</p>
             <p className="text-slate-800 font-medium">{nc.estabelecimentoNome}</p>
@@ -112,7 +112,7 @@ export default function NaoConformidadeDetailPage() {
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Prazo para Resolução</p>
-            <p className={`font-medium ${new Date(nc.dataLimiteResolucao) < new Date() && nc.status !== 'CONCLUIDA' ? 'text-red-600' : 'text-slate-800'}`}>
+            <p className={`font-medium ${new Date(nc.dataLimiteResolucao) < new Date() && nc.status !== 'CONCLUIDO' ? 'text-red-600' : 'text-slate-800'}`}>
               {formatDate(nc.dataLimiteResolucao)}
             </p>
           </div>
@@ -122,13 +122,13 @@ export default function NaoConformidadeDetailPage() {
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Construtora</p>
-            <p className="text-slate-800">{nc.engConstrutoraEmail}</p>
+            <p className="text-slate-800">{nc.engConstruturaNome ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail})` : nc.engConstrutoraEmail || '—'}</p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Verificação</p>
-            <p className="text-slate-800">{nc.engVerificacaoEmail}</p>
+            <p className="text-slate-800">{nc.engVerificacaoNome ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail})` : nc.engVerificacaoEmail || '—'}</p>
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição</p>
             <p className="text-slate-800">{nc.descricao}</p>
           </div>

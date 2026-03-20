@@ -21,7 +21,3 @@ export const updateDesvio = async (id: string, data: DesvioRequest): Promise<Des
   return res.data
 }
 
-export const resolverDesvio = async (id: string): Promise<Desvio> => {
-  const res = await client.put<Desvio>(`/desvios/${id}/resolver`)
-  return res.data
-}

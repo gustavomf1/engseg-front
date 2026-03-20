@@ -3,25 +3,23 @@ import { StatusNaoConformidade, StatusDesvio } from '../types'
 const ncColors: Record<StatusNaoConformidade, string> = {
   ABERTA: 'bg-yellow-100 text-yellow-800',
   EM_TRATAMENTO: 'bg-blue-100 text-blue-800',
-  CONCLUIDA: 'bg-green-100 text-green-800',
+  CONCLUIDO: 'bg-green-100 text-green-800',
   NAO_RESOLVIDA: 'bg-red-100 text-red-800',
 }
 
 const ncLabels: Record<StatusNaoConformidade, string> = {
   ABERTA: 'Aberta',
   EM_TRATAMENTO: 'Em Tratamento',
-  CONCLUIDA: 'Concluída',
+  CONCLUIDO: 'Concluído',
   NAO_RESOLVIDA: 'Não Resolvida',
 }
 
 const desvioColors: Record<StatusDesvio, string> = {
-  REGISTRADO: 'bg-yellow-100 text-yellow-800',
-  RESOLVIDO: 'bg-green-100 text-green-800',
+  CONCLUIDO: 'bg-green-100 text-green-800',
 }
 
 const desvioLabels: Record<StatusDesvio, string> = {
-  REGISTRADO: 'Registrado',
-  RESOLVIDO: 'Resolvido',
+  CONCLUIDO: 'Concluído',
 }
 
 interface NcProps {

@@ -1,26 +1,28 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
-
-const pageTitles: Record<string, { title: string; sub: string }> = {
-  '/dashboard': { title: 'Sistema de Gestão de Segurança do Trabalho', sub: 'Controle e gerenciamento de ocorrências' },
-  '/perfil': { title: 'Sistema de Gestão de Segurança do Trabalho', sub: 'Controle e gerenciamento de ocorrências' },
-  '/registro-ocorrencia': { title: 'Sistema de Gestão de Segurança do Trabalho', sub: 'Controle e gerenciamento de ocorrências' },
-  '/tratativas': { title: 'Sistema de Gestão de Segurança do Trabalho', sub: 'Controle e gerenciamento de ocorrências' },
-}
+import { Menu } from 'lucide-react'
 
 export default function Layout() {
-  const location = useLocation()
-  const page = pageTitles[location.pathname] || { title: 'Sistema de Gestão de Segurança do Trabalho', sub: 'Controle e gerenciamento de ocorrências' }
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      <Sidebar />
+    <div className="flex h-screen bg-slate-100 overflow-hidden">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-8 py-4">
-          <h1 className="text-lg font-bold text-slate-800">{page.title}</h1>
-          <p className="text-sm text-slate-500">{page.sub}</p>
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex-shrink-0 flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-slate-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Menu size={22} />
+          </button>
+          <div>
+            <h1 className="text-base lg:text-lg font-bold text-slate-800">Sistema de Gestão de Segurança do Trabalho</h1>
+            <p className="text-xs lg:text-sm text-slate-500">Controle e gerenciamento de ocorrências</p>
+          </div>
         </header>
-        <main className="flex-1 p-8 overflow-auto">
+        <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <Outlet />
         </main>
       </div>

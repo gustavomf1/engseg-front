@@ -75,8 +75,8 @@ export default function EmpresaFormPage() {
       </div>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Razão Social *</label>
             <input {...register('razaoSocial')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             {errors.razaoSocial && <p className="text-red-500 text-xs mt-1">{errors.razaoSocial.message}</p>}

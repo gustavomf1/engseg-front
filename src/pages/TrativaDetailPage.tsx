@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDesvio, resolverDesvio } from '../api/desvio'
+import { getDesvio } from '../api/desvio'
 import { getNaoConformidade, registrarDevolutiva, validarNaoConformidade } from '../api/naoConformidade'
 import { useAuth } from '../contexts/AuthContext'
 import { ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText, Upload, CheckCircle, XCircle, Clock, Ban } from 'lucide-react'
@@ -36,11 +36,7 @@ export default function TrativaDetailPage() {
 
   const mutationDevolutiva = useMutation({
     mutationFn: async () => {
-      if (isDesvio) {
-        return resolverDesvio(id!)
-      } else {
-        return registrarDevolutiva(id!, { descricaoPlanoAcao: planoAcao })
-      }
+      return registrarDevolutiva(id!, { descricaoPlanoAcao: planoAcao })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
@@ -81,21 +77,21 @@ export default function TrativaDetailPage() {
 
   // Determine which bottom section to render
   function renderBottomSection() {
-    // Desvio já resolvido
-    if (isDesvio && desvioStatus === 'RESOLVIDO') {
+    // Desvio já concluído
+    if (isDesvio) {
       return (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
           <CheckCircle size={32} className="text-green-500 flex-shrink-0" />
           <div>
-            <div className="font-bold text-green-800 text-base">Desvio Resolvido</div>
-            <div className="text-sm text-green-600 mt-0.5">Este desvio foi resolvido e encerrado com sucesso.</div>
+            <div className="font-bold text-green-800 text-base">Desvio Concluído</div>
+            <div className="text-sm text-green-600 mt-0.5">Este desvio foi registrado e concluído automaticamente.</div>
           </div>
         </div>
       )
     }
 
     // NC Concluída
-    if (!isDesvio && ncStatus === 'CONCLUIDA') {
+    if (!isDesvio && ncStatus === 'CONCLUIDO') {
       return (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
           <CheckCircle size={32} className="text-green-500 flex-shrink-0" />
@@ -196,7 +192,7 @@ export default function TrativaDetailPage() {
       )
     }
 
-    // NC ABERTA ou Desvio REGISTRADO → formulário de tratativa
+    // NC ABERTA → formulário de tratativa
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <h3 className="text-base font-bold text-slate-800 mb-1">Plano de Ação e Tratativa</h3>
@@ -286,7 +282,7 @@ export default function TrativaDetailPage() {
 
         <h2 className="text-xl font-bold text-slate-800 mb-5">{(ocorrencia as any).titulo}</h2>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Left info */}
           <div className="space-y-4">
             <div>

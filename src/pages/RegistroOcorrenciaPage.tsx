@@ -8,6 +8,7 @@ import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
 import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getUsuarios } from '../api/usuario'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
 
 type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
@@ -32,6 +33,7 @@ export default function RegistroOcorrenciaPage() {
   const [arquivo, setArquivo] = useState<File | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { estabelecimento: estabelecimentoSelecionado } = useWorkspace()
 
   const { data: estabelecimentos = [] } = useQuery({
     queryKey: ['estabelecimentos'],
@@ -63,7 +65,10 @@ export default function RegistroOcorrenciaPage() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { regraDeOuro: false },
+    defaultValues: {
+      regraDeOuro: false,
+      estabelecimentoId: estabelecimentoSelecionado?.id || '',
+    },
   })
 
   useEffect(() => {
@@ -144,7 +149,7 @@ export default function RegistroOcorrenciaPage() {
         {/* Type selector — desabilitado na edição */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Ocorrência *</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => !isEditing && setTipo('DESVIO')}

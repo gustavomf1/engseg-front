@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createEstabelecimento, getEstabelecimento, updateEstabelecimento } from '../../api/estabelecimento'
 import { getEmpresas } from '../../api/empresa'
+import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { ArrowLeft } from 'lucide-react'
 
 const schema = z.object({
@@ -22,6 +23,7 @@ export default function EstabelecimentoFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { empresa: empresaSelecionada } = useWorkspace()
   const isEditing = !!id
 
   const { data: item } = useQuery({
@@ -37,6 +39,9 @@ export default function EstabelecimentoFormPage() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      empresaId: empresaSelecionada?.id || '',
+    },
   })
 
   useEffect(() => {
@@ -72,8 +77,8 @@ export default function EstabelecimentoFormPage() {
       </div>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Empresa *</label>
             <select {...register('empresaId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
               <option value="">Selecione uma empresa</option>

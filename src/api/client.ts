@@ -21,6 +21,8 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('engseg_token')
       localStorage.removeItem('engseg_user')
+      localStorage.removeItem('engseg_empresa')
+      localStorage.removeItem('engseg_estabelecimento')
       window.location.href = '/login'
     }
     return Promise.reject(error)
