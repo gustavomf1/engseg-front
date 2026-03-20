@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import PrivateRoute from './components/PrivateRoute'
 import WorkspaceRoute from './components/WorkspaceRoute'
@@ -31,6 +32,7 @@ function DefaultRedirect() {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <WorkspaceProvider>
         <BrowserRouter>
@@ -77,5 +79,6 @@ export default function App() {
         </BrowserRouter>
       </WorkspaceProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { login as loginApi } from '../api/auth'
-import { Shield, Mail, Lock, Eye, EyeOff, CheckCircle2, TrendingUp, ClipboardList, Clock } from 'lucide-react'
+import { Shield, Mail, Lock, Eye, EyeOff, CheckCircle2, TrendingUp, ClipboardList, Clock, Sun, Moon } from 'lucide-react'
+import { useTheme } from '../contexts/ThemeContext'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -72,7 +74,14 @@ export default function LoginPage() {
       </div>
 
       {/* Right white panel */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white">
+      <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
+        <button
+          onClick={toggleTheme}
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-gray-100 transition"
+          title={theme === 'light' ? 'Tema Escuro' : 'Tema Claro'}
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <Shield size={28} className="text-slate-800" />

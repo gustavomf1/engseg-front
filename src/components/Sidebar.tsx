@@ -2,17 +2,25 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { getOcorrencias } from '../api/ocorrencia'
-import { Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut, Building2, MapPin, Users, RefreshCw, X, Navigation } from 'lucide-react'
+import {
+  Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut,
+  Building2, MapPin, Users, RefreshCw, X, Navigation, Sun, Moon,
+  ChevronsLeft, ChevronsRight
+} from 'lucide-react'
 
 interface SidebarProps {
-  open: boolean
-  onClose: () => void
+  mobileOpen: boolean
+  onMobileClose: () => void
+  collapsed: boolean
+  onToggleCollapse: () => void
 }
 
-export default function Sidebar({ open, onClose }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, logout } = useAuth()
   const { empresa, estabelecimento, limpar } = useWorkspace()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const { data: ocorrencias = [] } = useQuery({
@@ -33,161 +41,224 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   }
 
   function handleNav() {
-    onClose()
+    onMobileClose()
   }
 
-  const navItemClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${
-      isActive
-        ? 'bg-slate-700 text-white font-medium border-l-2 border-blue-400'
-        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-    }`
+  // No mobile drawer, nunca colapsado
+  const isCollapsed = collapsed
 
-  const sidebarContent = (
-    <div className="w-64 lg:w-56 bg-slate-900 h-full flex flex-col py-6 px-3 flex-shrink-0 overflow-y-auto">
-      {/* Logo + close on mobile */}
-      <div className="flex items-center justify-between px-2 mb-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
-            <Shield size={16} className="text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold text-sm">SGS</div>
-            <div className="text-slate-500 text-xs">Sistema de Gestão</div>
-          </div>
-        </div>
-        <button onClick={onClose} className="lg:hidden p-1 text-slate-400 hover:text-white">
-          <X size={20} />
-        </button>
-      </div>
+  function SidebarInner({ mobile }: { mobile?: boolean }) {
+    const show = mobile || !isCollapsed
+    const compact = isCollapsed && !mobile
 
-      {/* User info */}
-      <div className="flex items-center gap-2.5 px-2 mb-4 pb-4 border-b border-slate-800">
-        <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-          {user?.nome?.charAt(0).toUpperCase()}
-        </div>
-        <div className="min-w-0">
-          <div className="text-white text-sm font-medium truncate">{user?.nome}</div>
-          <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-            <span className="text-slate-400 text-xs">Online</span>
-          </div>
-        </div>
-      </div>
+    const navItemClass = ({ isActive }: { isActive: boolean }) =>
+      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+        compact ? 'justify-center' : ''
+      } ${
+        isActive
+          ? 'sidebar-active text-white font-medium'
+          : 'sidebar-nav-item'
+      }`
 
-      {/* Workspace info — não exibe para EXTERNO */}
-      {user?.perfil !== 'EXTERNO' && empresa && estabelecimento && (
-        <div className="px-2 mb-6 pb-6 border-b border-slate-800">
-          <div className="bg-slate-800 rounded-lg p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Building2 size={13} className="text-blue-400 flex-shrink-0" />
-              <span className="text-xs text-slate-300 truncate">{empresa.nomeFantasia || empresa.razaoSocial}</span>
+    return (
+      <div className={`${mobile ? 'w-64' : isCollapsed ? 'w-16' : 'w-56'} sidebar-bg h-full flex flex-col py-6 ${compact ? 'px-1.5' : 'px-3'} flex-shrink-0 overflow-y-auto transition-all duration-200`}>
+        {/* Logo */}
+        <div className={`flex items-center ${compact ? 'justify-center' : 'justify-between'} px-2 mb-6`}>
+          {show ? (
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 sidebar-logo rounded-lg flex items-center justify-center">
+                <Shield size={16} className="text-white" />
+              </div>
+              <div>
+                <div className="text-white font-bold text-sm">SGS</div>
+                <div className="sidebar-muted text-xs">Sistema de Gestão</div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin size={13} className="text-blue-400 flex-shrink-0" />
-              <span className="text-xs text-slate-300 truncate">{estabelecimento.nome}</span>
+          ) : (
+            <div className="w-8 h-8 sidebar-logo rounded-lg flex items-center justify-center mx-auto">
+              <Shield size={16} className="text-white" />
             </div>
-            <button
-              onClick={() => { limpar(); navigate('/selecionar'); onClose() }}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-400 transition mt-1"
-            >
-              <RefreshCw size={11} />
-              Trocar
+          )}
+          {mobile && (
+            <button onClick={onMobileClose} className="p-1 sidebar-item-text hover:text-white">
+              <X size={20} />
             </button>
-          </div>
+          )}
+          {!mobile && show && (
+            <button onClick={onToggleCollapse} className="p-1 sidebar-item-text hover:text-white hidden lg:block">
+              <ChevronsLeft size={18} />
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Main nav */}
-      <nav className="flex-1 space-y-1">
-        {user?.perfil !== 'EXTERNO' && (
-          <NavLink to="/dashboard" className={navItemClass} onClick={handleNav}>
-            <LayoutDashboard size={16} />
-            Dashboard
-          </NavLink>
+        {/* User info */}
+        <div className={`flex items-center ${compact ? 'justify-center' : 'gap-2.5'} px-2 mb-4 pb-4 sidebar-divider`}>
+          <div className="w-8 h-8 rounded-full sidebar-avatar flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+            {user?.nome?.charAt(0).toUpperCase()}
+          </div>
+          {show && (
+            <div className="min-w-0">
+              <div className="text-white text-sm font-medium truncate">{user?.nome}</div>
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                <span className="sidebar-item-text text-xs">Online</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Workspace info */}
+        {user?.perfil !== 'EXTERNO' && empresa && estabelecimento && show && (
+          <div className="px-2 mb-6 pb-6 sidebar-divider">
+            <div className="sidebar-workspace rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Building2 size={13} className="text-blue-400 flex-shrink-0" />
+                <span className="text-xs sidebar-workspace-text truncate">{empresa.nomeFantasia || empresa.razaoSocial}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin size={13} className="text-blue-400 flex-shrink-0" />
+                <span className="text-xs sidebar-workspace-text truncate">{estabelecimento.nome}</span>
+              </div>
+              <button
+                onClick={() => { limpar(); navigate('/selecionar'); onMobileClose() }}
+                className="flex items-center gap-1.5 text-xs sidebar-muted hover:text-blue-400 transition mt-1"
+              >
+                <RefreshCw size={11} />
+                Trocar
+              </button>
+            </div>
+          </div>
         )}
-        <NavLink to="/perfil" className={navItemClass} onClick={handleNav}>
-          <User size={16} />
-          Usuário
-        </NavLink>
-        {user?.perfil !== 'EXTERNO' && (
-          <NavLink to="/ocorrencias" className={navItemClass} onClick={handleNav}>
-            <FilePlus size={16} />
-            Ocorrências
-          </NavLink>
+
+        {/* Collapsed workspace indicator */}
+        {user?.perfil !== 'EXTERNO' && empresa && estabelecimento && compact && (
+          <div className="px-1 mb-4 pb-4 sidebar-divider flex justify-center">
+            <div className="w-8 h-8 sidebar-workspace rounded-lg flex items-center justify-center" title={`${empresa.nomeFantasia || empresa.razaoSocial} / ${estabelecimento.nome}`}>
+              <Building2 size={14} className="text-blue-400" />
+            </div>
+          </div>
         )}
-        <NavLink to="/tratativas" className={navItemClass} onClick={handleNav}>
-          {({ isActive }) => (
+
+        {/* Main nav */}
+        <nav className="flex-1 space-y-1">
+          {user?.perfil !== 'EXTERNO' && (
+            <NavLink to="/dashboard" className={navItemClass} onClick={handleNav} title={compact ? 'Dashboard' : undefined}>
+              <LayoutDashboard size={16} />
+              {show && 'Dashboard'}
+            </NavLink>
+          )}
+          <NavLink to="/perfil" className={navItemClass} onClick={handleNav} title={compact ? 'Usuário' : undefined}>
+            <User size={16} />
+            {show && 'Usuário'}
+          </NavLink>
+          {user?.perfil !== 'EXTERNO' && (
+            <NavLink to="/ocorrencias" className={navItemClass} onClick={handleNav} title={compact ? 'Ocorrências' : undefined}>
+              <FilePlus size={16} />
+              {show && 'Ocorrências'}
+            </NavLink>
+          )}
+          <NavLink to="/tratativas" className={navItemClass} onClick={handleNav} title={compact ? 'Tratativas' : undefined}>
+            {({ isActive }) => (
+              <>
+                <ClipboardList size={16} />
+                {show && <span className="flex-1">Tratativas</span>}
+                {show && user?.perfil === 'ENGENHEIRO' && pendentesValidacao > 0 && (
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                    isActive ? 'bg-orange-400 text-white' : 'bg-orange-500 text-white'
+                  }`}>
+                    {pendentesValidacao}
+                  </span>
+                )}
+                {!show && user?.perfil === 'ENGENHEIRO' && pendentesValidacao > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {pendentesValidacao}
+                  </span>
+                )}
+              </>
+            )}
+          </NavLink>
+
+          {/* Admin section - ENGENHEIRO only */}
+          {user?.perfil === 'ENGENHEIRO' && (
             <>
-              <ClipboardList size={16} />
-              <span className="flex-1">Tratativas</span>
-              {user?.perfil === 'ENGENHEIRO' && pendentesValidacao > 0 && (
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-orange-400 text-white' : 'bg-orange-500 text-white'
-                }`}>
-                  {pendentesValidacao}
-                </span>
+              {show && (
+                <div className="pt-4 pb-1 px-2">
+                  <span className="sidebar-section text-xs uppercase tracking-wider">Administração</span>
+                </div>
               )}
+              {!show && <div className="pt-3" />}
+              <NavLink to="/empresas" className={navItemClass} onClick={handleNav} title={compact ? 'Empresas' : undefined}>
+                <Building2 size={15} />
+                {show && 'Empresas'}
+              </NavLink>
+              <NavLink to="/estabelecimentos" className={navItemClass} onClick={handleNav} title={compact ? 'Estabelecimentos' : undefined}>
+                <MapPin size={15} />
+                {show && 'Estabelecimentos'}
+              </NavLink>
+              <NavLink to="/localizacoes" className={navItemClass} onClick={handleNav} title={compact ? 'Localizações' : undefined}>
+                <Navigation size={15} />
+                {show && 'Localizações'}
+              </NavLink>
+              <NavLink to="/usuarios" className={navItemClass} onClick={handleNav} title={compact ? 'Usuários' : undefined}>
+                <Users size={15} />
+                {show && 'Usuários'}
+              </NavLink>
             </>
           )}
-        </NavLink>
+        </nav>
 
-        {/* Admin section - ENGENHEIRO only */}
-        {user?.perfil === 'ENGENHEIRO' && (
-          <>
-            <div className="pt-4 pb-1 px-2">
-              <span className="text-slate-600 text-xs uppercase tracking-wider">Administração</span>
+        {/* Bottom */}
+        <div className="space-y-1 mt-4 sidebar-divider-top pt-4">
+          {/* Expand button when collapsed */}
+          {compact && (
+            <button
+              onClick={onToggleCollapse}
+              className="flex items-center justify-center w-full py-2.5 rounded-lg text-sm sidebar-btn transition-all"
+              title="Expandir menu"
+            >
+              <ChevronsRight size={16} />
+            </button>
+          )}
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center ${compact ? 'justify-center' : 'gap-3'} px-3 py-2.5 w-full rounded-lg text-sm sidebar-btn transition-all`}
+            title={compact ? (theme === 'light' ? 'Tema Escuro' : 'Tema Claro') : undefined}
+          >
+            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            {show && (theme === 'light' ? 'Tema Escuro' : 'Tema Claro')}
+          </button>
+          <button
+            onClick={handleLogout}
+            className={`flex items-center ${compact ? 'justify-center' : 'gap-3'} px-3 py-2.5 w-full rounded-lg text-sm sidebar-btn transition-all`}
+            title={compact ? 'Sair do Sistema' : undefined}
+          >
+            <LogOut size={16} />
+            {show && 'Sair do Sistema'}
+          </button>
+          {show && (
+            <div className="text-center sidebar-section text-xs">
+              <div>Versao 1.0.0</div>
+              <div>&copy; 2024 ERS</div>
             </div>
-            <NavLink to="/empresas" className={navItemClass} onClick={handleNav}>
-              <Building2 size={15} />
-              Empresas
-            </NavLink>
-            <NavLink to="/estabelecimentos" className={navItemClass} onClick={handleNav}>
-              <MapPin size={15} />
-              Estabelecimentos
-            </NavLink>
-            <NavLink to="/localizacoes" className={navItemClass} onClick={handleNav}>
-              <Navigation size={15} />
-              Localizações
-            </NavLink>
-            <NavLink to="/usuarios" className={navItemClass} onClick={handleNav}>
-              <Users size={15} />
-              Usuários
-            </NavLink>
-          </>
-        )}
-      </nav>
-
-      {/* Bottom: logout + version */}
-      <div className="space-y-2 mt-4 border-t border-slate-800 pt-4">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-2.5 w-full rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all"
-        >
-          <LogOut size={16} />
-          Sair do Sistema
-        </button>
-        <div className="text-center text-slate-600 text-xs">
-          <div>Versão 1.0.0</div>
-          <div>© 2024 ERS</div>
+          )}
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <>
       {/* Desktop sidebar */}
       <div className="hidden lg:block flex-shrink-0">
-        {sidebarContent}
+        <SidebarInner />
       </div>
 
       {/* Mobile overlay */}
-      {open && (
+      {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+          <div className="fixed inset-0 bg-black/50" onClick={onMobileClose} />
           <div className="fixed inset-y-0 left-0 z-50">
-            {sidebarContent}
+            <SidebarInner mobile />
           </div>
         </div>
       )}

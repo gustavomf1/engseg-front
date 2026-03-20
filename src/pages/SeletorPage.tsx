@@ -6,7 +6,8 @@ import { getEstabelecimentos } from '../api/estabelecimento'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Empresa, Estabelecimento } from '../types'
-import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut } from 'lucide-react'
+import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon } from 'lucide-react'
+import { useTheme } from '../contexts/ThemeContext'
 
 type Step = 'empresa' | 'estabelecimento'
 
@@ -15,6 +16,7 @@ export default function SeletorPage() {
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
   const { selecionarEmpresa, selecionarEstabelecimento } = useWorkspace()
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
@@ -70,6 +72,13 @@ export default function SeletorPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-600">Olá, <strong>{user?.nome}</strong></span>
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-gray-100 transition"
+            title={theme === 'light' ? 'Tema Escuro' : 'Tema Claro'}
+          >
+            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-600 transition"
