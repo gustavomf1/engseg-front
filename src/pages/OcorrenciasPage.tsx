@@ -1,17 +1,33 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
-import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } from '../api/ocorrencia'
+import { useAuth } from '../contexts/AuthContext'
+import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
 
 export default function OcorrenciasPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'>('TODOS')
+  const [excluindo, setExcluindo] = useState<OcorrenciaItem | null>(null)
+
+  const isTecnico = user?.perfil === 'TECNICO'
 
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ['ocorrencias'],
     queryFn: getOcorrencias,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (item: OcorrenciaItem) =>
+      item.tipo === 'DESVIO' ? deleteDesvio(item.id) : deleteNaoConformidade(item.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setExcluindo(null)
+    },
   })
 
   const filtradas = ocorrencias.filter(o => {
@@ -37,6 +53,14 @@ export default function OcorrenciasPage() {
       NAO_RESOLVIDA: { label: 'Vencida', color: 'text-red-600 bg-red-50' },
     }
     return map[item.status] ?? { label: item.status, color: 'text-slate-600 bg-slate-100' }
+  }
+
+  function podeExcluir(item: OcorrenciaItem) {
+    // Técnico só pode excluir NC com status ABERTA, desvio sempre pode
+    if (isTecnico && item.tipo === 'NAO_CONFORMIDADE' && item.status !== 'ABERTA') {
+      return false
+    }
+    return true
   }
 
   return (
@@ -121,24 +145,95 @@ export default function OcorrenciasPage() {
                 </div>
 
                 {/* Right - desktop */}
+                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                  {podeExcluir(item) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setExcluindo(item) }}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Excluir"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => navigate(`/ocorrencias/${item.tipo}/${item.id}`)}
+                    className="flex items-center gap-1.5 text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Ver detalhes →
+                  </button>
+                </div>
+              </div>
+              {/* Mobile buttons */}
+              <div className="sm:hidden flex gap-2 mt-3">
                 <button
                   onClick={() => navigate(`/ocorrencias/${item.tipo}/${item.id}`)}
-                  className="hidden sm:flex items-center gap-1.5 text-sm text-slate-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition flex-shrink-0"
+                  className="flex-1 text-sm text-slate-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-center"
                 >
                   Ver detalhes →
                 </button>
+                {podeExcluir(item) && (
+                  <button
+                    onClick={() => setExcluindo(item)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-200 rounded-lg transition"
+                    title="Excluir"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
-              {/* Mobile button */}
-              <button
-                onClick={() => navigate(`/ocorrencias/${item.tipo}/${item.id}`)}
-                className="sm:hidden w-full mt-3 text-sm text-slate-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-center"
-              >
-                Ver detalhes →
-              </button>
             </div>
           )
         })}
       </div>
+
+      {/* Modal de confirmação */}
+      {excluindo && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setExcluindo(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Excluir Ocorrência</h3>
+                <p className="text-sm text-slate-500">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3 mb-5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${excluindo.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                  {excluindo.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
+                </span>
+              </div>
+              <p className="text-sm font-medium text-slate-700">{excluindo.titulo}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{formatDate(excluindo.dataRegistro)}</p>
+            </div>
+
+            {deleteMutation.isError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-600 text-sm">
+                Erro ao excluir. Verifique suas permissões.
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setExcluindo(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(excluindo)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition"
+              >
+                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

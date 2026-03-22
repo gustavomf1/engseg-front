@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
 import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
+import { uploadEvidencia } from '../api/evidencia'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
@@ -120,9 +121,10 @@ export default function RegistroOcorrenciaPage() {
         estabelecimentoId: data.estabelecimentoId,
         regraDeOuro: data.regraDeOuro ?? false,
       }
+      let result
       if (tipo === 'DESVIO') {
         const req = { ...base, orientacaoRealizada: data.descricao }
-        return isEditing ? updateDesvio(id!, req) : createDesvio(req)
+        result = isEditing ? await updateDesvio(id!, req) : await createDesvio(req)
       } else {
         const req = {
           ...base,
@@ -131,8 +133,15 @@ export default function RegistroOcorrenciaPage() {
           engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
         }
-        return isEditing ? updateNaoConformidade(id!, req) : createNaoConformidade(req)
+        result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
+
+      // Upload evidence file if one was selected (NC only)
+      if (arquivo && tipo === 'NAO_CONFORMIDADE' && result?.id) {
+        await uploadEvidencia(result.id, arquivo)
+      }
+
+      return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })

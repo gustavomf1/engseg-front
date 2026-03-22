@@ -11,6 +11,8 @@ import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
   FileText, User, Building2, Clock, CheckCircle, Ban
 } from 'lucide-react'
+import EvidenciaUpload from '../components/EvidenciaUpload'
+import { useAuth } from '../contexts/AuthContext'
 
 const statusNCMap: Record<string, { label: string; color: string }> = {
   ABERTA:        { label: 'Aberta',           color: 'bg-yellow-100 text-yellow-700' },
@@ -30,7 +32,9 @@ export default function OcorrenciaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const isDesvio = tipo === 'DESVIO'
+  const isTecnico = user?.perfil === 'TECNICO'
 
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<Record<string, any>>({})
@@ -170,30 +174,37 @@ export default function OcorrenciaDetailPage() {
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="flex gap-2">
-          {editando ? (
-            <>
+          {/* Técnico só pode editar NC com status ABERTA */}
+          {(() => {
+            const ncEmTratamento = !isDesvio && nc && nc.status !== 'ABERTA'
+            const bloqueado = isTecnico && ncEmTratamento
+            if (bloqueado) return null
+
+            return editando ? (
+              <>
+                <button
+                  onClick={() => setEditando(false)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+                >
+                  <X size={15} /> Cancelar
+                </button>
+                <button
+                  onClick={() => mutation.mutate()}
+                  disabled={mutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition"
+                >
+                  <Save size={15} /> {mutation.isPending ? 'Salvando...' : 'Salvar'}
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => setEditando(false)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+                onClick={() => setEditando(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
               >
-                <X size={15} /> Cancelar
+                <Pencil size={15} /> Editar
               </button>
-              <button
-                onClick={() => mutation.mutate()}
-                disabled={mutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition"
-              >
-                <Save size={15} /> {mutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setEditando(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
-            >
-              <Pencil size={15} /> Editar
-            </button>
-          )}
+            )
+          })()}
         </div>
       </div>
 
@@ -346,6 +357,20 @@ export default function OcorrenciaDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Evidências da Ocorrência */}
+      {!isDesvio && id && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" titulo="Evidências da Ocorrência" />
+        </div>
+      )}
+
+      {/* Evidências da Tratativa */}
+      {!isDesvio && id && nc && nc.status !== 'ABERTA' && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
+        </div>
+      )}
 
       {/* Histórico de tratativa (NC only, read-only) */}
       {!isDesvio && (nc!.devolutivas?.length > 0 || nc!.execucoes?.length > 0 || nc!.validacao) && (

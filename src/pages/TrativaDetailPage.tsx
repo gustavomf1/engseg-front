@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio } from '../api/desvio'
 import { getNaoConformidade, registrarDevolutiva, validarNaoConformidade } from '../api/naoConformidade'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText, Upload, CheckCircle, XCircle, Clock, Ban } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText, CheckCircle, XCircle, Clock, Ban } from 'lucide-react'
+import EvidenciaUpload from '../components/EvidenciaUpload'
 
 export default function TrativaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
@@ -12,7 +13,6 @@ export default function TrativaDetailPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [planoAcao, setPlanoAcao] = useState('')
-  const [arquivo, setArquivo] = useState<File | null>(null)
   const [observacao, setObservacao] = useState('')
 
   const isDesvio = tipo === 'DESVIO'
@@ -140,6 +140,13 @@ export default function TrativaDetailPage() {
             </div>
           )}
 
+          {/* Evidências da tratativa */}
+          {id && (
+            <div className="mb-5">
+              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
+            </div>
+          )}
+
           <div className="mb-5">
             <label className="block text-sm font-medium text-slate-700 mb-1">Observação (opcional)</label>
             <textarea
@@ -213,27 +220,11 @@ export default function TrativaDetailPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Evidência da Solução *</label>
-            <p className="text-xs text-slate-400 mb-2">Anexe foto ou documento comprovando a implementação da solução</p>
-            <label className="block border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-slate-400 transition">
-              <input
-                type="file"
-                accept="image/png,image/jpg,image/jpeg,application/pdf"
-                className="hidden"
-                onChange={e => setArquivo(e.target.files?.[0] ?? null)}
-              />
-              <Upload size={28} className="mx-auto text-gray-400 mb-2" />
-              {arquivo ? (
-                <div className="text-sm text-slate-700 font-medium">{arquivo.name}</div>
-              ) : (
-                <>
-                  <div className="text-sm text-blue-500 font-medium">Clique para anexar evidência</div>
-                  <div className="text-xs text-gray-400 mt-1">PNG, JPG ou PDF até 10MB</div>
-                </>
-              )}
-            </label>
-          </div>
+          {id && (
+            <div>
+              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" titulo="Evidências da Tratativa" />
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -316,17 +307,12 @@ export default function TrativaDetailPage() {
             </div>
           </div>
 
-          {/* Right: evidence placeholder */}
-          <div>
-            <div className="text-xs text-slate-400 mb-2">Evidência Fotográfica</div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg h-48 flex items-center justify-center">
-              <div className="text-center text-slate-300 space-y-2 px-4 w-full">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-2 bg-gray-200 rounded mx-auto" style={{ width: `${40 + i * 12}%` }} />
-                ))}
-              </div>
+          {/* Right: evidências da ocorrência (somente leitura) */}
+          {!isDesvio && id && (
+            <div>
+              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" readOnly titulo="Evidências da Ocorrência" />
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -22,3 +22,9 @@ export const getOcorrencias = () =>
 
 export const getRecentesOcorrencias = () =>
   client.get<OcorrenciaItem[]>('/dashboard/recentes').then(r => r.data)
+
+export const deleteNaoConformidade = (id: string) =>
+  client.delete(`/nao-conformidades/${id}`)
+
+export const deleteDesvio = (id: string) =>
+  client.delete(`/desvios/${id}`)

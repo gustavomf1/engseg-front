@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, CheckCircle, Clock, FileText, Shield } from 'lucide-react'
+import EvidenciaUpload from '../../components/EvidenciaUpload'
 
 const devolutivaSchema = z.object({
   descricaoPlanoAcao: z.string().min(1, 'Descrição do plano de ação obrigatória'),
@@ -139,6 +140,11 @@ export default function NaoConformidadeDetailPage() {
             <p className="text-slate-800">{nc.descricao}</p>
           </div>
         </div>
+      </div>
+
+      {/* Evidências */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+        <EvidenciaUpload naoConformidadeId={nc.id} />
       </div>
 
       {/* Devolutivas */}

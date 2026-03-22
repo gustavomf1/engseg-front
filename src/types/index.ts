@@ -194,3 +194,13 @@ export interface DashboardStats {
   ncNaoResolvidas: number
   totalDesviosConcluidos: number
 }
+
+export type TipoEvidencia = 'OCORRENCIA' | 'TRATATIVA'
+
+export interface Evidencia {
+  id: string
+  nomeArquivo: string
+  urlArquivo: string
+  dataUpload: string
+  tipoEvidencia: TipoEvidencia
+}
