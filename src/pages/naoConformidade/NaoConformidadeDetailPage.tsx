@@ -124,6 +124,10 @@ export default function NaoConformidadeDetailPage() {
             </p>
           </div>
           <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Usuário de Criação</p>
+            <p className="text-slate-800">{nc.usuarioCriacaoNome ? `${nc.usuarioCriacaoNome} (${nc.usuarioCriacaoEmail})` : '—'}</p>
+          </div>
+          <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Técnico Responsável</p>
             <p className="text-slate-800">{nc.tecnicoNome || '—'}</p>
           </div>
@@ -144,7 +148,7 @@ export default function NaoConformidadeDetailPage() {
 
       {/* Evidências */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-        <EvidenciaUpload naoConformidadeId={nc.id} />
+        <EvidenciaUpload naoConformidadeId={nc.id} readOnly={user?.perfil === 'TECNICO' && nc.status !== 'ABERTA'} />
       </div>
 
       {/* Devolutivas */}

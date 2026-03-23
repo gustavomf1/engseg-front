@@ -56,7 +56,10 @@ export default function OcorrenciasPage() {
   }
 
   function podeExcluir(item: OcorrenciaItem) {
-    // Técnico só pode excluir NC com status ABERTA, desvio sempre pode
+    // Técnico só pode excluir NC com status ABERTA; desvio só engenheiro pode excluir
+    if (isTecnico && item.tipo === 'DESVIO') {
+      return false
+    }
     if (isTecnico && item.tipo === 'NAO_CONFORMIDADE' && item.status !== 'ABERTA') {
       return false
     }

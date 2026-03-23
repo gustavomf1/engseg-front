@@ -274,7 +274,12 @@ export default function OcorrenciaDetailPage() {
               <div className={`${valueClass} flex items-center gap-1.5`}><Calendar size={13} className="text-slate-400" />{formatDate((ocorrencia as any).dataRegistro)}</div>
             </Field>
 
-            {(ocorrencia as any).tecnicoNome && (
+            {(ocorrencia as any).usuarioCriacaoNome && (
+              <Field label="Registrado por">
+                <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{(ocorrencia as any).usuarioCriacaoNome}{(ocorrencia as any).usuarioCriacaoEmail ? ` (${(ocorrencia as any).usuarioCriacaoEmail})` : ''}</div>
+              </Field>
+            )}
+            {!(ocorrencia as any).usuarioCriacaoNome && (ocorrencia as any).tecnicoNome && (
               <Field label="Registrado por">
                 <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{(ocorrencia as any).tecnicoNome}</div>
               </Field>
@@ -366,6 +371,7 @@ export default function OcorrenciaDetailPage() {
           <EvidenciaUpload
             {...(isDesvio ? { desvioId: id } : { naoConformidadeId: id })}
             tipoEvidencia="OCORRENCIA"
+            readOnly={isTecnico && (isDesvio || (!!nc && nc.status !== 'ABERTA'))}
             titulo="Evidências da Ocorrência"
           />
         </div>

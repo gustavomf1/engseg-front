@@ -128,6 +128,8 @@ export interface NaoConformidade {
   engVerificacaoNome: string
   engVerificacaoEmail: string
   dataLimiteResolucao: string
+  usuarioCriacaoNome?: string
+  usuarioCriacaoEmail?: string
   status: StatusNaoConformidade
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
@@ -169,6 +171,8 @@ export interface Desvio {
   descricao: string
   dataRegistro: string
   tecnicoNome?: string
+  usuarioCriacaoNome?: string
+  usuarioCriacaoEmail?: string
   regraDeOuro: boolean
   orientacaoRealizada: string
   status: StatusDesvio

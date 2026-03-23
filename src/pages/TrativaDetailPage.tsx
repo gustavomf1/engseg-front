@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio } from '../api/desvio'
 import { getNaoConformidade, registrarDevolutiva, validarNaoConformidade } from '../api/naoConformidade'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText, CheckCircle, XCircle, Clock, Ban } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText, CheckCircle, XCircle, Clock, Ban, Eye } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 
 export default function TrativaDetailPage() {
@@ -14,6 +14,7 @@ export default function TrativaDetailPage() {
   const { user } = useAuth()
   const [planoAcao, setPlanoAcao] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [confirmarEnvio, setConfirmarEnvio] = useState(false)
 
   const isDesvio = tipo === 'DESVIO'
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
@@ -234,11 +235,11 @@ export default function TrativaDetailPage() {
               Cancelar
             </button>
             <button
-              onClick={() => mutationDevolutiva.mutate()}
-              disabled={mutationDevolutiva.isPending || (!isDesvio && !planoAcao.trim())}
+              onClick={() => setConfirmarEnvio(true)}
+              disabled={!isDesvio && !planoAcao.trim()}
               className="flex-1 bg-slate-900 text-white py-3 rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition flex items-center justify-center gap-2"
             >
-              {mutationDevolutiva.isPending ? 'Enviando...' : '✓ Enviar Tratativa'}
+              <Eye size={16} /> Revisar e Enviar
             </button>
           </div>
         </div>
@@ -318,6 +319,62 @@ export default function TrativaDetailPage() {
 
       {/* Bottom section — conditional */}
       {renderBottomSection()}
+
+      {/* Modal de confirmação de envio */}
+      {confirmarEnvio && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setConfirmarEnvio(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Confirme sua Tratativa</h3>
+                  <p className="text-sm text-slate-500">Verifique as informações antes de enviar. Após o envio, não será possível alterar.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Plano de ação */}
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Plano de Ação</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-slate-700 whitespace-pre-wrap">
+                  {planoAcao}
+                </div>
+              </div>
+
+              {/* Evidências da tratativa */}
+              {id && (
+                <div>
+                  <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências Anexadas" />
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setConfirmarEnvio(false)}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+              >
+                Voltar e Revisar
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmarEnvio(false)
+                  mutationDevolutiva.mutate()
+                }}
+                disabled={mutationDevolutiva.isPending}
+                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} />
+                {mutationDevolutiva.isPending ? 'Enviando...' : 'Confirmar Envio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getDesvio } from '../../api/desvio'
+import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import { ArrowLeft, Shield } from 'lucide-react'
@@ -10,6 +11,8 @@ const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
 export default function DesvioDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isTecnico = user?.perfil === 'TECNICO'
 
   const { data: desvio, isLoading } = useQuery({
     queryKey: ['desvio', id],
@@ -82,7 +85,7 @@ export default function DesvioDetailPage() {
 
       {/* Evidências */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-4">
-        <EvidenciaUpload desvioId={desvio.id} />
+        <EvidenciaUpload desvioId={desvio.id} readOnly={isTecnico} />
       </div>
     </div>
   )
