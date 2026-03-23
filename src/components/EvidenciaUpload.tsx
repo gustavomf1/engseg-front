@@ -1,40 +1,50 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Upload, Download, Trash2, Eye, X, FileImage, File as FileIcon, Loader2 } from 'lucide-react'
-import { uploadEvidencia, getEvidencias, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
+import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
 import { Evidencia, TipoEvidencia } from '../types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface EvidenciaUploadProps {
-  naoConformidadeId: string
+  naoConformidadeId?: string
+  desvioId?: string
   tipoEvidencia?: TipoEvidencia
   readOnly?: boolean
   titulo?: string
 }
 
-export default function EvidenciaUpload({ naoConformidadeId, tipoEvidencia = 'OCORRENCIA', readOnly = false, titulo }: EvidenciaUploadProps) {
+export default function EvidenciaUpload({ naoConformidadeId, desvioId, tipoEvidencia = 'OCORRENCIA', readOnly = false, titulo }: EvidenciaUploadProps) {
+  const entityId = (naoConformidadeId || desvioId)!
   const [dragActive, setDragActive] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewName, setPreviewName] = useState('')
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({})
   const queryClient = useQueryClient()
-  const inputId = `file-upload-${naoConformidadeId}-${tipoEvidencia}`
+  const inputId = `file-upload-${entityId}-${tipoEvidencia}`
+
+  const fetchFn = desvioId
+    ? () => getEvidenciasDesvio(entityId, tipoEvidencia)
+    : () => getEvidencias(entityId, tipoEvidencia)
+
+  const uploadFn = desvioId
+    ? (file: File) => uploadEvidenciaDesvio(entityId, file, tipoEvidencia)
+    : (file: File) => uploadEvidencia(entityId, file, tipoEvidencia)
 
   const { data: evidencias = [], isLoading } = useQuery({
-    queryKey: ['evidencias', naoConformidadeId, tipoEvidencia],
-    queryFn: () => getEvidencias(naoConformidadeId, tipoEvidencia),
+    queryKey: ['evidencias', entityId, tipoEvidencia],
+    queryFn: fetchFn,
   })
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadEvidencia(naoConformidadeId, file, tipoEvidencia),
+    mutationFn: uploadFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidencias', naoConformidadeId, tipoEvidencia] })
+      queryClient.invalidateQueries({ queryKey: ['evidencias', entityId, tipoEvidencia] })
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEvidencia(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidencias', naoConformidadeId, tipoEvidencia] })
+      queryClient.invalidateQueries({ queryKey: ['evidencias', entityId, tipoEvidencia] })
     },
   })
 

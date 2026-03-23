@@ -222,7 +222,7 @@ export default function OcorrenciaDetailPage() {
                 {isDesvio ? 'Desvio' : 'Não Conformidade'}
               </span>
             </div>
-            {(ocorrencia as any).regraDeOuro && (
+            {!isDesvio && (ocorrencia as any).regraDeOuro && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
                 <Shield size={12} /> Regra de Ouro
               </span>
@@ -280,17 +280,19 @@ export default function OcorrenciaDetailPage() {
               </Field>
             )}
 
-            <Field label="Regra de Ouro">
-              {editando
-                ? <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.regraDeOuro} onChange={e => set('regraDeOuro', e.target.checked)} className="h-4 w-4 rounded" />
-                    <span className="text-sm text-slate-700">Sim, viola uma regra crítica</span>
-                  </label>
-                : <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.regraDeOuro ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-slate-500'}`}>
-                    {form.regraDeOuro ? 'Sim' : 'Não'}
-                  </span>
-              }
-            </Field>
+            {!isDesvio && (
+              <Field label="Regra de Ouro">
+                {editando
+                  ? <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={form.regraDeOuro} onChange={e => set('regraDeOuro', e.target.checked)} className="h-4 w-4 rounded" />
+                      <span className="text-sm text-slate-700">Sim, viola uma regra crítica</span>
+                    </label>
+                  : <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.regraDeOuro ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-slate-500'}`}>
+                      {form.regraDeOuro ? 'Sim' : 'Não'}
+                    </span>
+                }
+              </Field>
+            )}
           </div>
 
           {/* Right column */}
@@ -359,9 +361,13 @@ export default function OcorrenciaDetailPage() {
       </div>
 
       {/* Evidências da Ocorrência */}
-      {!isDesvio && id && (
+      {id && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" titulo="Evidências da Ocorrência" />
+          <EvidenciaUpload
+            {...(isDesvio ? { desvioId: id } : { naoConformidadeId: id })}
+            tipoEvidencia="OCORRENCIA"
+            titulo="Evidências da Ocorrência"
+          />
         </div>
       )}
 

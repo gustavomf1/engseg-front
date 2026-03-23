@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
 import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
-import { uploadEvidencia } from '../api/evidencia'
+import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
@@ -136,9 +136,13 @@ export default function RegistroOcorrenciaPage() {
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
 
-      // Upload evidence file if one was selected (NC only)
-      if (arquivo && tipo === 'NAO_CONFORMIDADE' && result?.id) {
-        await uploadEvidencia(result.id, arquivo)
+      // Upload evidence file if one was selected
+      if (arquivo && result?.id) {
+        if (tipo === 'DESVIO') {
+          await uploadEvidenciaDesvio(result.id, arquivo)
+        } else {
+          await uploadEvidencia(result.id, arquivo)
+        }
       }
 
       return result
@@ -292,17 +296,6 @@ export default function RegistroOcorrenciaPage() {
                 </div>
               )}
             </>
-          )}
-
-          {/* Regra de Ouro for Desvio */}
-          {tipo === 'DESVIO' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-              <input type="checkbox" {...register('regraDeOuro')} id="regraDeOuroDesvio" className="mt-0.5 h-4 w-4 rounded" />
-              <div>
-                <label htmlFor="regraDeOuroDesvio" className="font-medium text-sm text-slate-800 cursor-pointer">Regra de Ouro</label>
-                <p className="text-xs text-slate-500 mt-0.5">Marque se a ocorrência viola uma regra crítica de segurança</p>
-              </div>
-            </div>
           )}
 
           {/* File upload */}

@@ -16,6 +16,21 @@ export const getEvidencias = async (ncId: string, tipo?: TipoEvidencia): Promise
   return res.data
 }
 
+export const uploadEvidenciaDesvio = async (desvioId: string, file: File, tipo: TipoEvidencia = 'OCORRENCIA'): Promise<Evidencia> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await client.post<Evidencia>(`/evidencias/desvio/${desvioId}?tipo=${tipo}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export const getEvidenciasDesvio = async (desvioId: string, tipo?: TipoEvidencia): Promise<Evidencia[]> => {
+  const params = tipo ? { tipo } : {}
+  const res = await client.get<Evidencia[]>(`/evidencias/desvio/${desvioId}`, { params })
+  return res.data
+}
+
 export const downloadEvidencia = async (id: string): Promise<Blob> => {
   const res = await client.get(`/evidencias/${id}/download`, {
     responseType: 'blob',

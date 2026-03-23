@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getDesvio } from '../../api/desvio'
 import StatusBadge from '../../components/StatusBadge'
+import EvidenciaUpload from '../../components/EvidenciaUpload'
 import { ArrowLeft, Shield } from 'lucide-react'
 
 const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
@@ -77,6 +78,11 @@ export default function DesvioDetailPage() {
             <p className="text-slate-800">{desvio.orientacaoRealizada}</p>
           </div>
         </div>
+      </div>
+
+      {/* Evidências */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-4">
+        <EvidenciaUpload desvioId={desvio.id} />
       </div>
     </div>
   )
