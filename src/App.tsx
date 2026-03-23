@@ -15,7 +15,6 @@ import OcorrenciaDetailPage from './pages/OcorrenciaDetailPage'
 import RegistroOcorrenciaPage from './pages/RegistroOcorrenciaPage'
 import TrativasListPage from './pages/TrativasListPage'
 import TrativaDetailPage from './pages/TrativaDetailPage'
-import PerfilPage from './pages/PerfilPage'
 import EmpresaListPage from './pages/empresa/EmpresaListPage'
 import EmpresaFormPage from './pages/empresa/EmpresaFormPage'
 import EstabelecimentoListPage from './pages/estabelecimento/EstabelecimentoListPage'
@@ -55,12 +54,11 @@ export default function App() {
             >
               <Route index element={<DefaultRedirect />} />
               <Route path="dashboard" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><DashboardPage /></RoleRoute>} />
-              <Route path="perfil" element={<PerfilPage />} />
               <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
               <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
               <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
-              <Route path="tratativas" element={<TrativasListPage />} />
-              <Route path="tratativas/:tipo/:id" element={<TrativaDetailPage />} />
+              <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativasListPage /></RoleRoute>} />
+              <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativaDetailPage /></RoleRoute>} />
               <Route path="empresas" element={<EmpresaListPage />} />
               <Route path="empresas/novo" element={<EmpresaFormPage />} />
               <Route path="empresas/:id/editar" element={<EmpresaFormPage />} />

@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { getOcorrencias } from '../api/ocorrencia'
+import { useState } from 'react'
 import {
-  Shield, LayoutDashboard, User, FilePlus, ClipboardList, LogOut,
+  Shield, LayoutDashboard, FilePlus, ClipboardList, LogOut,
   Building2, MapPin, Users, RefreshCw, X, Navigation, Sun, Moon,
-  ChevronsLeft, ChevronsRight
+  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -39,6 +40,8 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
     logout()
     navigate('/login')
   }
+
+  const [perfilAberto, setPerfilAberto] = useState(false)
 
   function handleNav() {
     onMobileClose()
@@ -92,16 +95,39 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
         </div>
 
         {/* User info */}
-        <div className={`flex items-center ${compact ? 'justify-center' : 'gap-2.5'} px-2 mb-4 pb-4 sidebar-divider`}>
-          <div className="w-8 h-8 rounded-full sidebar-avatar flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {user?.nome?.charAt(0).toUpperCase()}
-          </div>
-          {show && (
-            <div className="min-w-0">
-              <div className="text-white text-sm font-medium truncate">{user?.nome}</div>
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                <span className="sidebar-item-text text-xs">Online</span>
+        <div className="mb-4 pb-4 sidebar-divider">
+          <button
+            onClick={() => !compact && setPerfilAberto(!perfilAberto)}
+            className={`flex items-center ${compact ? 'justify-center' : 'gap-2.5'} px-2 w-full text-left rounded-lg hover:bg-white/10 py-2 transition`}
+            title={compact ? `${user?.nome} — ${user?.email}` : undefined}
+          >
+            <div className="w-8 h-8 rounded-full sidebar-avatar flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+              {user?.nome?.charAt(0).toUpperCase()}
+            </div>
+            {show && (
+              <>
+                <div className="min-w-0 flex-1">
+                  <div className="text-white text-sm font-medium truncate">{user?.nome}</div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                    <span className="sidebar-item-text text-xs">Online</span>
+                  </div>
+                </div>
+                {perfilAberto ? <ChevronUp size={14} className="text-white/60" /> : <ChevronDown size={14} className="text-white/60" />}
+              </>
+            )}
+          </button>
+          {show && perfilAberto && (
+            <div className="mt-2 mx-2 sidebar-workspace rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail size={13} className="text-blue-400 flex-shrink-0" />
+                <span className="text-xs sidebar-workspace-text truncate">{user?.email}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield size={13} className="text-blue-400 flex-shrink-0" />
+                <span className="text-xs sidebar-workspace-text">
+                  {user?.perfil === 'ENGENHEIRO' ? 'Engenheiro' : user?.perfil === 'TECNICO' ? 'Técnico' : 'Externo'}
+                </span>
               </div>
             </div>
           )}
@@ -147,17 +173,13 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
               {show && 'Dashboard'}
             </NavLink>
           )}
-          <NavLink to="/perfil" className={navItemClass} onClick={handleNav} title={compact ? 'Usuário' : undefined}>
-            <User size={16} />
-            {show && 'Usuário'}
-          </NavLink>
           {user?.perfil !== 'EXTERNO' && (
             <NavLink to="/ocorrencias" className={navItemClass} onClick={handleNav} title={compact ? 'Ocorrências' : undefined}>
               <FilePlus size={16} />
               {show && 'Ocorrências'}
             </NavLink>
           )}
-          <NavLink to="/tratativas" className={navItemClass} onClick={handleNav} title={compact ? 'Tratativas' : undefined}>
+          {user?.perfil !== 'TECNICO' && <NavLink to="/tratativas" className={navItemClass} onClick={handleNav} title={compact ? 'Tratativas' : undefined}>
             {({ isActive }) => (
               <>
                 <ClipboardList size={16} />
@@ -176,7 +198,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
                 )}
               </>
             )}
-          </NavLink>
+          </NavLink>}
 
           {/* Admin section - ENGENHEIRO only */}
           {user?.perfil === 'ENGENHEIRO' && (

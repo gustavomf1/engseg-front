@@ -13,6 +13,7 @@ export interface LoginResponse {
   id: string
   token: string
   nome: string
+  email: string
   perfil: PerfilUsuario
 }
 
