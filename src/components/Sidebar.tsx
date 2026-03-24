@@ -8,7 +8,7 @@ import { useState } from 'react'
 import {
   Shield, LayoutDashboard, FilePlus, ClipboardList, LogOut,
   Building2, MapPin, Users, RefreshCw, X, Navigation, Sun, Moon,
-  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp
+  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp, BookOpen
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -224,6 +224,10 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
               <NavLink to="/usuarios" className={navItemClass} onClick={handleNav} title={compact ? 'Usuários' : undefined}>
                 <Users size={15} />
                 {show && 'Usuários'}
+              </NavLink>
+              <NavLink to="/normas" className={navItemClass} onClick={handleNav} title={compact ? 'Normas' : undefined}>
+                <BookOpen size={15} />
+                {show && 'Normas'}
               </NavLink>
             </>
           )}

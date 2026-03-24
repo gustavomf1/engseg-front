@@ -9,6 +9,7 @@ import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from
 import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
+import { getNormas } from '../api/norma'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
 
@@ -18,7 +19,6 @@ const schema = z.object({
   titulo: z.string().min(1, 'Título obrigatório'),
   localizacaoId: z.string().optional(),
   descricao: z.string().min(1, 'Descrição obrigatória'),
-  nrRelacionada: z.string().optional(),
   regraDeOuro: z.boolean().optional(),
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
   engResponsavelConstrutoraId: z.string().optional(),
@@ -32,6 +32,7 @@ export default function RegistroOcorrenciaPage() {
   const isEditing = !!id && !!tipoParam
   const [tipo, setTipo] = useState<Tipo>(tipoParam === 'NAO_CONFORMIDADE' ? 'NAO_CONFORMIDADE' : 'DESVIO')
   const [arquivo, setArquivo] = useState<File | null>(null)
+  const [normasSelecionadas, setNormasSelecionadas] = useState<string[]>([])
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado } = useWorkspace()
@@ -54,6 +55,11 @@ export default function RegistroOcorrenciaPage() {
 
   const externos = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
+
+  const { data: normas = [] } = useQuery({
+    queryKey: ['normas'],
+    queryFn: getNormas,
+  })
 
   const { data: desvioData } = useQuery({
     queryKey: ['desvio', id],
@@ -94,11 +100,13 @@ export default function RegistroOcorrenciaPage() {
         localizacaoId: ncData.localizacaoId || '',
         descricao: ncData.descricao,
         regraDeOuro: ncData.regraDeOuro,
-        nrRelacionada: ncData.nrRelacionada,
         estabelecimentoId: ncData.estabelecimentoId,
         engResponsavelConstrutoraId: ncData.engResponsavelConstrutoraId ?? '',
         engResponsavelVerificacaoId: ncData.engResponsavelVerificacaoId ?? '',
       })
+      if (ncData.normas) {
+        setNormasSelecionadas(ncData.normas.map(n => n.id))
+      }
     }
   }, [ncData, reset])
 
@@ -122,10 +130,10 @@ export default function RegistroOcorrenciaPage() {
       } else {
         const req = {
           ...base,
-          nrRelacionada: data.nrRelacionada || '',
           nivelSeveridade: 'MEDIO' as const,
           engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
+          normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
         }
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
@@ -262,8 +270,41 @@ export default function RegistroOcorrenciaPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Norma/Regra Violada</label>
-                <input {...register('nrRelacionada')} placeholder="Ex: NR-12, Procedimento Interno 001/2024" className={inputClass} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Normas / Regras Violadas</label>
+                {normas.length === 0 ? (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Nenhuma norma cadastrada.{' '}
+                    <a href="/normas/novo" className="text-blue-500 hover:underline" target="_blank" rel="noreferrer">
+                      Cadastre uma norma
+                    </a>{' '}
+                    para vincular aqui.
+                  </p>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                    {normas.map(norma => (
+                      <label key={norma.id} className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 rounded"
+                          checked={normasSelecionadas.includes(norma.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setNormasSelecionadas(prev => [...prev, norma.id])
+                            } else {
+                              setNormasSelecionadas(prev => prev.filter(id => id !== norma.id))
+                            }
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
+                          {norma.descricao && (
+                            <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{norma.descricao}</p>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">

@@ -23,6 +23,8 @@ import UsuarioListPage from './pages/usuario/UsuarioListPage'
 import UsuarioFormPage from './pages/usuario/UsuarioFormPage'
 import LocalizacaoListPage from './pages/localizacao/LocalizacaoListPage'
 import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
+import NormaListPage from './pages/norma/NormaListPage'
+import NormaFormPage from './pages/norma/NormaFormPage'
 
 function DefaultRedirect() {
   const { user } = useAuth()
@@ -71,6 +73,9 @@ export default function App() {
               <Route path="usuarios" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioListPage /></RoleRoute>} />
               <Route path="usuarios/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
               <Route path="usuarios/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
+              <Route path="normas" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaListPage /></RoleRoute>} />
+              <Route path="normas/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaFormPage /></RoleRoute>} />
+              <Route path="normas/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaFormPage /></RoleRoute>} />
             </Route>
             <Route path="*" element={<DefaultRedirect />} />
           </Routes>

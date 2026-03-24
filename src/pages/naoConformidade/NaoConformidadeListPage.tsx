@@ -65,7 +65,6 @@ export default function NaoConformidadeListPage() {
           <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-slate-600">NR</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Estabelecimento</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Descrição</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Severidade</th>
@@ -77,7 +76,6 @@ export default function NaoConformidadeListPage() {
             <tbody className="divide-y divide-gray-100">
               {items.map((nc) => (
                 <tr key={nc.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{nc.nrRelacionada}</td>
                   <td className="px-4 py-3 text-slate-700">{nc.estabelecimentoNome}</td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{nc.descricao}</td>
                   <td className="px-4 py-3"><SeveridadeBadge nivel={nc.nivelSeveridade} /></td>

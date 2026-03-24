@@ -10,7 +10,6 @@ export interface OcorrenciaItem {
   regraDeOuro: boolean
   status: string
   dataLimiteResolucao?: string
-  nrRelacionada?: string
   nivelSeveridade?: string
   estabelecimentoNome: string
   engResponsavelConstrutoraId?: string

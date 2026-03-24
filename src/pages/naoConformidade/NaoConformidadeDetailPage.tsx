@@ -86,7 +86,7 @@ export default function NaoConformidadeDetailPage() {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-slate-800">NC — {nc.nrRelacionada}</h2>
+            <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
             <SeveridadeBadge nivel={nc.nivelSeveridade} />
             {nc.regraDeOuro && (

@@ -104,6 +104,18 @@ export interface ValidacaoResponse {
   engenheiroNome?: string
 }
 
+export interface Norma {
+  id: string
+  titulo: string
+  descricao?: string
+  ativo: boolean
+}
+
+export interface NormaRequest {
+  titulo: string
+  descricao?: string
+}
+
 export interface Localizacao {
   id: string
   nome: string
@@ -128,7 +140,6 @@ export interface NaoConformidade {
   dataRegistro: string
   tecnicoNome?: string
   regraDeOuro: boolean
-  nrRelacionada: string
   nivelSeveridade: NivelSeveridade
   engResponsavelConstrutoraId: string
   engConstruturaNome: string
@@ -143,6 +154,7 @@ export interface NaoConformidade {
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
   validacao?: ValidacaoResponse
+  normas: Norma[]
 }
 
 export interface NaoConformidadeRequest {
@@ -150,11 +162,11 @@ export interface NaoConformidadeRequest {
   titulo: string
   localizacaoId?: string
   descricao: string
-  nrRelacionada: string
   nivelSeveridade: NivelSeveridade
   engResponsavelConstrutoraId?: string
   engResponsavelVerificacaoId?: string
   regraDeOuro: boolean
+  normaIds?: string[]
 }
 
 export interface DevolutivaRequest {

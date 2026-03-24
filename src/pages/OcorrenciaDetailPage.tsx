@@ -3,13 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio, updateDesvio } from '../api/desvio'
 import { getNaoConformidade, updateNaoConformidade } from '../api/naoConformidade'
-import { Desvio, NaoConformidade } from '../types'
+import { Desvio, NaoConformidade, Norma } from '../types'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
-  FileText, User, Building2, Clock, CheckCircle, Ban
+  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import { useAuth } from '../contexts/AuthContext'
@@ -38,6 +38,7 @@ export default function OcorrenciaDetailPage() {
 
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<Record<string, any>>({})
+  const [normaModal, setNormaModal] = useState<Norma | null>(null)
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -99,7 +100,6 @@ export default function OcorrenciaDetailPage() {
         localizacaoId: nc.localizacaoId || '',
         descricao: nc.descricao,
         regraDeOuro: nc.regraDeOuro,
-        nrRelacionada: nc.nrRelacionada,
         estabelecimentoId: nc.estabelecimentoId,
         engResponsavelConstrutoraId: nc.engResponsavelConstrutoraId ?? '',
         engResponsavelVerificacaoId: nc.engResponsavelVerificacaoId ?? '',
@@ -124,7 +124,6 @@ export default function OcorrenciaDetailPage() {
           localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
-          nrRelacionada: form.nrRelacionada || '',
           nivelSeveridade: 'MEDIO',
           estabelecimentoId: form.estabelecimentoId,
           engResponsavelConstrutoraId: form.engResponsavelConstrutoraId || undefined,
@@ -167,6 +166,7 @@ export default function OcorrenciaDetailPage() {
   const estabList = estabelecimentos as Array<{ id: string; nome: string; ativo: boolean }>
 
   return (
+    <>
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Back + actions */}
       <div className="flex items-center justify-between">
@@ -312,11 +312,27 @@ export default function OcorrenciaDetailPage() {
             {/* NC-only fields */}
             {!isDesvio && (
               <>
-                <Field label="Norma/Regra Violada">
-                  {editando
-                    ? <input value={form.nrRelacionada} onChange={e => set('nrRelacionada', e.target.value)} className={inputClass} />
-                    : <div className={valueClass}>{nc!.nrRelacionada || '-'}</div>
-                  }
+                <Field label="Normas Vinculadas">
+                  <div className="space-y-2">
+                    {nc!.normas && nc!.normas.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {nc!.normas.map(n => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={() => setNormaModal(n)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                          >
+                            <BookOpen size={11} />
+                            {n.titulo}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {(!nc!.normas || nc!.normas.length === 0) && (
+                      <div className={valueClass}>—</div>
+                    )}
+                  </div>
                 </Field>
 
                 <Field label="Nível de Severidade">
@@ -434,5 +450,41 @@ export default function OcorrenciaDetailPage() {
         </div>
       )}
     </div>
+
+      {/* Modal detalhes da norma */}
+
+      {normaModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setNormaModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col" style={{height: '80vh'}} onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between p-6 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <BookOpen size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">{normaModal.titulo}</h3>
+                  <p className="text-xs text-slate-400">Norma / Regulamento</p>
+                </div>
+              </div>
+              <button onClick={() => setNormaModal(null)} className="text-slate-400 hover:text-slate-600 transition p-1">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {normaModal.descricao ? (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{normaModal.descricao}</p>
+              ) : (
+                <p className="text-sm text-slate-400 italic">Nenhuma descrição cadastrada para esta norma.</p>
+              )}
+            </div>
+            <div className="flex justify-end p-6 pt-4 border-t border-gray-100 flex-shrink-0">
+              <button onClick={() => setNormaModal(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

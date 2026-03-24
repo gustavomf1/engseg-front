@@ -296,12 +296,6 @@ export default function TrativaDetailPage() {
                 </div>
               </div>
             )}
-            {!isDesvio && (nc as any)?.nrRelacionada && (
-              <div>
-                <div className="text-xs text-slate-400 mb-1">Norma/Regra Violada</div>
-                <div className="text-sm text-slate-700">{(nc as any).nrRelacionada}</div>
-              </div>
-            )}
             <div>
               <div className="text-xs text-slate-400 mb-1">Descrição</div>
               <div className="text-sm text-slate-700">{(ocorrencia as any).descricao}</div>
