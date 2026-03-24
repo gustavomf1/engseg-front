@@ -17,7 +17,7 @@ export default function SeletorPage() {
   const [step, setStep] = useState<Step>('empresa')
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
   const [modal, setModal] = useState<Modal>(null)
-  const [formEmpresa, setFormEmpresa] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '' })
+  const [formEmpresa, setFormEmpresa] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
   const [formEstabelecimento, setFormEstabelecimento] = useState<EstabelecimentoRequest>({ nome: '', codigo: '', empresaId: '' })
   const { selecionarEmpresa, selecionarEstabelecimento } = useWorkspace()
   const { user, logout } = useAuth()
@@ -32,7 +32,7 @@ export default function SeletorPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] })
       setModal(null)
-      setFormEmpresa({ razaoSocial: '', cnpj: '', nomeFantasia: '' })
+      setFormEmpresa({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
     },
   })
 
@@ -288,6 +288,15 @@ export default function SeletorPage() {
                       type="text"
                       value={formEmpresa.nomeFantasia ?? ''}
                       onChange={e => setFormEmpresa(f => ({ ...f, nomeFantasia: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formEmpresa.email ?? ''}
+                      onChange={e => setFormEmpresa(f => ({ ...f, email: e.target.value }))}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                     />
                   </div>
