@@ -1,23 +1,49 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getEmpresas } from '../api/empresa'
-import { getEstabelecimentos } from '../api/estabelecimento'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getEmpresas, createEmpresa } from '../api/empresa'
+import { getEstabelecimentos, createEstabelecimento } from '../api/estabelecimento'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Empresa, Estabelecimento } from '../types'
-import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon } from 'lucide-react'
+import { Empresa, Estabelecimento, EmpresaRequest, EstabelecimentoRequest } from '../types'
+import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon, Plus, X } from 'lucide-react'
+import { IMaskInput } from 'react-imask'
 import { useTheme } from '../contexts/ThemeContext'
 
 type Step = 'empresa' | 'estabelecimento'
+type Modal = 'empresa' | 'estabelecimento' | null
 
 export default function SeletorPage() {
   const [step, setStep] = useState<Step>('empresa')
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
+  const [modal, setModal] = useState<Modal>(null)
+  const [formEmpresa, setFormEmpresa] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '' })
+  const [formEstabelecimento, setFormEstabelecimento] = useState<EstabelecimentoRequest>({ nome: '', codigo: '', empresaId: '' })
   const { selecionarEmpresa, selecionarEstabelecimento } = useWorkspace()
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const isEngenheiro = user?.perfil === 'ENGENHEIRO'
+
+  const mutCreateEmpresa = useMutation({
+    mutationFn: createEmpresa,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      setModal(null)
+      setFormEmpresa({ razaoSocial: '', cnpj: '', nomeFantasia: '' })
+    },
+  })
+
+  const mutCreateEstabelecimento = useMutation({
+    mutationFn: createEstabelecimento,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] })
+      setModal(null)
+      setFormEstabelecimento({ nome: '', codigo: '', empresaId: '' })
+    },
+  })
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
     queryKey: ['empresas'],
@@ -53,6 +79,16 @@ export default function SeletorPage() {
   function handleLogout() {
     logout()
     navigate('/login')
+  }
+
+  function handleSubmitEmpresa(e: React.FormEvent) {
+    e.preventDefault()
+    mutCreateEmpresa.mutate(formEmpresa)
+  }
+
+  function handleSubmitEstabelecimento(e: React.FormEvent) {
+    e.preventDefault()
+    mutCreateEstabelecimento.mutate({ ...formEstabelecimento, empresaId: empresaSelecionada!.id })
   }
 
   const empresasAtivas = empresas.filter((e: Empresa) => e.ativo)
@@ -112,9 +148,20 @@ export default function SeletorPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
             {step === 'empresa' ? (
               <>
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-slate-800">Selecione a Empresa</h2>
-                  <p className="text-sm text-slate-500 mt-1">Escolha a empresa em que deseja trabalhar</p>
+                <div className="mb-6 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">Selecione a Empresa</h2>
+                    <p className="text-sm text-slate-500 mt-1">Escolha a empresa em que deseja trabalhar</p>
+                  </div>
+                  {isEngenheiro && (
+                    <button
+                      onClick={() => setModal('empresa')}
+                      className="flex items-center gap-1.5 text-sm font-medium text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                    >
+                      <Plus size={14} />
+                      Nova Empresa
+                    </button>
+                  )}
                 </div>
 
                 {loadingEmpresas ? (
@@ -147,13 +194,24 @@ export default function SeletorPage() {
             ) : (
               <>
                 <div className="mb-6">
-                  <button
-                    onClick={handleVoltar}
-                    className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition mb-3"
-                  >
-                    <ArrowLeft size={14} />
-                    Voltar
-                  </button>
+                  <div className="flex items-start justify-between">
+                    <button
+                      onClick={handleVoltar}
+                      className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition mb-3"
+                    >
+                      <ArrowLeft size={14} />
+                      Voltar
+                    </button>
+                    {isEngenheiro && (
+                      <button
+                        onClick={() => setModal('estabelecimento')}
+                        className="flex items-center gap-1.5 text-sm font-medium text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                      >
+                        <Plus size={14} />
+                        Novo Estabelecimento
+                      </button>
+                    )}
+                  </div>
                   <h2 className="text-xl font-bold text-slate-800">Selecione o Estabelecimento</h2>
                   <p className="text-sm text-slate-500 mt-1">
                     Estabelecimentos de <strong>{empresaSelecionada?.nomeFantasia || empresaSelecionada?.razaoSocial}</strong>
@@ -191,6 +249,150 @@ export default function SeletorPage() {
               </>
             )}
           </div>
+
+          {/* Modal Nova Empresa */}
+          {modal === 'empresa' && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold text-slate-800">Nova Empresa</h3>
+                  <button onClick={() => setModal(null)} className="text-slate-400 hover:text-slate-600 transition">
+                    <X size={20} />
+                  </button>
+                </div>
+                <form onSubmit={handleSubmitEmpresa} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Razão Social *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formEmpresa.razaoSocial}
+                      onChange={e => setFormEmpresa(f => ({ ...f, razaoSocial: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">CNPJ *</label>
+                    <IMaskInput
+                      mask="00.000.000/0000-00"
+                      placeholder="00.000.000/0000-00"
+                      required
+                      value={formEmpresa.cnpj}
+                      onAccept={(value: string) => setFormEmpresa(f => ({ ...f, cnpj: value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nome Fantasia</label>
+                    <input
+                      type="text"
+                      value={formEmpresa.nomeFantasia ?? ''}
+                      onChange={e => setFormEmpresa(f => ({ ...f, nomeFantasia: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  {mutCreateEmpresa.isError && (
+                    <p className="text-xs text-red-500">Erro ao criar empresa. Tente novamente.</p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModal(null)}
+                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={mutCreateEmpresa.isPending}
+                      className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
+                    >
+                      {mutCreateEmpresa.isPending ? 'Salvando...' : 'Criar Empresa'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Novo Estabelecimento */}
+          {modal === 'estabelecimento' && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold text-slate-800">Novo Estabelecimento</h3>
+                  <button onClick={() => setModal(null)} className="text-slate-400 hover:text-slate-600 transition">
+                    <X size={20} />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mb-4">
+                  Empresa: <strong>{empresaSelecionada?.nomeFantasia || empresaSelecionada?.razaoSocial}</strong>
+                </p>
+                <form onSubmit={handleSubmitEstabelecimento} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formEstabelecimento.nome}
+                      onChange={e => setFormEstabelecimento(f => ({ ...f, nome: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Código *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formEstabelecimento.codigo}
+                      onChange={e => setFormEstabelecimento(f => ({ ...f, codigo: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Cidade</label>
+                      <input
+                        type="text"
+                        value={formEstabelecimento.cidade ?? ''}
+                        onChange={e => setFormEstabelecimento(f => ({ ...f, cidade: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                    <div className="w-24">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Estado</label>
+                      <input
+                        type="text"
+                        maxLength={2}
+                        value={formEstabelecimento.estado ?? ''}
+                        onChange={e => setFormEstabelecimento(f => ({ ...f, estado: e.target.value.toUpperCase() }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                  </div>
+                  {mutCreateEstabelecimento.isError && (
+                    <p className="text-xs text-red-500">Erro ao criar estabelecimento. Tente novamente.</p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModal(null)}
+                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={mutCreateEstabelecimento.isPending}
+                      className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
+                    >
+                      {mutCreateEstabelecimento.isPending ? 'Salvando...' : 'Criar Estabelecimento'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
