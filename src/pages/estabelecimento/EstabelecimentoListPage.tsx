@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEstabelecimentos, deleteEstabelecimento } from '../../api/estabelecimento'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import { Estabelecimento } from '../../types'
 
 export default function EstabelecimentoListPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const [confirmando, setConfirmando] = useState<Estabelecimento | null>(null)
+
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['estabelecimentos'],
     queryFn: getEstabelecimentos,
@@ -14,14 +19,11 @@ export default function EstabelecimentoListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteEstabelecimento,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] })
+      setConfirmando(null)
+    },
   })
-
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Deseja desativar o estabelecimento "${nome}"?`)) {
-      deleteMutation.mutate(id)
-    }
-  }
 
   return (
     <div>
@@ -80,7 +82,7 @@ export default function EstabelecimentoListPage() {
                         <Link to={`/estabelecimentos/${item.id}/editar`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
                           <Pencil size={15} />
                         </Link>
-                        <button onClick={() => handleDelete(item.id, item.nome)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
+                        <button onClick={() => setConfirmando(item)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -92,6 +94,23 @@ export default function EstabelecimentoListPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmando}
+        title="Desativar Estabelecimento"
+        description="O estabelecimento ficará inativo e não aparecerá mais nas listagens."
+        detail={confirmando && (
+          <div>
+            <p className="text-sm font-medium text-slate-700">{confirmando.nome}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Código: {confirmando.codigo}</p>
+          </div>
+        )}
+        confirmLabel="Desativar"
+        isLoading={deleteMutation.isPending}
+        isError={deleteMutation.isError}
+        onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
+        onCancel={() => setConfirmando(null)}
+      />
     </div>
   )
 }

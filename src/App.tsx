@@ -59,18 +59,18 @@ export default function App() {
               <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
               <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativasListPage /></RoleRoute>} />
               <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativaDetailPage /></RoleRoute>} />
-              <Route path="empresas" element={<EmpresaListPage />} />
-              <Route path="empresas/novo" element={<EmpresaFormPage />} />
-              <Route path="empresas/:id/editar" element={<EmpresaFormPage />} />
-              <Route path="estabelecimentos" element={<EstabelecimentoListPage />} />
-              <Route path="estabelecimentos/novo" element={<EstabelecimentoFormPage />} />
-              <Route path="estabelecimentos/:id/editar" element={<EstabelecimentoFormPage />} />
-              <Route path="localizacoes" element={<LocalizacaoListPage />} />
-              <Route path="localizacoes/novo" element={<LocalizacaoFormPage />} />
-              <Route path="localizacoes/:id/editar" element={<LocalizacaoFormPage />} />
-              <Route path="usuarios" element={<UsuarioListPage />} />
-              <Route path="usuarios/novo" element={<UsuarioFormPage />} />
-              <Route path="usuarios/:id/editar" element={<UsuarioFormPage />} />
+              <Route path="empresas" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaListPage /></RoleRoute>} />
+              <Route path="empresas/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />
+              <Route path="empresas/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />
+              <Route path="estabelecimentos" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoListPage /></RoleRoute>} />
+              <Route path="estabelecimentos/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoFormPage /></RoleRoute>} />
+              <Route path="estabelecimentos/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoFormPage /></RoleRoute>} />
+              <Route path="localizacoes" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoListPage /></RoleRoute>} />
+              <Route path="localizacoes/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoFormPage /></RoleRoute>} />
+              <Route path="localizacoes/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoFormPage /></RoleRoute>} />
+              <Route path="usuarios" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioListPage /></RoleRoute>} />
+              <Route path="usuarios/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
+              <Route path="usuarios/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
             </Route>
             <Route path="*" element={<DefaultRedirect />} />
           </Routes>

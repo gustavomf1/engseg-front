@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function OcorrenciasPage() {
   const navigate = useNavigate()
@@ -189,54 +190,26 @@ export default function OcorrenciasPage() {
         })}
       </div>
 
-      {/* Modal de confirmação */}
-      {excluindo && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setExcluindo(null)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <Trash2 size={20} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800">Excluir Ocorrência</h3>
-                <p className="text-sm text-slate-500">Esta ação não pode ser desfeita</p>
-              </div>
+      <ConfirmDialog
+        open={!!excluindo}
+        title="Excluir Ocorrência"
+        detail={excluindo && (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${excluindo.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                {excluindo.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
+              </span>
             </div>
-
-            <div className="bg-gray-50 rounded-lg p-3 mb-5">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${excluindo.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                  {excluindo.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-slate-700">{excluindo.titulo}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{formatDate(excluindo.dataRegistro)}</p>
-            </div>
-
-            {deleteMutation.isError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-600 text-sm">
-                Erro ao excluir. Verifique suas permissões.
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setExcluindo(null)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(excluindo)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition"
-              >
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-            </div>
+            <p className="text-sm font-medium text-slate-700">{excluindo.titulo}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{formatDate(excluindo.dataRegistro)}</p>
           </div>
-        </div>
-      )}
+        )}
+        confirmLabel="Excluir"
+        isLoading={deleteMutation.isPending}
+        isError={deleteMutation.isError}
+        onConfirm={() => excluindo && deleteMutation.mutate(excluindo)}
+        onCancel={() => setExcluindo(null)}
+      />
     </div>
   )
 }

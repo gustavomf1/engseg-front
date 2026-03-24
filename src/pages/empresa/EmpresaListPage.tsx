@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEmpresas, deleteEmpresa } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import { Empresa } from '../../types'
 
 export default function EmpresaListPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const [confirmando, setConfirmando] = useState<Empresa | null>(null)
+
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ['empresas'],
     queryFn: getEmpresas,
@@ -14,14 +19,11 @@ export default function EmpresaListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteEmpresa,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['empresas'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      setConfirmando(null)
+    },
   })
-
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Deseja desativar a empresa "${nome}"?`)) {
-      deleteMutation.mutate(id)
-    }
-  }
 
   return (
     <div>
@@ -85,7 +87,7 @@ export default function EmpresaListPage() {
                           <Pencil size={15} />
                         </Link>
                         <button
-                          onClick={() => handleDelete(empresa.id, empresa.razaoSocial)}
+                          onClick={() => setConfirmando(empresa)}
                           className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
                         >
                           <Trash2 size={15} />
@@ -99,6 +101,23 @@ export default function EmpresaListPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmando}
+        title="Desativar Empresa"
+        description="A empresa ficará inativa e não aparecerá mais nas listagens."
+        detail={confirmando && (
+          <div>
+            <p className="text-sm font-medium text-slate-700">{confirmando.nomeFantasia || confirmando.razaoSocial}</p>
+            <p className="text-xs text-slate-400 mt-0.5">CNPJ: {confirmando.cnpj}</p>
+          </div>
+        )}
+        confirmLabel="Desativar"
+        isLoading={deleteMutation.isPending}
+        isError={deleteMutation.isError}
+        onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
+        onCancel={() => setConfirmando(null)}
+      />
     </div>
   )
 }

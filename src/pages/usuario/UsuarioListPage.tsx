@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsuarios, deleteUsuario } from '../../api/usuario'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Users } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import { Usuario } from '../../types'
 
 const perfilLabels = {
   ENGENHEIRO: 'Engenheiro',
@@ -24,16 +27,15 @@ export default function UsuarioListPage() {
     queryFn: getUsuarios,
   })
 
+  const [confirmando, setConfirmando] = useState<Usuario | null>(null)
+
   const deleteMutation = useMutation({
     mutationFn: deleteUsuario,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      setConfirmando(null)
+    },
   })
-
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Deseja desativar o usuário "${nome}"?`)) {
-      deleteMutation.mutate(id)
-    }
-  }
 
   return (
     <div>
@@ -94,7 +96,7 @@ export default function UsuarioListPage() {
                         <Link to={`/usuarios/${u.id}/editar`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
                           <Pencil size={15} />
                         </Link>
-                        <button onClick={() => handleDelete(u.id, u.nome)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
+                        <button onClick={() => setConfirmando(u)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -106,6 +108,23 @@ export default function UsuarioListPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmando}
+        title="Desativar Usuário"
+        description="O usuário ficará inativo e não conseguirá mais acessar o sistema."
+        detail={confirmando && (
+          <div>
+            <p className="text-sm font-medium text-slate-700">{confirmando.nome}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{confirmando.email}</p>
+          </div>
+        )}
+        confirmLabel="Desativar"
+        isLoading={deleteMutation.isPending}
+        isError={deleteMutation.isError}
+        onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
+        onCancel={() => setConfirmando(null)}
+      />
     </div>
   )
 }
