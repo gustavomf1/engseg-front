@@ -2,17 +2,21 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createEstabelecimento, getEstabelecimento, updateEstabelecimento } from '../../api/estabelecimento'
 import { getEmpresas } from '../../api/empresa'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Search, Loader2 } from 'lucide-react'
+import { IMaskInput } from 'react-imask'
 
 const schema = z.object({
   nome: z.string().min(1, 'Nome obrigatório'),
   codigo: z.string().min(1, 'Código obrigatório'),
   empresaId: z.string().uuid('Empresa obrigatória'),
+  logradouro: z.string().optional(),
+  numero: z.string().optional(),
+  bairro: z.string().optional(),
   cidade: z.string().optional(),
   estado: z.string().max(2).optional(),
 })
@@ -37,7 +41,34 @@ export default function EstabelecimentoFormPage() {
     queryFn: getEmpresas,
   })
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const [cep, setCep] = useState('')
+  const [cepLoading, setCepLoading] = useState(false)
+  const [cepErro, setCepErro] = useState('')
+
+  async function buscarCep(valor: string) {
+    const numeros = valor.replace(/\D/g, '')
+    if (numeros.length !== 8) return
+    setCepLoading(true)
+    setCepErro('')
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${numeros}/json/`)
+      const data = await res.json()
+      if (data.erro) {
+        setCepErro('CEP não encontrado.')
+      } else {
+        setValue('logradouro', data.logradouro)
+        setValue('bairro', data.bairro)
+        setValue('cidade', data.localidade)
+        setValue('estado', data.uf)
+      }
+    } catch {
+      setCepErro('Erro ao buscar CEP. Preencha manualmente.')
+    } finally {
+      setCepLoading(false)
+    }
+  }
+
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       empresaId: empresaSelecionada?.id || '',
@@ -46,10 +77,14 @@ export default function EstabelecimentoFormPage() {
 
   useEffect(() => {
     if (item) {
+      if (item.cep) setCep(item.cep)
       reset({
         nome: item.nome,
         codigo: item.codigo,
         empresaId: item.empresaId,
+        logradouro: item.logradouro || '',
+        numero: item.numero || '',
+        bairro: item.bairro || '',
         cidade: item.cidade || '',
         estado: item.estado || '',
       })
@@ -99,6 +134,45 @@ export default function EstabelecimentoFormPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Código *</label>
             <input {...register('codigo')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             {errors.codigo && <p className="text-red-500 text-xs mt-1">{errors.codigo.message}</p>}
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-1">CEP</label>
+            <div className="flex gap-2">
+              <IMaskInput
+                mask="00000-000"
+                placeholder="00000-000"
+                value={cep}
+                onAccept={(v: string) => setCep(v)}
+                onBlur={() => buscarCep(cep)}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+              <button
+                type="button"
+                onClick={() => buscarCep(cep)}
+                disabled={cepLoading}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-100 border border-gray-300 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition"
+              >
+                {cepLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                Buscar
+              </button>
+            </div>
+            {cepErro && <p className="text-xs text-amber-600 mt-1">{cepErro} Preencha os campos abaixo manualmente.</p>}
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Logradouro</label>
+            <input {...register('logradouro')} placeholder="Rua, Av., Rodovia..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Número *</label>
+            <input {...register('numero')} placeholder="Ex: 100, S/N" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Bairro</label>
+            <input {...register('bairro')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
           </div>
 
           <div>

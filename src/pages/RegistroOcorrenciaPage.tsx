@@ -7,7 +7,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
 import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
 import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
-import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -36,11 +35,6 @@ export default function RegistroOcorrenciaPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado } = useWorkspace()
-
-  const { data: estabelecimentos = [] } = useQuery({
-    queryKey: ['estabelecimentos'],
-    queryFn: getEstabelecimentos,
-  })
 
   const { data: localizacoes = [] } = useQuery({
     queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
@@ -198,16 +192,15 @@ export default function RegistroOcorrenciaPage() {
         </div>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
-          {/* Estabelecimento */}
+          {/* Estabelecimento — fixo do workspace */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
-            <select {...register('estabelecimentoId')} className={inputClass}>
-              <option value="">Selecione o estabelecimento</option>
-              {(estabelecimentos as Array<{ id: string; nome: string; ativo: boolean }>).filter(e => e.ativo).map(e => (
-                <option key={e.id} value={e.id}>{e.nome}</option>
-              ))}
-            </select>
-            {errors.estabelecimentoId && <p className="text-red-500 text-xs mt-1">{errors.estabelecimentoId.message}</p>}
+            <input
+              type="text"
+              value={estabelecimentoSelecionado?.nome ?? ''}
+              readOnly
+              className={`${inputClass} bg-gray-100 cursor-not-allowed`}
+            />
           </div>
 
           {/* Título */}

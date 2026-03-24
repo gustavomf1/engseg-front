@@ -6,7 +6,7 @@ import { getEstabelecimentos, createEstabelecimento } from '../api/estabelecimen
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Empresa, Estabelecimento, EmpresaRequest, EstabelecimentoRequest } from '../types'
-import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon, Plus, X } from 'lucide-react'
+import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon, Plus, X, Search, Loader2 } from 'lucide-react'
 import { IMaskInput } from 'react-imask'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -19,6 +19,9 @@ export default function SeletorPage() {
   const [modal, setModal] = useState<Modal>(null)
   const [formEmpresa, setFormEmpresa] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
   const [formEstabelecimento, setFormEstabelecimento] = useState<EstabelecimentoRequest>({ nome: '', codigo: '', empresaId: '' })
+  const [cepEst, setCepEst] = useState('')
+  const [cepLoadingEst, setCepLoadingEst] = useState(false)
+  const [cepErroEst, setCepErroEst] = useState('')
   const { selecionarEmpresa, selecionarEstabelecimento } = useWorkspace()
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -42,8 +45,37 @@ export default function SeletorPage() {
       queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] })
       setModal(null)
       setFormEstabelecimento({ nome: '', codigo: '', empresaId: '' })
+      setCepEst('')
+      setCepErroEst('')
     },
   })
+
+  async function buscarCepEst(valor: string) {
+    const numeros = valor.replace(/\D/g, '')
+    if (numeros.length !== 8) return
+    setCepLoadingEst(true)
+    setCepErroEst('')
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${numeros}/json/`)
+      const data = await res.json()
+      if (data.erro) {
+        setCepErroEst('CEP não encontrado.')
+      } else {
+        setFormEstabelecimento(f => ({
+          ...f,
+          logradouro: data.logradouro,
+          bairro: data.bairro,
+          cidade: data.localidade,
+          estado: data.uf,
+          cep: valor,
+        }))
+      }
+    } catch {
+      setCepErroEst('Erro ao buscar CEP.')
+    } finally {
+      setCepLoadingEst(false)
+    }
+  }
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
     queryKey: ['empresas'],
@@ -327,7 +359,7 @@ export default function SeletorPage() {
           {/* Modal Novo Estabelecimento */}
           {modal === 'estabelecimento' && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-lg font-bold text-slate-800">Novo Estabelecimento</h3>
                   <button onClick={() => setModal(null)} className="text-slate-400 hover:text-slate-600 transition">
@@ -358,6 +390,63 @@ export default function SeletorPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">CEP</label>
+                    <div className="flex gap-2">
+                      <IMaskInput
+                        mask="00000-000"
+                        placeholder="00000-000"
+                        value={cepEst}
+                        onAccept={(v: string) => {
+                          setCepEst(v)
+                          setFormEstabelecimento(f => ({ ...f, cep: v }))
+                        }}
+                        onBlur={() => buscarCepEst(cepEst)}
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => buscarCepEst(cepEst)}
+                        disabled={cepLoadingEst}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-100 border border-gray-300 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition"
+                      >
+                        {cepLoadingEst ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                        Buscar
+                      </button>
+                    </div>
+                    {cepErroEst && <p className="text-xs text-amber-600 mt-1">{cepErroEst} Preencha manualmente.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Logradouro</label>
+                    <input
+                      type="text"
+                      placeholder="Rua, Av., Rodovia..."
+                      value={formEstabelecimento.logradouro ?? ''}
+                      onChange={e => setFormEstabelecimento(f => ({ ...f, logradouro: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Número</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 100, S/N"
+                        value={formEstabelecimento.numero ?? ''}
+                        onChange={e => setFormEstabelecimento(f => ({ ...f, numero: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Bairro</label>
+                      <input
+                        type="text"
+                        value={formEstabelecimento.bairro ?? ''}
+                        onChange={e => setFormEstabelecimento(f => ({ ...f, bairro: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                  </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-slate-600 mb-1">Cidade</label>
@@ -373,6 +462,7 @@ export default function SeletorPage() {
                       <input
                         type="text"
                         maxLength={2}
+                        placeholder="SP"
                         value={formEstabelecimento.estado ?? ''}
                         onChange={e => setFormEstabelecimento(f => ({ ...f, estado: e.target.value.toUpperCase() }))}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"

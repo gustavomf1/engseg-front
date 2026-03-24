@@ -41,6 +41,10 @@ export interface Estabelecimento {
   codigo: string
   empresaId: string
   empresaNome: string
+  cep?: string
+  logradouro?: string
+  numero?: string
+  bairro?: string
   cidade?: string
   estado?: string
   ativo: boolean
@@ -50,6 +54,10 @@ export interface EstabelecimentoRequest {
   nome: string
   codigo: string
   empresaId: string
+  cep?: string
+  logradouro?: string
+  numero?: string
+  bairro?: string
   cidade?: string
   estado?: string
 }
