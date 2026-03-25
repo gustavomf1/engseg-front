@@ -305,7 +305,7 @@ export default function OcorrenciaDetailPage() {
             <Field label="Descrição">
               {editando
                 ? <textarea value={form.descricao} onChange={e => set('descricao', e.target.value)} rows={4} className={inputClass} />
-                : <div className={`${valueClass} whitespace-pre-wrap`}>{(ocorrencia as any).descricao}</div>
+                : <div className={`${valueClass} whitespace-pre-wrap break-words overflow-hidden`}>{(ocorrencia as any).descricao}</div>
               }
             </Field>
 
@@ -401,7 +401,7 @@ export default function OcorrenciaDetailPage() {
       )}
 
       {/* Histórico de tratativa (NC only, read-only) */}
-      {!isDesvio && (nc!.devolutivas?.length > 0 || nc!.execucoes?.length > 0 || nc!.validacao) && (
+      {!isDesvio && (nc!.devolutivas?.length > 0 || nc!.execucoes?.length > 0 || nc!.validacoes?.length > 0) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-4">Histórico da Tratativa</h3>
 
@@ -410,9 +410,9 @@ export default function OcorrenciaDetailPage() {
               <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <FileText size={13} className="text-blue-600" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="text-xs text-blue-600 font-medium">Plano de Ação #{i + 1}</div>
-                <div className="text-sm text-slate-700 mt-0.5">{d.descricaoPlanoAcao}</div>
+                <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{d.descricaoPlanoAcao}</div>
                 <div className="text-xs text-slate-400 mt-1">{d.engenheiroNome ?? '-'} · {formatDate(d.dataDevolutiva)}</div>
               </div>
             </div>
@@ -423,30 +423,30 @@ export default function OcorrenciaDetailPage() {
               <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <CheckCircle size={13} className="text-orange-600" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="text-xs text-orange-600 font-medium">Execução #{i + 1}</div>
-                <div className="text-sm text-slate-700 mt-0.5">{e.descricaoAcaoExecutada}</div>
+                <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{e.descricaoAcaoExecutada}</div>
                 <div className="text-xs text-slate-400 mt-1">{e.engenheiroNome ?? '-'} · {formatDate(e.dataExecucao)}</div>
               </div>
             </div>
           ))}
 
-          {nc!.validacao && (
-            <div className="flex gap-3">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${nc!.validacao.parecer === 'APROVADO' ? 'bg-green-100' : 'bg-red-100'}`}>
-                {nc!.validacao.parecer === 'APROVADO'
+          {nc!.validacoes?.map((v, i) => (
+            <div key={v.id} className="flex gap-3 mb-4">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${v.parecer === 'APROVADO' ? 'bg-green-100' : 'bg-red-100'}`}>
+                {v.parecer === 'APROVADO'
                   ? <CheckCircle size={13} className="text-green-600" />
                   : <Ban size={13} className="text-red-600" />}
               </div>
-              <div>
-                <div className={`text-xs font-medium ${nc!.validacao.parecer === 'APROVADO' ? 'text-green-600' : 'text-red-600'}`}>
-                  Validação — {nc!.validacao.parecer === 'APROVADO' ? 'Aprovada' : 'Reprovada'}
+              <div className="min-w-0 flex-1">
+                <div className={`text-xs font-medium ${v.parecer === 'APROVADO' ? 'text-green-600' : 'text-red-600'}`}>
+                  Validação #{i + 1} — {v.parecer === 'APROVADO' ? 'Aprovada' : 'Reprovada'}
                 </div>
-                {nc!.validacao.observacao && <div className="text-sm text-slate-700 mt-0.5">{nc!.validacao.observacao}</div>}
-                <div className="text-xs text-slate-400 mt-1">{nc!.validacao.engenheiroNome ?? '-'} · {formatDate(nc!.validacao.dataValidacao)}</div>
+                {v.observacao && <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{v.observacao}</div>}
+                <div className="text-xs text-slate-400 mt-1">{v.engenheiroNome ?? '-'} · {formatDate(v.dataValidacao)}</div>
               </div>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>

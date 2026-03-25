@@ -153,7 +153,7 @@ export interface NaoConformidade {
   status: StatusNaoConformidade
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
-  validacao?: ValidacaoResponse
+  validacoes: ValidacaoResponse[]
   normas: Norma[]
 }
 

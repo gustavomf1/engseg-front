@@ -192,22 +192,26 @@ export default function NaoConformidadeDetailPage() {
       )}
 
       {/* Validacao */}
-      {nc.validacao && (
+      {nc.validacoes.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle size={16} className="text-green-500" />
-            <h3 className="font-semibold text-slate-700">Validação</h3>
+            <h3 className="font-semibold text-slate-700">Histórico de Validações</h3>
           </div>
-          <div className="border border-gray-100 rounded-lg p-4 bg-green-50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${nc.validacao.parecer === 'APROVADO' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                {nc.validacao.parecer === 'APROVADO' ? 'Aprovado' : 'Reprovado'}
-              </span>
-            </div>
-            {nc.validacao.observacao && <p className="text-sm text-slate-800">{nc.validacao.observacao}</p>}
-            <p className="text-xs text-slate-500 mt-2">
-              {formatDateTime(nc.validacao.dataValidacao)}{nc.validacao.engenheiroNome ? ` — ${nc.validacao.engenheiroNome}` : ''}
-            </p>
+          <div className="space-y-3">
+            {nc.validacoes.map(v => (
+              <div key={v.id} className={`border border-gray-100 rounded-lg p-4 ${v.parecer === 'APROVADO' ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v.parecer === 'APROVADO' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                    {v.parecer === 'APROVADO' ? 'Aprovado' : 'Reprovado'}
+                  </span>
+                </div>
+                {v.observacao && <p className="text-sm text-slate-800">{v.observacao}</p>}
+                <p className="text-xs text-slate-500 mt-2">
+                  {formatDateTime(v.dataValidacao)}{v.engenheiroNome ? ` — ${v.engenheiroNome}` : ''}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       )}
