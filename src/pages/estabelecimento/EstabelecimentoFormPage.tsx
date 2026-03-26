@@ -38,7 +38,7 @@ export default function EstabelecimentoFormPage() {
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas'],
-    queryFn: getEmpresas,
+    queryFn: () => getEmpresas(true),
   })
 
   const [cep, setCep] = useState('')

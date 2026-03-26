@@ -36,7 +36,7 @@ export default function UsuarioFormPage() {
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas'],
-    queryFn: getEmpresas,
+    queryFn: () => getEmpresas(true),
   })
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({

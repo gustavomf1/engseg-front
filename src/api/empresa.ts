@@ -1,8 +1,9 @@
 import client from './client'
 import { Empresa, EmpresaRequest } from '../types'
 
-export const getEmpresas = async (): Promise<Empresa[]> => {
-  const res = await client.get<Empresa[]>('/empresas')
+export const getEmpresas = async (ativo?: boolean): Promise<Empresa[]> => {
+  const params = ativo !== undefined ? { ativo } : {}
+  const res = await client.get<Empresa[]>('/empresas', { params })
   return res.data
 }
 

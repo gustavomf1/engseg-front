@@ -11,10 +11,13 @@ export default function EmpresaListPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [confirmando, setConfirmando] = useState<Empresa | null>(null)
+  const [filtroStatus, setFiltroStatus] = useState<string>('true')
+
+  const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
 
   const { data: empresas = [], isLoading } = useQuery({
-    queryKey: ['empresas'],
-    queryFn: getEmpresas,
+    queryKey: ['empresas', filtroStatus],
+    queryFn: () => getEmpresas(ativoParam),
   })
 
   const deleteMutation = useMutation({
@@ -32,15 +35,26 @@ export default function EmpresaListPage() {
           <h2 className="text-2xl font-bold text-slate-800">Empresas</h2>
           <p className="text-slate-500 text-sm mt-1">Gerencie as empresas cadastradas</p>
         </div>
-        {user?.perfil === 'ENGENHEIRO' && (
-          <Link
-            to="/empresas/novo"
-            className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors"
+        <div className="flex items-center gap-3">
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value)}
+            className="appearance-none border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 bg-white bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
-            <Plus size={16} />
-            Nova Empresa
-          </Link>
-        )}
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+            <option value="">Todos</option>
+          </select>
+          {user?.perfil === 'ENGENHEIRO' && (
+            <Link
+              to="/empresas/novo"
+              className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors"
+            >
+              <Plus size={16} />
+              Nova Empresa
+            </Link>
+          )}
+        </div>
       </div>
 
       {isLoading ? (

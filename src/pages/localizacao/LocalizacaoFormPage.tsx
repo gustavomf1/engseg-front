@@ -31,7 +31,7 @@ export default function LocalizacaoFormPage() {
 
   const { data: estabelecimentos = [] } = useQuery({
     queryKey: ['estabelecimentos'],
-    queryFn: getEstabelecimentos,
+    queryFn: () => getEstabelecimentos(true),
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({

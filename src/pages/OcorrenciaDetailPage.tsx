@@ -54,7 +54,7 @@ export default function OcorrenciaDetailPage() {
 
   const { data: estabelecimentos = [] } = useQuery({
     queryKey: ['estabelecimentos'],
-    queryFn: getEstabelecimentos,
+    queryFn: () => getEstabelecimentos(true),
     enabled: editando,
   })
 
@@ -69,7 +69,7 @@ export default function OcorrenciaDetailPage() {
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
-    queryFn: getUsuarios,
+    queryFn: () => getUsuarios(true),
     enabled: editando && !isDesvio,
   })
 

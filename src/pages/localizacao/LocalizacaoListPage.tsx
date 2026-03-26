@@ -9,9 +9,13 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 export default function LocalizacaoListPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const [filtroStatus, setFiltroStatus] = useState<string>('true')
+
+  const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
+
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['localizacoes'],
-    queryFn: () => getLocalizacoes(),
+    queryKey: ['localizacoes', filtroStatus],
+    queryFn: () => getLocalizacoes(undefined, ativoParam),
   })
 
   const [confirmando, setConfirmando] = useState<{ id: string; nome: string } | null>(null)
@@ -31,12 +35,23 @@ export default function LocalizacaoListPage() {
           <h2 className="text-2xl font-bold text-slate-800">Localizações</h2>
           <p className="text-slate-500 text-sm mt-1">Gerencie as localizações dos estabelecimentos</p>
         </div>
-        {user?.perfil === 'ENGENHEIRO' && (
-          <Link to="/localizacoes/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
-            <Plus size={16} />
-            Nova Localização
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value)}
+            className="appearance-none border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 bg-white bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-slate-300"
+          >
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+            <option value="">Todos</option>
+          </select>
+          {user?.perfil === 'ENGENHEIRO' && (
+            <Link to="/localizacoes/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
+              <Plus size={16} />
+              Nova Localização
+            </Link>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -53,6 +68,7 @@ export default function LocalizacaoListPage() {
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Nome</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Estabelecimento</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
                 {user?.perfil === 'ENGENHEIRO' && (
                   <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>
                 )}
@@ -63,6 +79,11 @@ export default function LocalizacaoListPage() {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{item.nome}</td>
                   <td className="px-4 py-3 text-slate-600">{item.estabelecimentoNome}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
                   {user?.perfil === 'ENGENHEIRO' && (
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">

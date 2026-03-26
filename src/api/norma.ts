@@ -1,8 +1,9 @@
 import client from './client'
 import { Norma, NormaRequest } from '../types'
 
-export const getNormas = async (): Promise<Norma[]> => {
-  const res = await client.get<Norma[]>('/normas')
+export const getNormas = async (ativo?: boolean): Promise<Norma[]> => {
+  const params = ativo !== undefined ? { ativo } : {}
+  const res = await client.get<Norma[]>('/normas', { params })
   return res.data
 }
 

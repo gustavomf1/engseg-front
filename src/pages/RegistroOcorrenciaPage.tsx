@@ -47,7 +47,7 @@ export default function RegistroOcorrenciaPage() {
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
-    queryFn: getUsuarios,
+    queryFn: () => getUsuarios(true),
   })
 
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
@@ -58,7 +58,7 @@ export default function RegistroOcorrenciaPage() {
 
   const { data: normas = [] } = useQuery({
     queryKey: ['normas'],
-    queryFn: getNormas,
+    queryFn: () => getNormas(true),
   })
 
   const { data: desvioData } = useQuery({

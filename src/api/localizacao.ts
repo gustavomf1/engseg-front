@@ -1,8 +1,10 @@
 import client from './client'
 import { Localizacao, LocalizacaoRequest } from '../types'
 
-export const getLocalizacoes = async (estabelecimentoId?: string): Promise<Localizacao[]> => {
-  const params = estabelecimentoId ? { estabelecimentoId } : {}
+export const getLocalizacoes = async (estabelecimentoId?: string, ativo?: boolean): Promise<Localizacao[]> => {
+  const params: Record<string, string | boolean> = {}
+  if (estabelecimentoId) params.estabelecimentoId = estabelecimentoId
+  if (ativo !== undefined) params.ativo = ativo
   const res = await client.get<Localizacao[]>('/localizacoes', { params })
   return res.data
 }
