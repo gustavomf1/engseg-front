@@ -113,6 +113,11 @@ export default function TrativaDetailPage() {
               <>
                 <StatusBadge status={nc.status} type="nc" />
                 <SeveridadeBadge nivel={nc.nivelSeveridade} />
+                {nc.vencida && (
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                    Vencida
+                  </span>
+                )}
               </>
             )}
             {isDesvio && desvio && (

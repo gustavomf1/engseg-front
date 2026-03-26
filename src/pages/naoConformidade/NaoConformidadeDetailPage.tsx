@@ -87,6 +87,11 @@ export default function NaoConformidadeDetailPage() {
             <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
             <SeveridadeBadge nivel={nc.nivelSeveridade} />
+            {nc.vencida && (
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                Vencida
+              </span>
+            )}
             {nc.regraDeOuro && (
               <span className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
                 <Shield size={12} />

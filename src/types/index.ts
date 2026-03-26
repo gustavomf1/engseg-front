@@ -154,6 +154,7 @@ export interface NaoConformidade {
   usuarioCriacaoNome?: string
   usuarioCriacaoEmail?: string
   status: StatusNaoConformidade
+  vencida: boolean
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
   validacoes: ValidacaoResponse[]

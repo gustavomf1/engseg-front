@@ -181,6 +181,11 @@ export default function TrativasListPage() {
                     <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 ${statusInfo.color}`}>
                       {statusInfo.label}
                     </span>
+                    {item.vencida && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                        Vencida
+                      </span>
+                    )}
                   </div>
                   <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
                   <div className="text-sm text-slate-500 truncate">{item.descricao}</div>

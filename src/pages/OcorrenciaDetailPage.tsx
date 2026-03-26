@@ -242,6 +242,11 @@ export default function OcorrenciaDetailPage() {
                 {statusNCMap[nc!.status]?.label}
               </span>
           }
+          {!isDesvio && nc?.vencida && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+              Vencida
+            </span>
+          )}
         </div>
 
         {/* Título */}
