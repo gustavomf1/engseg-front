@@ -23,6 +23,7 @@ client.interceptors.response.use(
       localStorage.removeItem('engseg_user')
       localStorage.removeItem('engseg_empresa')
       localStorage.removeItem('engseg_estabelecimento')
+      localStorage.removeItem('engseg_empresa_filha')
       window.location.href = '/login'
     }
     return Promise.reject(error)

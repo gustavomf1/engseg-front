@@ -4,11 +4,13 @@ import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createEstabelecimento, getEstabelecimento, updateEstabelecimento } from '../../api/estabelecimento'
+import { createEstabelecimento, getEstabelecimento, updateEstabelecimento, getEmpresasDoEstabelecimento, vincularEmpresa, desvincularEmpresa } from '../../api/estabelecimento'
 import { getEmpresas } from '../../api/empresa'
+import { getEmpresasFilhas } from '../../api/empresa'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
-import { ArrowLeft, Search, Loader2 } from 'lucide-react'
+import { ArrowLeft, Search, Loader2, Plus, X, Briefcase } from 'lucide-react'
 import { IMaskInput } from 'react-imask'
+import { Empresa } from '../../types'
 
 const schema = z.object({
   nome: z.string().min(1, 'Nome obrigatório'),
@@ -39,6 +41,44 @@ export default function EstabelecimentoFormPage() {
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas'],
     queryFn: () => getEmpresas(true),
+  })
+
+  // Empresas filhas vinculadas a este estabelecimento
+  const { data: empresasVinculadas = [] } = useQuery({
+    queryKey: ['estabelecimento-empresas', id],
+    queryFn: () => getEmpresasDoEstabelecimento(id!),
+    enabled: isEditing,
+  })
+
+  // Empresas filhas disponíveis para vincular (da empresa mãe do estabelecimento)
+  const empresaMaeId = item?.empresaId
+  const { data: todasFilhas = [] } = useQuery({
+    queryKey: ['empresas-filhas', empresaMaeId],
+    queryFn: () => getEmpresasFilhas(empresaMaeId!, true),
+    enabled: isEditing && !!empresaMaeId,
+  })
+
+  const filhasDisponiveis = todasFilhas.filter(
+    (f: Empresa) => !empresasVinculadas.some((v: Empresa) => v.id === f.id)
+  )
+
+  const [showVincular, setShowVincular] = useState(false)
+  const [filhaSelecionada, setFilhaSelecionada] = useState('')
+
+  const vincularMut = useMutation({
+    mutationFn: (empresaId: string) => vincularEmpresa(id!, empresaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estabelecimento-empresas', id] })
+      setShowVincular(false)
+      setFilhaSelecionada('')
+    },
+  })
+
+  const desvincularMut = useMutation({
+    mutationFn: (empresaId: string) => desvincularEmpresa(id!, empresaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estabelecimento-empresas', id] })
+    },
   })
 
   const [cep, setCep] = useState('')
@@ -117,7 +157,7 @@ export default function EstabelecimentoFormPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Empresa *</label>
             <select {...register('empresaId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
               <option value="">Selecione uma empresa</option>
-              {empresas.filter(e => e.ativo).map(e => (
+              {empresas.filter((e: Empresa) => e.ativo && !e.empresaMaeId).map((e: Empresa) => (
                 <option key={e.id} value={e.id}>{e.razaoSocial}</option>
               ))}
             </select>
@@ -201,6 +241,86 @@ export default function EstabelecimentoFormPage() {
           </button>
         </div>
       </form>
+
+      {/* Seção de Empresas Contratadas - só aparece ao editar */}
+      {isEditing && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Briefcase size={18} className="text-slate-600" />
+              <h3 className="text-lg font-bold text-slate-800">Empresas Contratadas</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowVincular(!showVincular)}
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+            >
+              <Plus size={14} />
+              Vincular
+            </button>
+          </div>
+
+          {showVincular && (
+            <div className="flex items-center gap-2 mb-4 p-3 bg-slate-50 rounded-lg">
+              <select
+                value={filhaSelecionada}
+                onChange={e => setFilhaSelecionada(e.target.value)}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              >
+                <option value="">Selecione uma empresa contratada</option>
+                {filhasDisponiveis.map((f: Empresa) => (
+                  <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!filhaSelecionada || vincularMut.isPending}
+                onClick={() => vincularMut.mutate(filhaSelecionada)}
+                className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
+              >
+                {vincularMut.isPending ? 'Vinculando...' : 'Vincular'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowVincular(false); setFilhaSelecionada('') }}
+                className="p-2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          {filhasDisponiveis.length === 0 && todasFilhas.length === 0 && (
+            <p className="text-sm text-slate-400 mb-2">
+              Nenhuma empresa contratada cadastrada para esta empresa mãe. Cadastre primeiro em Empresas.
+            </p>
+          )}
+
+          {empresasVinculadas.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-4">Nenhuma empresa contratada vinculada</p>
+          ) : (
+            <div className="space-y-2">
+              {empresasVinculadas.map((emp: Empresa) => (
+                <div key={emp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{emp.nomeFantasia || emp.razaoSocial}</p>
+                    <p className="text-xs text-slate-400">{emp.cnpj}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => desvincularMut.mutate(emp.id)}
+                    disabled={desvincularMut.isPending}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                    title="Desvincular"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

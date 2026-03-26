@@ -8,7 +8,7 @@ import { useState } from 'react'
 import {
   Shield, LayoutDashboard, FilePlus, ClipboardList, LogOut,
   Building2, MapPin, Users, RefreshCw, X, Navigation, Sun, Moon,
-  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp, BookOpen
+  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp, BookOpen, Briefcase
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -20,7 +20,7 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, logout } = useAuth()
-  const { empresa, estabelecimento, limpar } = useWorkspace()
+  const { empresa, estabelecimento, empresaFilha, limpar } = useWorkspace()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
@@ -145,6 +145,12 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
                 <MapPin size={13} className="text-blue-400 flex-shrink-0" />
                 <span className="text-xs sidebar-workspace-text truncate">{estabelecimento.nome}</span>
               </div>
+              {empresaFilha && (
+                <div className="flex items-center gap-2">
+                  <Briefcase size={13} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-xs sidebar-workspace-text truncate">{empresaFilha.nomeFantasia || empresaFilha.razaoSocial}</span>
+                </div>
+              )}
               <button
                 onClick={() => { limpar(); navigate('/selecionar'); onMobileClose() }}
                 className="flex items-center gap-1.5 text-xs sidebar-muted hover:text-blue-400 transition mt-1"
@@ -159,7 +165,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
         {/* Collapsed workspace indicator */}
         {user?.perfil !== 'EXTERNO' && empresa && estabelecimento && compact && (
           <div className="px-1 mb-4 pb-4 sidebar-divider flex justify-center">
-            <div className="w-8 h-8 sidebar-workspace rounded-lg flex items-center justify-center" title={`${empresa.nomeFantasia || empresa.razaoSocial} / ${estabelecimento.nome}`}>
+            <div className="w-8 h-8 sidebar-workspace rounded-lg flex items-center justify-center" title={`${empresa.nomeFantasia || empresa.razaoSocial} / ${estabelecimento.nome}${empresaFilha ? ` / ${empresaFilha.nomeFantasia || empresaFilha.razaoSocial}` : ''}`}>
               <Building2 size={14} className="text-blue-400" />
             </div>
           </div>

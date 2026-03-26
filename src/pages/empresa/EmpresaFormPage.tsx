@@ -1,12 +1,14 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createEmpresa, getEmpresa, updateEmpresa } from '../../api/empresa'
-import { ArrowLeft } from 'lucide-react'
+import { getEstabelecimentos, vincularEmpresa } from '../../api/estabelecimento'
+import { ArrowLeft, MapPin } from 'lucide-react'
 import MaskedInput from '../../components/MaskedInput'
+import { Estabelecimento } from '../../types'
 
 const schema = z.object({
   razaoSocial: z.string().min(1, 'Razão social obrigatória'),
@@ -20,15 +22,40 @@ type FormData = z.infer<typeof schema>
 
 export default function EmpresaFormPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const empresaMaeId = searchParams.get('empresaMaeId')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isEditing = !!id
+  const isCriandoContratada = !!empresaMaeId && !isEditing
+
+  const [estabelecimentosSelecionados, setEstabelecimentosSelecionados] = useState<string[]>([])
 
   const { data: empresa } = useQuery({
     queryKey: ['empresa', id],
     queryFn: () => getEmpresa(id!),
     enabled: isEditing,
   })
+
+  const { data: empresaMae } = useQuery({
+    queryKey: ['empresa', empresaMaeId],
+    queryFn: () => getEmpresa(empresaMaeId!),
+    enabled: isCriandoContratada,
+  })
+
+  const { data: todosEstabelecimentos = [] } = useQuery({
+    queryKey: ['estabelecimentos'],
+    queryFn: () => getEstabelecimentos(true),
+    enabled: isCriandoContratada,
+  })
+
+  const estabelecimentosDaEmpresaMae = (todosEstabelecimentos as Estabelecimento[]).filter(
+    (e) => e.empresaId === empresaMaeId
+  )
+
+  const parentName = isEditing
+    ? (empresa?.empresaMaeNome || null)
+    : (empresaMae?.nomeFantasia || empresaMae?.razaoSocial || null)
 
   const {
     register,
@@ -52,14 +79,43 @@ export default function EmpresaFormPage() {
     }
   }, [empresa, reset])
 
+  function toggleEstabelecimento(estId: string) {
+    setEstabelecimentosSelecionados(prev =>
+      prev.includes(estId) ? prev.filter(id => id !== estId) : [...prev, estId]
+    )
+  }
+
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      isEditing ? updateEmpresa(id!, data) : createEmpresa(data),
+    mutationFn: async (data: FormData) => {
+      const payload = {
+        ...data,
+        empresaMaeId: isEditing ? empresa?.empresaMaeId : (empresaMaeId || undefined),
+      }
+      const novaEmpresa = isEditing
+        ? await updateEmpresa(id!, payload)
+        : await createEmpresa(payload)
+
+      if (!isEditing && estabelecimentosSelecionados.length > 0) {
+        await Promise.all(
+          estabelecimentosSelecionados.map(estId => vincularEmpresa(estId, novaEmpresa.id))
+        )
+      }
+
+      return novaEmpresa
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
+      queryClient.invalidateQueries({ queryKey: ['estabelecimento-empresas'] })
       navigate('/empresas')
     },
   })
+
+  const titulo = empresaMaeId
+    ? 'Nova Empresa Contratada'
+    : isEditing
+    ? 'Editar Empresa'
+    : 'Nova Empresa'
 
   return (
     <div className="max-w-2xl">
@@ -68,9 +124,12 @@ export default function EmpresaFormPage() {
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">
-            {isEditing ? 'Editar Empresa' : 'Nova Empresa'}
-          </h2>
+          <h2 className="text-2xl font-bold text-slate-800">{titulo}</h2>
+          {parentName && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              Vinculada a: <strong>{parentName}</strong>
+            </p>
+          )}
         </div>
       </div>
 
@@ -104,6 +163,44 @@ export default function EmpresaFormPage() {
             <MaskedInput control={control} name="telefone" mask="(00) 00000-0000" placeholder="(00) 00000-0000" />
           </div>
         </div>
+
+        {/* Seleção de estabelecimentos — só aparece ao criar contratada */}
+        {isCriandoContratada && (
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin size={15} className="text-slate-500" />
+              <label className="text-sm font-medium text-slate-700">
+                Vincular a estabelecimentos
+              </label>
+              <span className="text-xs text-slate-400">(opcional)</span>
+            </div>
+            {estabelecimentosDaEmpresaMae.length === 0 ? (
+              <p className="text-xs text-slate-400">Nenhum estabelecimento cadastrado para esta empresa mãe.</p>
+            ) : (
+              <div className="space-y-2">
+                {estabelecimentosDaEmpresaMae.map((est) => (
+                  <label
+                    key={est.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-slate-50 cursor-pointer transition"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={estabelecimentosSelecionados.includes(est.id)}
+                      onChange={() => toggleEstabelecimento(est.id)}
+                      className="rounded border-gray-300 text-slate-800 focus:ring-slate-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{est.nome}</p>
+                      {est.cidade && (
+                        <p className="text-xs text-slate-400">{est.cidade}{est.estado ? `/${est.estado}` : ''}</p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {mutation.isError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">

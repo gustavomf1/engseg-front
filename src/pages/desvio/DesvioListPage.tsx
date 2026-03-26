@@ -4,8 +4,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Clipboard, Eye } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
-
-const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
+import { formatDateTime } from '../../utils/date'
 
 export default function DesvioListPage() {
   const { user } = useAuth()
@@ -45,7 +44,7 @@ export default function DesvioListPage() {
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Estabelecimento</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Descrição</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-600">Técnico</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">Usuário de Registro</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Data</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>

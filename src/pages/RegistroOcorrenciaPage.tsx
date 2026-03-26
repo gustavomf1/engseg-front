@@ -35,7 +35,7 @@ export default function RegistroOcorrenciaPage() {
   const [normasSelecionadas, setNormasSelecionadas] = useState<string[]>([])
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { estabelecimento: estabelecimentoSelecionado } = useWorkspace()
+  const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
 
   const { data: localizacoes = [] } = useQuery({
     queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
@@ -50,10 +50,16 @@ export default function RegistroOcorrenciaPage() {
     queryFn: () => getUsuarios(true),
   })
 
+  const { data: usuariosFilha = [] } = useQuery({
+    queryKey: ['usuarios', 'empresa', empresaFilha?.id],
+    queryFn: () => getUsuarios(true, empresaFilha!.id),
+    enabled: !!empresaFilha,
+  })
+
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => u.perfil === 'ENGENHEIRO' && u.ativo)
 
-  const externos = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+  const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
   const { data: normas = [] } = useQuery({
@@ -112,7 +118,7 @@ export default function RegistroOcorrenciaPage() {
 
   const dataLimite = new Date()
   dataLimite.setDate(dataLimite.getDate() + 30)
-  const dataLimiteStr = dataLimite.toLocaleDateString('pt-BR')
+  const dataLimiteStr = dataLimite.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {

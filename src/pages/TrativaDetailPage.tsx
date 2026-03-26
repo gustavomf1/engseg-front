@@ -11,6 +11,7 @@ import {
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import StatusBadge from '../components/StatusBadge'
 import SeveridadeBadge from '../components/SeveridadeBadge'
+import { formatDate, formatDateTime } from '../utils/date'
 
 export default function TrativaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
@@ -73,16 +74,6 @@ export default function TrativaDetailPage() {
     const limite = new Date(dataLimite)
     const hoje = new Date()
     return Math.ceil((limite.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
-  }
-
-  function formatDate(dt?: string) {
-    if (!dt) return '-'
-    return new Date(dt).toLocaleDateString('pt-BR')
-  }
-
-  function formatDateTime(dt?: string) {
-    if (!dt) return '-'
-    return new Date(dt).toLocaleString('pt-BR')
   }
 
   const ocorrencia = isDesvio ? desvio : nc
@@ -173,19 +164,19 @@ export default function TrativaDetailPage() {
           )}
           {(ocorrencia as any).tecnicoNome && (
             <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Técnico Responsável</p>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Usuário de Registro</p>
               <p className="text-slate-800">{(ocorrencia as any).tecnicoNome}</p>
             </div>
           )}
           {!isDesvio && nc?.engConstruturaNome && (
             <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Construtora</p>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável pela Tratativa</p>
               <p className="text-slate-800">{nc.engConstruturaNome}{nc.engConstrutoraEmail ? ` (${nc.engConstrutoraEmail})` : ''}</p>
             </div>
           )}
           {!isDesvio && nc?.engVerificacaoNome && (
             <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Verificação</p>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável</p>
               <p className="text-slate-800">{nc.engVerificacaoNome}{nc.engVerificacaoEmail ? ` (${nc.engVerificacaoEmail})` : ''}</p>
             </div>
           )}

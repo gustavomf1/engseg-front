@@ -7,6 +7,19 @@ export const getEmpresas = async (ativo?: boolean): Promise<Empresa[]> => {
   return res.data
 }
 
+export const getEmpresasMae = async (ativo?: boolean): Promise<Empresa[]> => {
+  const params: Record<string, boolean> = { empresaMae: true }
+  if (ativo !== undefined) params.ativo = ativo
+  const res = await client.get<Empresa[]>('/empresas', { params })
+  return res.data
+}
+
+export const getEmpresasFilhas = async (empresaMaeId: string, ativo?: boolean): Promise<Empresa[]> => {
+  const params = ativo !== undefined ? { ativo } : {}
+  const res = await client.get<Empresa[]>(`/empresas/${empresaMaeId}/filhas`, { params })
+  return res.data
+}
+
 export const getEmpresa = async (id: string): Promise<Empresa> => {
   const res = await client.get<Empresa>(`/empresas/${id}`)
   return res.data

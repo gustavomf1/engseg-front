@@ -5,8 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import { ArrowLeft, Shield } from 'lucide-react'
-
-const formatDateTime = (d: string) => new Date(d).toLocaleString('pt-BR')
+import { formatDateTime } from '../../utils/date'
 
 export default function DesvioDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -55,7 +54,7 @@ export default function DesvioDetailPage() {
             <p className="text-slate-800 font-medium">{desvio.estabelecimentoNome}</p>
           </div>
           <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Técnico</p>
+            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Usuário de Registro</p>
             <p className="text-slate-800">{desvio.tecnicoNome || '—'}</p>
           </div>
           <div>

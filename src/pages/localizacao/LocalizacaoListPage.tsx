@@ -1,21 +1,32 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getLocalizacoes, deleteLocalizacao } from '../../api/localizacao'
+import { getEstabelecimentos } from '../../api/estabelecimento'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useWorkspace } from '../../contexts/WorkspaceContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import { Estabelecimento } from '../../types'
 
 export default function LocalizacaoListPage() {
   const { user } = useAuth()
+  const { estabelecimento: estabelecimentoAtual } = useWorkspace()
   const queryClient = useQueryClient()
   const [filtroStatus, setFiltroStatus] = useState<string>('true')
+  const [filtroEstabelecimento, setFiltroEstabelecimento] = useState<string>('')
 
   const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
+  const estabelecimentoIdParam = filtroEstabelecimento || undefined
+
+  const { data: estabelecimentos = [] } = useQuery({
+    queryKey: ['estabelecimentos'],
+    queryFn: () => getEstabelecimentos(true),
+  })
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['localizacoes', filtroStatus],
-    queryFn: () => getLocalizacoes(undefined, ativoParam),
+    queryKey: ['localizacoes', filtroEstabelecimento, filtroStatus],
+    queryFn: () => getLocalizacoes(estabelecimentoIdParam, ativoParam),
   })
 
   const [confirmando, setConfirmando] = useState<{ id: string; nome: string } | null>(null)
@@ -28,6 +39,8 @@ export default function LocalizacaoListPage() {
     },
   })
 
+  const selectClass = "appearance-none border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 bg-white bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-slate-300"
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -37,9 +50,26 @@ export default function LocalizacaoListPage() {
         </div>
         <div className="flex items-center gap-3">
           <select
+            value={filtroEstabelecimento}
+            onChange={(e) => setFiltroEstabelecimento(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Todos estabelecimentos</option>
+            {estabelecimentoAtual && (
+              <option value={estabelecimentoAtual.id}>
+                {estabelecimentoAtual.nome} (atual)
+              </option>
+            )}
+            {estabelecimentos
+              .filter((e: Estabelecimento) => e.id !== estabelecimentoAtual?.id)
+              .map((e: Estabelecimento) => (
+                <option key={e.id} value={e.id}>{e.nome}</option>
+              ))}
+          </select>
+          <select
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value)}
-            className="appearance-none border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 bg-white bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className={selectClass}
           >
             <option value="true">Ativos</option>
             <option value="false">Inativos</option>

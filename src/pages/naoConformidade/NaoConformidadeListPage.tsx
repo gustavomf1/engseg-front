@@ -7,9 +7,7 @@ import StatusBadge from '../../components/StatusBadge'
 import SeveridadeBadge from '../../components/SeveridadeBadge'
 import { useState } from 'react'
 import { StatusNaoConformidade } from '../../types'
-
-const formatDate = (dateStr: string) =>
-  new Date(dateStr).toLocaleDateString('pt-BR')
+import { formatDate } from '../../utils/date'
 
 export default function NaoConformidadeListPage() {
   const { user } = useAuth()

@@ -1,28 +1,30 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getEmpresas, createEmpresa } from '../api/empresa'
-import { getEstabelecimentos, createEstabelecimento } from '../api/estabelecimento'
+import { getEmpresasMae, createEmpresa } from '../api/empresa'
+import { getEstabelecimentos, createEstabelecimento, getEmpresasDoEstabelecimento, vincularEmpresa } from '../api/estabelecimento'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Empresa, Estabelecimento, EmpresaRequest, EstabelecimentoRequest } from '../types'
-import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon, Plus, X, Search, Loader2 } from 'lucide-react'
+import { Building2, MapPin, ChevronRight, ArrowLeft, Shield, LogOut, Sun, Moon, Plus, X, Search, Loader2, Briefcase } from 'lucide-react'
 import { IMaskInput } from 'react-imask'
 import { useTheme } from '../contexts/ThemeContext'
 
-type Step = 'empresa' | 'estabelecimento'
-type Modal = 'empresa' | 'estabelecimento' | null
+type Step = 'empresa' | 'estabelecimento' | 'empresaFilha'
+type Modal = 'empresa' | 'estabelecimento' | 'contratada' | null
 
 export default function SeletorPage() {
   const [step, setStep] = useState<Step>('empresa')
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
+  const [estabelecimentoSelecionado, setEstabelecimentoSelecionado] = useState<Estabelecimento | null>(null)
   const [modal, setModal] = useState<Modal>(null)
   const [formEmpresa, setFormEmpresa] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
+  const [formContratada, setFormContratada] = useState<EmpresaRequest>({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
   const [formEstabelecimento, setFormEstabelecimento] = useState<EstabelecimentoRequest>({ nome: '', codigo: '', empresaId: '' })
   const [cepEst, setCepEst] = useState('')
   const [cepLoadingEst, setCepLoadingEst] = useState(false)
   const [cepErroEst, setCepErroEst] = useState('')
-  const { selecionarEmpresa, selecionarEstabelecimento } = useWorkspace()
+  const { selecionarEmpresa, selecionarEstabelecimento, selecionarEmpresaFilha } = useWorkspace()
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
@@ -33,9 +35,23 @@ export default function SeletorPage() {
   const mutCreateEmpresa = useMutation({
     mutationFn: createEmpresa,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
       setModal(null)
       setFormEmpresa({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
+    },
+  })
+
+  const mutCreateContratada = useMutation({
+    mutationFn: async (data: EmpresaRequest) => {
+      const novaEmpresa = await createEmpresa({ ...data, empresaMaeId: empresaSelecionada!.id })
+      await vincularEmpresa(estabelecimentoSelecionado!.id, novaEmpresa.id)
+      return novaEmpresa
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas-estabelecimento', estabelecimentoSelecionado?.id] })
+      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      setModal(null)
+      setFormContratada({ razaoSocial: '', cnpj: '', nomeFantasia: '', email: '' })
     },
   })
 
@@ -78,14 +94,20 @@ export default function SeletorPage() {
   }
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
-    queryKey: ['empresas'],
-    queryFn: () => getEmpresas(true),
+    queryKey: ['empresas-mae'],
+    queryFn: () => getEmpresasMae(true),
   })
 
   const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos } = useQuery({
     queryKey: ['estabelecimentos'],
     queryFn: () => getEstabelecimentos(true),
-    enabled: step === 'estabelecimento',
+    enabled: step === 'estabelecimento' || step === 'empresaFilha',
+  })
+
+  const { data: empresasFilhas = [], isLoading: loadingFilhas } = useQuery({
+    queryKey: ['empresas-estabelecimento', estabelecimentoSelecionado?.id],
+    queryFn: () => getEmpresasDoEstabelecimento(estabelecimentoSelecionado!.id),
+    enabled: step === 'empresaFilha' && !!estabelecimentoSelecionado,
   })
 
   const estabelecimentosFiltrados = estabelecimentos.filter(
@@ -99,13 +121,25 @@ export default function SeletorPage() {
   }
 
   function handleSelecionarEstabelecimento(est: Estabelecimento) {
+    setEstabelecimentoSelecionado(est)
     selecionarEstabelecimento(est)
+    setStep('empresaFilha')
+  }
+
+  function handleSelecionarEmpresaFilha(emp: Empresa) {
+    selecionarEmpresaFilha(emp)
     navigate('/dashboard')
   }
 
-  function handleVoltar() {
+  function handleVoltarParaEmpresa() {
     setStep('empresa')
     setEmpresaSelecionada(null)
+    setEstabelecimentoSelecionado(null)
+  }
+
+  function handleVoltarParaEstabelecimento() {
+    setStep('estabelecimento')
+    setEstabelecimentoSelecionado(null)
   }
 
   function handleLogout() {
@@ -170,15 +204,23 @@ export default function SeletorPage() {
             </div>
             <ChevronRight size={16} className="text-slate-400" />
             <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
-              step === 'estabelecimento' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400'
+              step === 'estabelecimento' ? 'bg-slate-900 text-white' : step === 'empresaFilha' ? 'bg-slate-200 text-slate-600' : 'bg-slate-200 text-slate-400'
             }`}>
               <MapPin size={16} />
               2. Estabelecimento
             </div>
+            <ChevronRight size={16} className="text-slate-400" />
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
+              step === 'empresaFilha' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400'
+            }`}>
+              <Briefcase size={16} />
+              3. Contratada
+            </div>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-            {step === 'empresa' ? (
+            {/* Step 1: Empresa Mae */}
+            {step === 'empresa' && (
               <>
                 <div className="mb-6 flex items-start justify-between">
                   <div>
@@ -223,12 +265,15 @@ export default function SeletorPage() {
                   </div>
                 )}
               </>
-            ) : (
+            )}
+
+            {/* Step 2: Estabelecimento */}
+            {step === 'estabelecimento' && (
               <>
                 <div className="mb-6">
                   <div className="flex items-start justify-between">
                     <button
-                      onClick={handleVoltar}
+                      onClick={handleVoltarParaEmpresa}
                       className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition mb-3"
                     >
                       <ArrowLeft size={14} />
@@ -272,6 +317,67 @@ export default function SeletorPage() {
                           <div className="text-xs text-slate-400 truncate">
                             {est.codigo}{est.cidade ? ` - ${est.cidade}` : ''}{est.estado ? `/${est.estado}` : ''}
                           </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400 group-hover:text-slate-600 transition" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Step 3: Empresa Filha / Contratada */}
+            {step === 'empresaFilha' && (
+              <>
+                <div className="mb-6">
+                  <div className="flex items-start justify-between">
+                    <button
+                      onClick={handleVoltarParaEstabelecimento}
+                      className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition mb-3"
+                    >
+                      <ArrowLeft size={14} />
+                      Voltar
+                    </button>
+                    {isEngenheiro && (
+                      <button
+                        onClick={() => setModal('contratada')}
+                        className="flex items-center gap-1.5 text-sm font-medium text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                      >
+                        <Plus size={14} />
+                        Nova Contratada
+                      </button>
+                    )}
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">Selecione a Empresa Contratada</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Empresas que atuam em <strong>{estabelecimentoSelecionado?.nome}</strong>
+                  </p>
+                </div>
+
+                {loadingFilhas ? (
+                  <div className="text-center py-12 text-slate-400">Carregando empresas contratadas...</div>
+                ) : empresasFilhas.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Briefcase size={40} className="text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">Nenhuma empresa contratada vinculada</p>
+                    <p className="text-slate-400 text-sm mt-1">Vincule empresas contratadas na gestão de estabelecimentos</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {empresasFilhas.map((emp: Empresa) => (
+                      <button
+                        key={emp.id}
+                        onClick={() => handleSelecionarEmpresaFilha(emp)}
+                        className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 hover:border-slate-800 hover:bg-slate-50 transition text-left group"
+                      >
+                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center group-hover:bg-slate-200 transition">
+                          <Briefcase size={20} className="text-slate-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm text-slate-800 truncate">
+                            {emp.nomeFantasia || emp.razaoSocial}
+                          </div>
+                          <div className="text-xs text-slate-400 truncate">{emp.cnpj}</div>
                         </div>
                         <ChevronRight size={16} className="text-slate-400 group-hover:text-slate-600 transition" />
                       </button>
@@ -486,6 +592,84 @@ export default function SeletorPage() {
                       className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
                     >
                       {mutCreateEstabelecimento.isPending ? 'Salvando...' : 'Criar Estabelecimento'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {/* Modal Nova Contratada */}
+          {modal === 'contratada' && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Nova Empresa Contratada</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Vinculada a <strong>{empresaSelecionada?.nomeFantasia || empresaSelecionada?.razaoSocial}</strong> em <strong>{estabelecimentoSelecionado?.nome}</strong>
+                    </p>
+                  </div>
+                  <button onClick={() => setModal(null)} className="text-slate-400 hover:text-slate-600 transition">
+                    <X size={20} />
+                  </button>
+                </div>
+                <form onSubmit={e => { e.preventDefault(); mutCreateContratada.mutate(formContratada) }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Razão Social *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formContratada.razaoSocial}
+                      onChange={e => setFormContratada(f => ({ ...f, razaoSocial: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">CNPJ *</label>
+                    <IMaskInput
+                      mask="00.000.000/0000-00"
+                      placeholder="00.000.000/0000-00"
+                      required
+                      value={formContratada.cnpj}
+                      onAccept={(value: string) => setFormContratada(f => ({ ...f, cnpj: value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nome Fantasia</label>
+                    <input
+                      type="text"
+                      value={formContratada.nomeFantasia ?? ''}
+                      onChange={e => setFormContratada(f => ({ ...f, nomeFantasia: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formContratada.email ?? ''}
+                      onChange={e => setFormContratada(f => ({ ...f, email: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                  {mutCreateContratada.isError && (
+                    <p className="text-xs text-red-500">Erro ao criar empresa contratada. Tente novamente.</p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModal(null)}
+                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={mutCreateContratada.isPending}
+                      className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
+                    >
+                      {mutCreateContratada.isPending ? 'Criando...' : 'Criar Contratada'}
                     </button>
                   </div>
                 </form>

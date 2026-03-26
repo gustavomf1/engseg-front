@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import { useAuth } from '../contexts/AuthContext'
+import { formatDate } from '../utils/date'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 
 const statusNCMap: Record<string, { label: string; color: string }> = {
   ABERTA:        { label: 'Aberta',           color: 'bg-yellow-100 text-yellow-700' },
@@ -33,6 +35,7 @@ export default function OcorrenciaDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { empresaFilha } = useWorkspace()
   const isDesvio = tipo === 'DESVIO'
   const isTecnico = user?.perfil === 'TECNICO'
 
@@ -73,10 +76,16 @@ export default function OcorrenciaDetailPage() {
     enabled: editando && !isDesvio,
   })
 
+  const { data: usuariosFilha = [] } = useQuery({
+    queryKey: ['usuarios', 'empresa', empresaFilha?.id],
+    queryFn: () => getUsuarios(true, empresaFilha!.id),
+    enabled: editando && !isDesvio && !!empresaFilha,
+  })
+
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => u.perfil === 'ENGENHEIRO' && u.ativo)
 
-  const externos = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+  const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
   const ocorrencia = isDesvio ? desvio : nc
@@ -137,11 +146,6 @@ export default function OcorrenciaDetailPage() {
       setEditando(false)
     },
   })
-
-  function formatDate(dt?: string) {
-    if (!dt) return '-'
-    return new Date(dt).toLocaleDateString('pt-BR')
-  }
 
   function set(field: string, value: any) {
     setForm(prev => ({ ...prev, [field]: value }))

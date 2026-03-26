@@ -24,6 +24,8 @@ export interface Empresa {
   nomeFantasia?: string
   email?: string
   telefone?: string
+  empresaMaeId?: string
+  empresaMaeNome?: string
   ativo: boolean
 }
 
@@ -33,6 +35,7 @@ export interface EmpresaRequest {
   nomeFantasia?: string
   email?: string
   telefone?: string
+  empresaMaeId?: string
 }
 
 export interface Estabelecimento {

@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, CheckCircle, Clock, FileText, Shield } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
+import { formatDate, formatDateTime } from '../../utils/date'
 
 const devolutivaSchema = z.object({
   descricaoPlanoAcao: z.string().min(1, 'Descrição do plano de ação obrigatória'),
@@ -26,9 +27,6 @@ const validacaoSchema = z.object({
 type DevolutivaForm = z.infer<typeof devolutivaSchema>
 type ExecucaoForm = z.infer<typeof execucaoSchema>
 type ValidacaoForm = z.infer<typeof validacaoSchema>
-
-const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('pt-BR')
-const formatDateTime = (dateStr: string) => new Date(dateStr).toLocaleString('pt-BR')
 
 export default function NaoConformidadeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -128,15 +126,15 @@ export default function NaoConformidadeDetailPage() {
             <p className="text-slate-800">{nc.usuarioCriacaoNome ? `${nc.usuarioCriacaoNome} (${nc.usuarioCriacaoEmail})` : '—'}</p>
           </div>
           <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Técnico Responsável</p>
+            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Usuário de Registro</p>
             <p className="text-slate-800">{nc.tecnicoNome || '—'}</p>
           </div>
           <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Construtora</p>
+            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável pela Tratativa</p>
             <p className="text-slate-800">{nc.engConstruturaNome ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail})` : nc.engConstrutoraEmail || '—'}</p>
           </div>
           <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Verificação</p>
+            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável</p>
             <p className="text-slate-800">{nc.engVerificacaoNome ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail})` : nc.engVerificacaoEmail || '—'}</p>
           </div>
           <div className="sm:col-span-2">

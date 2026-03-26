@@ -1,5 +1,5 @@
 import client from './client'
-import { Estabelecimento, EstabelecimentoRequest } from '../types'
+import { Empresa, Estabelecimento, EstabelecimentoRequest } from '../types'
 
 export const getEstabelecimentos = async (ativo?: boolean): Promise<Estabelecimento[]> => {
   const params = ativo !== undefined ? { ativo } : {}
@@ -24,4 +24,18 @@ export const updateEstabelecimento = async (id: string, data: EstabelecimentoReq
 
 export const deleteEstabelecimento = async (id: string): Promise<void> => {
   await client.delete(`/estabelecimentos/${id}`)
+}
+
+// Empresas vinculadas a um estabelecimento
+export const getEmpresasDoEstabelecimento = async (estabelecimentoId: string): Promise<Empresa[]> => {
+  const res = await client.get<Empresa[]>(`/estabelecimentos/${estabelecimentoId}/empresas`)
+  return res.data
+}
+
+export const vincularEmpresa = async (estabelecimentoId: string, empresaId: string): Promise<void> => {
+  await client.post(`/estabelecimentos/${estabelecimentoId}/empresas`, { empresaId })
+}
+
+export const desvincularEmpresa = async (estabelecimentoId: string, empresaId: string): Promise<void> => {
+  await client.delete(`/estabelecimentos/${estabelecimentoId}/empresas/${empresaId}`)
 }

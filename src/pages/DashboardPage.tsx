@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getDashboardStats } from '../api/dashboard'
 import { getOcorrencias } from '../api/ocorrencia'
 import { TrendingUp, AlertTriangle, ClipboardList, Shield, FilePlus } from 'lucide-react'
+import { formatDate } from '../utils/date'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -17,10 +18,6 @@ export default function DashboardPage() {
     { label: 'Não Conformidades', value: stats?.totalNaoConformidades ?? 0, icon: ClipboardList, bg: 'bg-red-50', iconColor: 'text-red-500' },
     { label: 'Regra de Ouro', value: stats?.totalRegraDeOuro ?? 0, icon: Shield, bg: 'bg-red-50', iconColor: 'text-red-400' },
   ]
-
-  function formatDate(dt: string) {
-    return new Date(dt).toLocaleDateString('pt-BR')
-  }
 
   return (
     <div className="space-y-6 min-w-0 max-w-full">

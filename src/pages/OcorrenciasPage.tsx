@@ -5,6 +5,7 @@ import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } f
 import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { formatDate } from '../utils/date'
 
 export default function OcorrenciasPage() {
   const navigate = useNavigate()
@@ -38,10 +39,6 @@ export default function OcorrenciasPage() {
       (o.localizacao || '').toLowerCase().includes(busca.toLowerCase())
     return matchTipo && matchBusca
   })
-
-  function formatDate(dt: string) {
-    return new Date(dt).toLocaleDateString('pt-BR')
-  }
 
   function getStatusLabel(item: OcorrenciaItem) {
     if (item.tipo === 'DESVIO') {

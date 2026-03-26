@@ -3,6 +3,7 @@ import { Upload, Download, Trash2, Eye, X, FileImage, File as FileIcon, Loader2 
 import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
 import { Evidencia, TipoEvidencia } from '../types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { formatDate } from '../utils/date'
 
 interface EvidenciaUploadProps {
   naoConformidadeId?: string
@@ -228,7 +229,7 @@ export default function EvidenciaUpload({ naoConformidadeId, desvioId, tipoEvide
                   </div>
                   <div className="px-2 py-1.5 bg-white border-t border-gray-100">
                     <p className="text-xs text-gray-600 truncate">{ev.nomeArquivo}</p>
-                    <p className="text-[10px] text-gray-400">{new Date(ev.dataUpload).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-[10px] text-gray-400">{formatDate(ev.dataUpload)}</p>
                   </div>
                 </div>
               ))}
@@ -247,7 +248,7 @@ export default function EvidenciaUpload({ naoConformidadeId, desvioId, tipoEvide
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{ev.nomeArquivo}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(ev.dataUpload).toLocaleDateString('pt-BR')}
+                        {formatDate(ev.dataUpload)}
                         {isPdf(ev.nomeArquivo) && <span className="ml-2 text-red-400">PDF</span>}
                       </p>
                     </div>

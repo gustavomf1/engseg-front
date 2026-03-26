@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import { formatDate } from '../utils/date'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
 type StatusFiltro = 'TODOS' | 'AGUARDANDO_TRATATIVA' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
@@ -73,10 +74,6 @@ export default function TrativasListPage() {
     const dias = getDiasRestantes(item.dataLimiteResolucao)
     if (dias !== null && dias < 0) return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
     return { label: 'Aguardando Tratativa', color: 'text-yellow-600 bg-yellow-50' }
-  }
-
-  function formatDate(dt: string) {
-    return new Date(dt).toLocaleDateString('pt-BR')
   }
 
   const statusTabs: { key: StatusFiltro; label: string; count?: number; activeColor: string }[] = [
