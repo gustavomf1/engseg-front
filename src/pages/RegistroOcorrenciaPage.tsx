@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
-import { createNaoConformidade, updateNaoConformidade, getNaoConformidade } from '../api/naoConformidade'
+import { createNaoConformidade, updateNaoConformidade, getNaoConformidade, getNaoConformidades } from '../api/naoConformidade'
 import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
@@ -33,6 +33,8 @@ export default function RegistroOcorrenciaPage() {
   const [tipo, setTipo] = useState<Tipo>(tipoParam === 'NAO_CONFORMIDADE' ? 'NAO_CONFORMIDADE' : 'DESVIO')
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [normasSelecionadas, setNormasSelecionadas] = useState<string[]>([])
+  const [isReincidencia, setIsReincidencia] = useState(false)
+  const [ncAnteriorId, setNcAnteriorId] = useState<string>('')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
@@ -65,6 +67,24 @@ export default function RegistroOcorrenciaPage() {
   const { data: normas = [] } = useQuery({
     queryKey: ['normas'],
     queryFn: () => getNormas(true),
+  })
+
+  const { data: ncsEstabelecimento = [] } = useQuery({
+    queryKey: ['nao-conformidades', 'estabelecimento', estabelecimentoSelecionado?.id],
+    queryFn: () => getNaoConformidades({ estabelecimentoId: estabelecimentoSelecionado?.id }),
+    enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoSelecionado?.id,
+  })
+
+  const ncsParaAnterior = useMemo(() =>
+    (ncsEstabelecimento as Array<{ id: string; titulo: string; status: string; dataRegistro: string }>)
+      .filter(nc => nc.id !== id),
+    [ncsEstabelecimento, id]
+  )
+
+  const { data: ncAnteriorData } = useQuery({
+    queryKey: ['nc-anterior-preview', ncAnteriorId],
+    queryFn: () => getNaoConformidade(ncAnteriorId),
+    enabled: isReincidencia && !!ncAnteriorId,
   })
 
   const { data: desvioData } = useQuery({
@@ -113,6 +133,8 @@ export default function RegistroOcorrenciaPage() {
       if (ncData.normas) {
         setNormasSelecionadas(ncData.normas.map(n => n.id))
       }
+      setIsReincidencia(ncData.reincidencia ?? false)
+      setNcAnteriorId(ncData.ncAnteriorId ?? '')
     }
   }, [ncData, reset])
 
@@ -140,6 +162,8 @@ export default function RegistroOcorrenciaPage() {
           engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
           normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
+          reincidencia: isReincidencia,
+          ncAnteriorId: isReincidencia && ncAnteriorId ? ncAnteriorId : undefined,
         }
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
@@ -309,6 +333,64 @@ export default function RegistroOcorrenciaPage() {
                         </div>
                       </label>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-red-100 rounded-lg p-4 space-y-3 bg-red-50/40">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="reincidencia"
+                    className="mt-0.5 h-4 w-4 rounded accent-red-600"
+                    checked={isReincidencia}
+                    onChange={e => {
+                      setIsReincidencia(e.target.checked)
+                      if (!e.target.checked) setNcAnteriorId('')
+                    }}
+                  />
+                  <div>
+                    <label htmlFor="reincidencia" className="font-medium text-sm text-red-700 cursor-pointer">Reincidência</label>
+                    <p className="text-xs text-slate-500 mt-0.5">Marque se esta NC é recorrência de uma ocorrência anterior</p>
+                  </div>
+                </div>
+                {isReincidencia && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">NC Anterior *</label>
+                      <select
+                        value={ncAnteriorId}
+                        onChange={e => setNcAnteriorId(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Selecione a NC anterior</option>
+                        {ncsParaAnterior.map(nc => (
+                          <option key={nc.id} value={nc.id}>
+                            {nc.titulo} — {nc.status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {ncAnteriorId && ncAnteriorData && (
+                      <div className="bg-white border border-red-200 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Rastro de reincidências</p>
+                        <div className="flex flex-wrap items-center gap-1 text-sm">
+                          {ncAnteriorData.cadeiaReincidencias.map((item, idx) => (
+                            <span key={item.id} className="flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-medium max-w-[160px] truncate" title={item.titulo}>
+                                {item.titulo}
+                              </span>
+                              <span className="text-slate-400 text-xs">→</span>
+                            </span>
+                          ))}
+                          <span className="px-2 py-0.5 rounded bg-red-200 text-red-800 text-xs font-semibold max-w-[160px] truncate" title={ncAnteriorData.titulo}>
+                            {ncAnteriorData.titulo}
+                          </span>
+                          <span className="text-slate-400 text-xs">→</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-xs font-semibold">Esta NC</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

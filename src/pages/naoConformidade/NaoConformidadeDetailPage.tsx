@@ -7,7 +7,7 @@ import SeveridadeBadge from '../../components/SeveridadeBadge'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, CheckCircle, Clock, FileText, Shield } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import { formatDate, formatDateTime } from '../../utils/date'
 
@@ -98,6 +98,12 @@ export default function NaoConformidadeDetailPage() {
                 Regra de Ouro
               </span>
             )}
+            {nc.reincidencia && (
+              <span className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                <RefreshCw size={12} />
+                Reincidência
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -148,6 +154,49 @@ export default function NaoConformidadeDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Cadeia de reincidências */}
+      {(nc.reincidencia || nc.reincidencias?.length > 0) && (
+        <div className="bg-white rounded-xl shadow-sm border border-red-100 p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <RefreshCw size={16} className="text-red-500" />
+            <h3 className="font-semibold text-slate-700">Rastro de Reincidências</h3>
+            <span className="text-xs text-slate-400 ml-1">
+              ({(nc.cadeiaReincidencias?.length ?? 0) + 1 + (nc.reincidencias?.length ?? 0)} ocorrência(s) no total)
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {nc.cadeiaReincidencias?.map((item) => (
+              <span key={item.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(`/nao-conformidades/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 transition max-w-[200px] truncate"
+                  title={item.titulo}
+                >
+                  {item.titulo}
+                </button>
+                <span className="text-slate-300 text-sm">→</span>
+              </span>
+            ))}
+            <span className="px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-semibold ring-2 ring-red-300 max-w-[200px] truncate" title={nc.titulo}>
+              {nc.titulo}
+            </span>
+            {nc.reincidencias?.map((item) => (
+              <span key={item.id} className="flex items-center gap-2">
+                <span className="text-slate-300 text-sm">→</span>
+                <button
+                  onClick={() => navigate(`/nao-conformidades/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-100 transition max-w-[200px] truncate"
+                  title={item.titulo}
+                >
+                  {item.titulo}
+                </button>
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">Clique em qualquer NC para ver seus detalhes</p>
+        </div>
+      )}
 
       {/* Evidências */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
@@ -223,6 +272,30 @@ export default function NaoConformidadeDetailPage() {
       {showDevolutivaForm && (
         <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 mb-4">
           <h3 className="font-semibold text-slate-700 mb-4">Registrar Devolutiva / Plano de Ação</h3>
+          {nc.reincidencia && nc.cadeiaReincidencias?.length > 0 && (
+            <div className="mb-4 bg-orange-50 border border-orange-300 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw size={15} className="text-orange-600 shrink-0" />
+                <p className="text-sm font-semibold text-orange-700">
+                  Atenção: esta é a {nc.cadeiaReincidencias.length + 1}ª ocorrência do mesmo problema
+                </p>
+              </div>
+              <p className="text-xs text-orange-600 mb-2">As abordagens anteriores não resolveram. Revise a causa raiz e proponha uma ação diferente.</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {nc.cadeiaReincidencias.map((item) => (
+                  <span key={item.id} className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[160px] truncate" title={item.titulo}>
+                      {item.titulo}
+                    </span>
+                    <span className="text-orange-300">→</span>
+                  </span>
+                ))}
+                <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[160px] truncate" title={nc.titulo}>
+                  {nc.titulo}
+                </span>
+              </div>
+            </div>
+          )}
           <form onSubmit={devolutivaForm.handleSubmit((data) => devolutivaMutation.mutate(data))} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do Plano de Ação *</label>
@@ -246,6 +319,30 @@ export default function NaoConformidadeDetailPage() {
       {showExecucaoForm && (
         <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-6 mb-4">
           <h3 className="font-semibold text-slate-700 mb-4">Registrar Execução de Ação</h3>
+          {nc.reincidencia && nc.cadeiaReincidencias?.length > 0 && (
+            <div className="mb-4 bg-orange-50 border border-orange-300 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw size={15} className="text-orange-600 shrink-0" />
+                <p className="text-sm font-semibold text-orange-700">
+                  Atenção: esta é a {nc.cadeiaReincidencias.length + 1}ª ocorrência do mesmo problema
+                </p>
+              </div>
+              <p className="text-xs text-orange-600 mb-2">Certifique-se de que a ação executada aborda a causa raiz, não apenas o sintoma.</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {nc.cadeiaReincidencias.map((item) => (
+                  <span key={item.id} className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[160px] truncate" title={item.titulo}>
+                      {item.titulo}
+                    </span>
+                    <span className="text-orange-300">→</span>
+                  </span>
+                ))}
+                <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[160px] truncate" title={nc.titulo}>
+                  {nc.titulo}
+                </span>
+              </div>
+            </div>
+          )}
           <form onSubmit={execucaoForm.handleSubmit((data) => execucaoMutation.mutate(data))} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Descrição da Ação Executada *</label>

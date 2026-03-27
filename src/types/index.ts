@@ -132,6 +132,13 @@ export interface LocalizacaoRequest {
   estabelecimentoId: string
 }
 
+export interface NcResumo {
+  id: string
+  titulo: string
+  dataRegistro: string
+  status: StatusNaoConformidade
+}
+
 export interface NaoConformidade {
   id: string
   estabelecimentoId: string
@@ -155,6 +162,11 @@ export interface NaoConformidade {
   usuarioCriacaoEmail?: string
   status: StatusNaoConformidade
   vencida: boolean
+  reincidencia: boolean
+  ncAnteriorId?: string
+  ncAnteriorTitulo?: string
+  cadeiaReincidencias: NcResumo[]
+  reincidencias: NcResumo[]
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
   validacoes: ValidacaoResponse[]
@@ -171,6 +183,8 @@ export interface NaoConformidadeRequest {
   engResponsavelVerificacaoId?: string
   regraDeOuro: boolean
   normaIds?: string[]
+  reincidencia: boolean
+  ncAnteriorId?: string
 }
 
 export interface DevolutivaRequest {

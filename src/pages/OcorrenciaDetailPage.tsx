@@ -9,7 +9,7 @@ import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
-  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen
+  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import { useAuth } from '../contexts/AuthContext'
@@ -112,6 +112,8 @@ export default function OcorrenciaDetailPage() {
         estabelecimentoId: nc.estabelecimentoId,
         engResponsavelConstrutoraId: nc.engResponsavelConstrutoraId ?? '',
         engResponsavelVerificacaoId: nc.engResponsavelVerificacaoId ?? '',
+        reincidencia: nc.reincidencia ?? false,
+        ncAnteriorId: nc.ncAnteriorId ?? '',
       })
     }
   }, [nc, isDesvio])
@@ -137,6 +139,8 @@ export default function OcorrenciaDetailPage() {
           estabelecimentoId: form.estabelecimentoId,
           engResponsavelConstrutoraId: form.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: form.engResponsavelVerificacaoId || undefined,
+          reincidencia: form.reincidencia ?? false,
+          ncAnteriorId: form.reincidencia && form.ncAnteriorId ? form.ncAnteriorId : undefined,
         })
       }
     },
@@ -229,6 +233,11 @@ export default function OcorrenciaDetailPage() {
             {!isDesvio && (ocorrencia as any).regraDeOuro && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
                 <Shield size={12} /> Regra de Ouro
+              </span>
+            )}
+            {!isDesvio && (ocorrencia as any).reincidencia && (
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
+                <RefreshCw size={12} /> Reincidência
               </span>
             )}
           </div>
@@ -406,6 +415,49 @@ export default function OcorrenciaDetailPage() {
       {!isDesvio && id && nc && nc.status !== 'ABERTA' && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
+        </div>
+      )}
+
+      {/* Cadeia de reincidências (NC only) */}
+      {!isDesvio && nc && (nc.reincidencia || (nc.reincidencias?.length ?? 0) > 0) && (
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <RefreshCw size={15} className="text-red-500" />
+            <h3 className="text-base font-bold text-slate-800">Rastro de Reincidências</h3>
+            <span className="text-xs text-slate-400">
+              ({(nc.cadeiaReincidencias?.length ?? 0) + 1 + (nc.reincidencias?.length ?? 0)} ocorrência(s))
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {nc.cadeiaReincidencias?.map((item) => (
+              <span key={item.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 transition max-w-[180px] truncate"
+                  title={item.titulo}
+                >
+                  {item.titulo}
+                </button>
+                <span className="text-slate-300 text-sm">→</span>
+              </span>
+            ))}
+            <span className="px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-semibold ring-2 ring-red-300 max-w-[180px] truncate" title={nc.titulo}>
+              {nc.titulo}
+            </span>
+            {nc.reincidencias?.map((item) => (
+              <span key={item.id} className="flex items-center gap-2">
+                <span className="text-slate-300 text-sm">→</span>
+                <button
+                  onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-100 transition max-w-[180px] truncate"
+                  title={item.titulo}
+                >
+                  {item.titulo}
+                </button>
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">Clique em qualquer NC para ver seus detalhes</p>
         </div>
       )}
 
