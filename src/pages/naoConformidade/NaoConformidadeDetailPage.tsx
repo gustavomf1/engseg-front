@@ -1,38 +1,38 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getNaoConformidade, registrarDevolutiva, registrarExecucaoAcao, validarNaoConformidade } from '../../api/naoConformidade'
+import { getNaoConformidade } from '../../api/naoConformidade'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import SeveridadeBadge from '../../components/SeveridadeBadge'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import { formatDate, formatDateTime } from '../../utils/date'
+import { TipoAcaoHistorico } from '../../types'
 
-const devolutivaSchema = z.object({
-  descricaoPlanoAcao: z.string().min(1, 'Descrição do plano de ação obrigatória'),
-})
+const acaoLabels: Record<TipoAcaoHistorico, string> = {
+  CRIACAO: 'NC Criada',
+  SUBMISSAO_INVESTIGACAO: 'Investigação Submetida',
+  APROVACAO_PLANO: 'Plano Aprovado',
+  REJEICAO_PLANO: 'Plano Rejeitado',
+  SUBMISSAO_EVIDENCIAS: 'Evidências Submetidas',
+  APROVACAO_EVIDENCIAS: 'Evidências Aprovadas',
+  REJEICAO_EVIDENCIAS: 'Evidências Rejeitadas',
+}
 
-const execucaoSchema = z.object({
-  descricaoAcaoExecutada: z.string().min(1, 'Descrição da ação executada obrigatória'),
-})
-
-const validacaoSchema = z.object({
-  parecer: z.enum(['APROVADO', 'REPROVADO']),
-  observacao: z.string().optional(),
-})
-
-type DevolutivaForm = z.infer<typeof devolutivaSchema>
-type ExecucaoForm = z.infer<typeof execucaoSchema>
-type ValidacaoForm = z.infer<typeof validacaoSchema>
+const acaoColors: Record<TipoAcaoHistorico, string> = {
+  CRIACAO: 'bg-slate-100 text-slate-600 border-slate-200',
+  SUBMISSAO_INVESTIGACAO: 'bg-blue-50 text-blue-700 border-blue-200',
+  APROVACAO_PLANO: 'bg-green-50 text-green-700 border-green-200',
+  REJEICAO_PLANO: 'bg-red-50 text-red-700 border-red-200',
+  SUBMISSAO_EVIDENCIAS: 'bg-purple-50 text-purple-700 border-purple-200',
+  APROVACAO_EVIDENCIAS: 'bg-green-50 text-green-700 border-green-200',
+  REJEICAO_EVIDENCIAS: 'bg-red-50 text-red-700 border-red-200',
+}
 
 export default function NaoConformidadeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const queryClient = useQueryClient()
 
   const { data: nc, isLoading } = useQuery({
     queryKey: ['nao-conformidade', id],
@@ -40,41 +40,8 @@ export default function NaoConformidadeDetailPage() {
     enabled: !!id,
   })
 
-  const devolutivaForm = useForm<DevolutivaForm>({ resolver: zodResolver(devolutivaSchema) })
-  const execucaoForm = useForm<ExecucaoForm>({ resolver: zodResolver(execucaoSchema) })
-  const validacaoForm = useForm<ValidacaoForm>({ resolver: zodResolver(validacaoSchema) })
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
-    queryClient.invalidateQueries({ queryKey: ['nao-conformidades'] })
-  }
-
-  const devolutivaMutation = useMutation({
-    mutationFn: (data: DevolutivaForm) => registrarDevolutiva(id!, data),
-    onSuccess: () => { invalidate(); devolutivaForm.reset() },
-  })
-
-  const execucaoMutation = useMutation({
-    mutationFn: (data: ExecucaoForm) => registrarExecucaoAcao(id!, data),
-    onSuccess: () => { invalidate(); execucaoForm.reset() },
-  })
-
-  const validacaoMutation = useMutation({
-    mutationFn: (data: ValidacaoForm) => validarNaoConformidade(id!, data),
-    onSuccess: () => { invalidate(); validacaoForm.reset() },
-  })
-
-  if (isLoading) {
-    return <div className="text-slate-400 py-8 text-center">Carregando...</div>
-  }
-
-  if (!nc) {
-    return <div className="text-red-500 py-8 text-center">NC não encontrada</div>
-  }
-
-  const showDevolutivaForm = nc.status === 'ABERTA' && user?.perfil === 'EXTERNO'
-  const showExecucaoForm = nc.status === 'EM_TRATAMENTO' && user?.perfil === 'EXTERNO'
-  const showValidacaoForm = nc.status === 'EM_TRATAMENTO' && user?.perfil === 'ENGENHEIRO'
+  if (isLoading) return <div className="text-slate-400 py-8 text-center">Carregando...</div>
+  if (!nc) return <div className="text-red-500 py-8 text-center">NC não encontrada</div>
 
   return (
     <div className="max-w-4xl">
@@ -83,7 +50,7 @@ export default function NaoConformidadeDetailPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
             <SeveridadeBadge nivel={nc.nivelSeveridade} />
@@ -94,21 +61,19 @@ export default function NaoConformidadeDetailPage() {
             )}
             {nc.regraDeOuro && (
               <span className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                <Shield size={12} />
-                Regra de Ouro
+                <Shield size={12} /> Regra de Ouro
               </span>
             )}
             {nc.reincidencia && (
               <span className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                <RefreshCw size={12} />
-                Reincidência
+                <RefreshCw size={12} /> Reincidência
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main info */}
+      {/* Informações gerais */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <h3 className="font-semibold text-slate-700 mb-4">Informações Gerais</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -150,12 +115,12 @@ export default function NaoConformidadeDetailPage() {
           </div>
           <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição</p>
-            <p className="text-slate-800">{nc.descricao}</p>
+            <p className="text-slate-800 whitespace-pre-wrap break-words">{nc.descricao}</p>
           </div>
         </div>
       </div>
 
-      {/* Cadeia de reincidências */}
+      {/* Rastro de reincidências */}
       {(nc.reincidencia || nc.reincidencias?.length > 0) && (
         <div className="bg-white rounded-xl shadow-sm border border-red-100 p-6 mb-4">
           <div className="flex items-center gap-2 mb-4">
@@ -166,13 +131,10 @@ export default function NaoConformidadeDetailPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {nc.cadeiaReincidencias?.map((item) => (
+            {nc.cadeiaReincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/nao-conformidades/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 transition max-w-[200px] truncate"
-                  title={item.titulo}
-                >
+                <button onClick={() => navigate(`/nao-conformidades/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 transition max-w-[200px] truncate" title={item.titulo}>
                   {item.titulo}
                 </button>
                 <span className="text-slate-300 text-sm">→</span>
@@ -181,221 +143,109 @@ export default function NaoConformidadeDetailPage() {
             <span className="px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-semibold ring-2 ring-red-300 max-w-[200px] truncate" title={nc.titulo}>
               {nc.titulo}
             </span>
-            {nc.reincidencias?.map((item) => (
+            {nc.reincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
                 <span className="text-slate-300 text-sm">→</span>
-                <button
-                  onClick={() => navigate(`/nao-conformidades/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-100 transition max-w-[200px] truncate"
-                  title={item.titulo}
-                >
+                <button onClick={() => navigate(`/nao-conformidades/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-100 transition max-w-[200px] truncate" title={item.titulo}>
                   {item.titulo}
                 </button>
               </span>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-3">Clique em qualquer NC para ver seus detalhes</p>
         </div>
       )}
 
-      {/* Evidências */}
+      {/* Evidências da ocorrência */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <EvidenciaUpload naoConformidadeId={nc.id} readOnly={user?.perfil === 'TECNICO' && nc.status !== 'ABERTA'} />
       </div>
 
-      {/* Devolutivas */}
-      {nc.devolutivas.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+      {/* Investigação — 5 Porquês */}
+      {nc.porqueUm && (
+        <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <FileText size={16} className="text-blue-500" />
-            <h3 className="font-semibold text-slate-700">Devolutivas / Planos de Ação</h3>
+            <h3 className="font-semibold text-slate-700">Análise de Causa Raiz — 5 Porquês</h3>
           </div>
-          <div className="space-y-3">
-            {nc.devolutivas.map((d) => (
-              <div key={d.id} className="border border-gray-100 rounded-lg p-4 bg-blue-50">
-                <p className="text-sm text-slate-800">{d.descricaoPlanoAcao}</p>
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(d.dataDevolutiva)}{d.engenheiroNome ? ` — ${d.engenheiroNome}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Execucoes */}
-      {nc.execucoes.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock size={16} className="text-purple-500" />
-            <h3 className="font-semibold text-slate-700">Execuções de Ação</h3>
-          </div>
-          <div className="space-y-3">
-            {nc.execucoes.map((e) => (
-              <div key={e.id} className="border border-gray-100 rounded-lg p-4 bg-purple-50">
-                <p className="text-sm text-slate-800">{e.descricaoAcaoExecutada}</p>
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(e.dataExecucao)}{e.engenheiroNome ? ` — ${e.engenheiroNome}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Validacao */}
-      {nc.validacoes.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle size={16} className="text-green-500" />
-            <h3 className="font-semibold text-slate-700">Histórico de Validações</h3>
-          </div>
-          <div className="space-y-3">
-            {nc.validacoes.map(v => (
-              <div key={v.id} className={`border border-gray-100 rounded-lg p-4 ${v.parecer === 'APROVADO' ? 'bg-green-50' : 'bg-red-50'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v.parecer === 'APROVADO' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                    {v.parecer === 'APROVADO' ? 'Aprovado' : 'Reprovado'}
-                  </span>
+          <div className="space-y-4">
+            {[
+              { pergunta: nc.porqueUm, resposta: nc.porqueUmResposta },
+              { pergunta: nc.porqueDois, resposta: nc.porqueDoisResposta },
+              { pergunta: nc.porqueTres, resposta: nc.porqueTresResposta },
+              { pergunta: nc.porqueQuatro, resposta: nc.porqueQuatroResposta },
+              { pergunta: nc.porqueCinco, resposta: nc.porqueCincoResposta },
+            ].map((p, i) => p.pergunta && (
+              <div key={i} className="flex gap-3">
+                <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-1">{i + 1}</span>
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium text-slate-800 break-words">{p.pergunta}</p>
+                  {p.resposta && <p className="text-sm text-slate-600 break-words pl-3 border-l-2 border-blue-200">{p.resposta}</p>}
                 </div>
-                {v.observacao && <p className="text-sm text-slate-800">{v.observacao}</p>}
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(v.dataValidacao)}{v.engenheiroNome ? ` — ${v.engenheiroNome}` : ''}
-                </p>
+              </div>
+            ))}
+            <div className="mt-3 pt-3 border-t border-blue-100">
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Causa Raiz</p>
+              <p className="text-sm font-medium text-slate-800 bg-blue-50 rounded-lg px-3 py-2">{nc.causaRaiz}</p>
+            </div>
+          </div>
+          {nc.atividades?.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-blue-100">
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Plano de Atividades</p>
+              <div className="space-y-1">
+                {nc.atividades.map((a, i) => (
+                  <div key={a.id} className="flex gap-2">
+                    <span className="w-5 h-5 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <p className="text-sm text-slate-800 break-words">{a.descricao}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Descrição da execução + evidências */}
+      {nc.descricaoExecucao && (
+        <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-6 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock size={16} className="text-purple-500" />
+            <h3 className="font-semibold text-slate-700">O que foi executado</h3>
+          </div>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap break-words mb-4">{nc.descricaoExecucao}</p>
+          <EvidenciaUpload naoConformidadeId={nc.id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Execução" />
+        </div>
+      )}
+
+      {/* Histórico de decisões */}
+      {nc.historico?.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <History size={16} className="text-slate-500" />
+            <h3 className="font-semibold text-slate-700">Histórico</h3>
+          </div>
+          <div className="space-y-2">
+            {nc.historico.map(h => (
+              <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
+                  <span className="text-xs opacity-70">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                </div>
+                {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Forms for actions */}
-      {showDevolutivaForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 mb-4">
-          <h3 className="font-semibold text-slate-700 mb-4">Registrar Devolutiva / Plano de Ação</h3>
-          {nc.reincidencia && nc.cadeiaReincidencias?.length > 0 && (
-            <div className="mb-4 bg-orange-50 border border-orange-300 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <RefreshCw size={15} className="text-orange-600 shrink-0" />
-                <p className="text-sm font-semibold text-orange-700">
-                  Atenção: esta é a {nc.cadeiaReincidencias.length + 1}ª ocorrência do mesmo problema
-                </p>
-              </div>
-              <p className="text-xs text-orange-600 mb-2">As abordagens anteriores não resolveram. Revise a causa raiz e proponha uma ação diferente.</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                {nc.cadeiaReincidencias.map((item) => (
-                  <span key={item.id} className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[160px] truncate" title={item.titulo}>
-                      {item.titulo}
-                    </span>
-                    <span className="text-orange-300">→</span>
-                  </span>
-                ))}
-                <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[160px] truncate" title={nc.titulo}>
-                  {nc.titulo}
-                </span>
-              </div>
-            </div>
-          )}
-          <form onSubmit={devolutivaForm.handleSubmit((data) => devolutivaMutation.mutate(data))} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do Plano de Ação *</label>
-              <textarea {...devolutivaForm.register('descricaoPlanoAcao')} rows={4} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Descreva o plano de ação para resolver esta não conformidade..." />
-              {devolutivaForm.formState.errors.descricaoPlanoAcao && (
-                <p className="text-red-500 text-xs mt-1">{devolutivaForm.formState.errors.descricaoPlanoAcao.message}</p>
-              )}
-            </div>
-            {devolutivaMutation.isError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">Erro ao registrar devolutiva.</div>
-            )}
-            <div className="flex justify-end">
-              <button type="submit" disabled={devolutivaMutation.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {devolutivaMutation.isPending ? 'Registrando...' : 'Registrar Devolutiva'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showExecucaoForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-6 mb-4">
-          <h3 className="font-semibold text-slate-700 mb-4">Registrar Execução de Ação</h3>
-          {nc.reincidencia && nc.cadeiaReincidencias?.length > 0 && (
-            <div className="mb-4 bg-orange-50 border border-orange-300 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <RefreshCw size={15} className="text-orange-600 shrink-0" />
-                <p className="text-sm font-semibold text-orange-700">
-                  Atenção: esta é a {nc.cadeiaReincidencias.length + 1}ª ocorrência do mesmo problema
-                </p>
-              </div>
-              <p className="text-xs text-orange-600 mb-2">Certifique-se de que a ação executada aborda a causa raiz, não apenas o sintoma.</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                {nc.cadeiaReincidencias.map((item) => (
-                  <span key={item.id} className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[160px] truncate" title={item.titulo}>
-                      {item.titulo}
-                    </span>
-                    <span className="text-orange-300">→</span>
-                  </span>
-                ))}
-                <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[160px] truncate" title={nc.titulo}>
-                  {nc.titulo}
-                </span>
-              </div>
-            </div>
-          )}
-          <form onSubmit={execucaoForm.handleSubmit((data) => execucaoMutation.mutate(data))} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Descrição da Ação Executada *</label>
-              <textarea {...execucaoForm.register('descricaoAcaoExecutada')} rows={4} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="Descreva a ação executada..." />
-              {execucaoForm.formState.errors.descricaoAcaoExecutada && (
-                <p className="text-red-500 text-xs mt-1">{execucaoForm.formState.errors.descricaoAcaoExecutada.message}</p>
-              )}
-            </div>
-            {execucaoMutation.isError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">Erro ao registrar execução.</div>
-            )}
-            <div className="flex justify-end">
-              <button type="submit" disabled={execucaoMutation.isPending} className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60">
-                {execucaoMutation.isPending ? 'Registrando...' : 'Registrar Execução'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showValidacaoForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-green-200 p-6 mb-4">
-          <h3 className="font-semibold text-slate-700 mb-4">Validar Não Conformidade</h3>
-          <form onSubmit={validacaoForm.handleSubmit((data) => validacaoMutation.mutate(data))} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Parecer *</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input {...validacaoForm.register('parecer')} type="radio" value="APROVADO" className="text-green-600" />
-                  <span className="text-sm text-green-700 font-medium">Aprovado</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input {...validacaoForm.register('parecer')} type="radio" value="REPROVADO" className="text-red-600" />
-                  <span className="text-sm text-red-700 font-medium">Reprovado</span>
-                </label>
-              </div>
-              {validacaoForm.formState.errors.parecer && (
-                <p className="text-red-500 text-xs mt-1">{validacaoForm.formState.errors.parecer.message}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Observação</label>
-              <textarea {...validacaoForm.register('observacao')} rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" placeholder="Observações adicionais..." />
-            </div>
-            {validacaoMutation.isError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">Erro ao registrar validação.</div>
-            )}
-            <div className="flex justify-end">
-              <button type="submit" disabled={validacaoMutation.isPending} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">
-                {validacaoMutation.isPending ? 'Validando...' : 'Registrar Validação'}
-              </button>
-            </div>
-          </form>
+      {/* Concluída */}
+      {nc.status === 'CONCLUIDO' && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4 mb-4">
+          <CheckCircle size={32} className="text-green-500 shrink-0" />
+          <div>
+            <div className="font-bold text-green-800 text-base">Não Conformidade Concluída</div>
+            <div className="text-sm text-green-600 mt-0.5">Esta ocorrência foi tratada e validada com sucesso.</div>
+          </div>
         </div>
       )}
     </div>

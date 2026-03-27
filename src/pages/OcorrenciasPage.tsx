@@ -46,9 +46,13 @@ export default function OcorrenciasPage() {
     }
     const map: Record<string, { label: string; color: string }> = {
       ABERTA: { label: 'Aberta', color: 'text-yellow-600 bg-yellow-50' },
-      EM_TRATAMENTO: { label: 'Em Tratamento', color: 'text-blue-600 bg-blue-50' },
+      AGUARDANDO_APROVACAO_PLANO: { label: 'Aguard. Aprovação', color: 'text-blue-600 bg-blue-50' },
+      EM_AJUSTE_PELO_EXTERNO: { label: 'Em Ajuste', color: 'text-orange-600 bg-orange-50' },
+      EM_EXECUCAO: { label: 'Em Execução', color: 'text-purple-600 bg-purple-50' },
+      AGUARDANDO_VALIDACAO_FINAL: { label: 'Aguard. Validação', color: 'text-indigo-600 bg-indigo-50' },
       CONCLUIDO: { label: 'Concluído', color: 'text-green-600 bg-green-50' },
-      NAO_RESOLVIDA: { label: 'Vencida', color: 'text-red-600 bg-red-50' },
+      EM_TRATAMENTO: { label: 'Em Tratamento', color: 'text-blue-600 bg-blue-50' },
+      NAO_RESOLVIDA: { label: 'Não Resolvida', color: 'text-red-600 bg-red-50' },
     }
     return map[item.status] ?? { label: item.status, color: 'text-slate-600 bg-slate-100' }
   }

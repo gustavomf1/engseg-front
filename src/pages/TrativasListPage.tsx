@@ -31,10 +31,10 @@ export default function TrativasListPage() {
 
   function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {
     if (item.tipo === 'DESVIO') return 'CONCLUIDAS'
-    if (item.status === 'ABERTA') return 'AGUARDANDO_TRATATIVA'
-    if (item.status === 'EM_TRATAMENTO') return 'AGUARDANDO_VALIDACAO'
     if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
+    if (item.status === 'AGUARDANDO_VALIDACAO_FINAL') return 'AGUARDANDO_VALIDACAO'
+    if (['ABERTA', 'AGUARDANDO_APROVACAO_PLANO', 'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
     const dias = getDiasRestantes(item.dataLimiteResolucao)
     if (dias !== null && dias < 0) return 'VENCIDAS'
     return 'TODOS'
@@ -68,18 +68,26 @@ export default function TrativasListPage() {
     if (item.tipo === 'DESVIO') {
       return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
     }
-    if (item.status === 'CONCLUIDO') return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
-    if (item.status === 'NAO_RESOLVIDA') return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
-    if (item.status === 'EM_TRATAMENTO') return { label: 'Aguardando Validação', color: 'text-blue-600 bg-blue-50' }
+    const map: Record<string, { label: string; color: string }> = {
+      ABERTA:                      { label: 'Aberta',                  color: 'text-yellow-600 bg-yellow-50' },
+      AGUARDANDO_APROVACAO_PLANO:  { label: 'Aprovação do Plano',      color: 'text-blue-600 bg-blue-50' },
+      EM_AJUSTE_PELO_EXTERNO:      { label: 'Em Ajuste',               color: 'text-orange-600 bg-orange-50' },
+      EM_EXECUCAO:                 { label: 'Em Execução',             color: 'text-purple-600 bg-purple-50' },
+      AGUARDANDO_VALIDACAO_FINAL:  { label: 'Validação Final',         color: 'text-indigo-600 bg-indigo-50' },
+      CONCLUIDO:                   { label: 'Concluído',               color: 'text-green-600 bg-green-50' },
+      EM_TRATAMENTO:               { label: 'Em Tratamento',           color: 'text-blue-600 bg-blue-50' },
+      NAO_RESOLVIDA:               { label: 'Não Resolvida',           color: 'text-red-600 bg-red-50' },
+    }
+    if (map[item.status]) return map[item.status]
     const dias = getDiasRestantes(item.dataLimiteResolucao)
     if (dias !== null && dias < 0) return { label: 'Vencida', color: 'text-red-600 bg-red-50' }
-    return { label: 'Aguardando Tratativa', color: 'text-yellow-600 bg-yellow-50' }
+    return { label: item.status, color: 'text-slate-600 bg-slate-100' }
   }
 
   const statusTabs: { key: StatusFiltro; label: string; count?: number; activeColor: string }[] = [
     { key: 'TODOS', label: 'Todos', activeColor: 'bg-slate-800 text-white' },
-    { key: 'AGUARDANDO_TRATATIVA', label: 'Aguardando Tratativa', count: contadores.AGUARDANDO_TRATATIVA, activeColor: 'bg-yellow-600 text-white' },
-    { key: 'AGUARDANDO_VALIDACAO', label: 'Aguardando Validação', count: contadores.AGUARDANDO_VALIDACAO, activeColor: 'bg-blue-600 text-white' },
+    { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento', count: contadores.AGUARDANDO_TRATATIVA, activeColor: 'bg-yellow-600 text-white' },
+    { key: 'AGUARDANDO_VALIDACAO', label: 'Aguardando Validação', count: contadores.AGUARDANDO_VALIDACAO, activeColor: 'bg-indigo-600 text-white' },
     { key: 'CONCLUIDAS', label: 'Concluídos', count: contadores.CONCLUIDAS, activeColor: 'bg-green-600 text-white' },
     { key: 'VENCIDAS', label: 'Vencidas', count: contadores.VENCIDAS, activeColor: 'bg-red-600 text-white' },
   ]

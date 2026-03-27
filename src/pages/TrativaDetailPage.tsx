@@ -1,35 +1,94 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio } from '../api/desvio'
-import { getNaoConformidade, registrarDevolutiva, validarNaoConformidade } from '../api/naoConformidade'
+import {
+  getNaoConformidade,
+  submeterInvestigacao,
+  aprovarPlano,
+  rejeitarPlano,
+  submeterEvidencias,
+  aprovarEvidencias,
+  rejeitarEvidencias,
+} from '../api/naoConformidade'
 import { useAuth } from '../contexts/AuthContext'
 import {
   ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText,
-  CheckCircle, XCircle, Clock, Ban, Eye, Building2, User, BookOpen, RefreshCw
+  CheckCircle, XCircle, Clock, Eye, Building2, User, BookOpen,
+  RefreshCw, Plus, Trash2, History, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import StatusBadge from '../components/StatusBadge'
 import SeveridadeBadge from '../components/SeveridadeBadge'
 import { formatDate, formatDateTime } from '../utils/date'
+import { TipoAcaoHistorico } from '../types'
+
+const acaoLabels: Record<TipoAcaoHistorico, string> = {
+  CRIACAO: 'NC Criada',
+  SUBMISSAO_INVESTIGACAO: 'Investigação Submetida',
+  APROVACAO_PLANO: 'Plano Aprovado',
+  REJEICAO_PLANO: 'Plano Rejeitado',
+  SUBMISSAO_EVIDENCIAS: 'Evidências Submetidas',
+  APROVACAO_EVIDENCIAS: 'Evidências Aprovadas',
+  REJEICAO_EVIDENCIAS: 'Evidências Rejeitadas',
+}
+
+const acaoColors: Record<TipoAcaoHistorico, string> = {
+  CRIACAO: 'bg-slate-100 text-slate-600 border-slate-200',
+  SUBMISSAO_INVESTIGACAO: 'bg-blue-50 text-blue-700 border-blue-200',
+  APROVACAO_PLANO: 'bg-green-50 text-green-700 border-green-200',
+  REJEICAO_PLANO: 'bg-red-50 text-red-700 border-red-200',
+  SUBMISSAO_EVIDENCIAS: 'bg-purple-50 text-purple-700 border-purple-200',
+  APROVACAO_EVIDENCIAS: 'bg-green-50 text-green-700 border-green-200',
+  REJEICAO_EVIDENCIAS: 'bg-red-50 text-red-700 border-red-200',
+}
 
 export default function TrativaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const [planoAcao, setPlanoAcao] = useState('')
-  const [observacao, setObservacao] = useState('')
-  const [confirmarEnvio, setConfirmarEnvio] = useState(false)
-  const [normaAberta, setNormaAberta] = useState<string | null>(null)
-
-  const toggleNorma = useCallback((id: string) => {
-    setNormaAberta(prev => prev === id ? null : id)
-  }, [])
 
   const isDesvio = tipo === 'DESVIO'
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
   const isExterno = user?.perfil === 'EXTERNO'
+  const isTecnico = user?.perfil === 'TECNICO'
+
+  // State — investigação (pergunta + resposta por porquê)
+  const [porques, setPorques] = useState<{ pergunta: string; resposta: string }[]>([
+    { pergunta: '', resposta: '' },
+    { pergunta: '', resposta: '' },
+    { pergunta: '', resposta: '' },
+    { pergunta: '', resposta: '' },
+    { pergunta: '', resposta: '' },
+  ])
+  const [causaRaiz, setCausaRaiz] = useState('')
+  const [atividades, setAtividades] = useState<string[]>([''])
+  const [normaAberta, setNormaAberta] = useState<string | null>(null)
+
+  // State — execução
+  const [descricaoExecucao, setDescricaoExecucao] = useState('')
+
+  // State — snapshots expandidos
+  const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set())
+  const toggleSnapshot = (id: string) => setExpandedSnapshotIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  // State — aprovação/rejeição
+  const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const [comentarioAprovacao, setComentarioAprovacao] = useState('')
+
+  // State — confirmação
+  const [confirmarEnvio, setConfirmarEnvio] = useState(false)
+
+  const initialized = useRef(false)
+
+  const toggleNorma = useCallback((nId: string) => {
+    setNormaAberta(prev => prev === nId ? null : nId)
+  }, [])
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -43,30 +102,65 @@ export default function TrativaDetailPage() {
     enabled: !isDesvio,
   })
 
-  const podeValidar = isEngenheiro || (nc?.engResponsavelVerificacaoId != null && nc.engResponsavelVerificacaoId === user?.id)
+  // Pré-popula formulário de investigação ao carregar dados
+  useEffect(() => {
+    if (nc && !initialized.current) {
+      initialized.current = true
+      if (nc.porqueUm) {
+        setPorques([
+          { pergunta: nc.porqueUm ?? '', resposta: nc.porqueUmResposta ?? '' },
+          { pergunta: nc.porqueDois ?? '', resposta: nc.porqueDoisResposta ?? '' },
+          { pergunta: nc.porqueTres ?? '', resposta: nc.porqueTresResposta ?? '' },
+          { pergunta: nc.porqueQuatro ?? '', resposta: nc.porqueQuatroResposta ?? '' },
+          { pergunta: nc.porqueCinco ?? '', resposta: nc.porqueCincoResposta ?? '' },
+        ])
+      }
+      if (nc.causaRaiz) setCausaRaiz(nc.causaRaiz)
+      if (nc.atividades?.length > 0) setAtividades(nc.atividades.map(a => a.descricao))
+    }
+  }, [nc])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
-    queryClient.invalidateQueries({ queryKey: [isDesvio ? 'desvio' : 'nc', id] })
+    queryClient.invalidateQueries({ queryKey: ['nc', id] })
   }
 
-  const mutationDevolutiva = useMutation({
-    mutationFn: async () => {
-      return registrarDevolutiva(id!, { descricaoPlanoAcao: planoAcao })
-    },
-    onSuccess: () => {
-      invalidate()
-      setPlanoAcao('')
-    },
+  const mutSubmeterInvestigacao = useMutation({
+    mutationFn: () => submeterInvestigacao(id!, {
+      porqueUm: porques[0].pergunta, porqueUmResposta: porques[0].resposta,
+      porqueDois: porques[1].pergunta, porqueDoisResposta: porques[1].resposta,
+      porqueTres: porques[2].pergunta, porqueTresResposta: porques[2].resposta,
+      porqueQuatro: porques[3].pergunta, porqueQuatroResposta: porques[3].resposta,
+      porqueCinco: porques[4].pergunta, porqueCincoResposta: porques[4].resposta,
+      causaRaiz,
+      atividades: atividades.filter(a => a.trim()),
+    }),
+    onSuccess: () => { invalidate(); setConfirmarEnvio(false) },
   })
 
-  const mutationValidacao = useMutation({
-    mutationFn: (parecer: 'APROVADO' | 'REPROVADO') =>
-      validarNaoConformidade(id!, { parecer, observacao }),
-    onSuccess: () => {
-      invalidate()
-      navigate('/tratativas')
-    },
+  const mutAprovarPlano = useMutation({
+    mutationFn: () => aprovarPlano(id!, { comentario: comentarioAprovacao || undefined }),
+    onSuccess: () => { invalidate(); setComentarioAprovacao('') },
+  })
+
+  const mutRejeitarPlano = useMutation({
+    mutationFn: () => rejeitarPlano(id!, { comentario: motivoRejeicao }),
+    onSuccess: () => { invalidate(); setMotivoRejeicao('') },
+  })
+
+  const mutSubmeterEvidencias = useMutation({
+    mutationFn: () => submeterEvidencias(id!, { descricaoExecucao }),
+    onSuccess: () => { invalidate(); setDescricaoExecucao('') },
+  })
+
+  const mutAprovarEvidencias = useMutation({
+    mutationFn: () => aprovarEvidencias(id!, { comentario: comentarioAprovacao || undefined }),
+    onSuccess: () => { invalidate(); navigate('/tratativas') },
+  })
+
+  const mutRejeitarEvidencias = useMutation({
+    mutationFn: () => rejeitarEvidencias(id!, { comentario: motivoRejeicao }),
+    onSuccess: () => { invalidate(); setMotivoRejeicao('') },
   })
 
   function getDiasRestantes(dataLimite?: string) {
@@ -77,29 +171,30 @@ export default function TrativaDetailPage() {
   }
 
   const ocorrencia = isDesvio ? desvio : nc
-
-  if (!ocorrencia) {
-    return <div className="text-center py-12 text-slate-400">Carregando...</div>
-  }
+  if (!ocorrencia) return <div className="text-center py-12 text-slate-400">Carregando...</div>
 
   const dias = !isDesvio ? getDiasRestantes(nc?.dataLimiteResolucao) : null
   const prazoVencido = dias !== null && dias < 0 && nc?.status !== 'CONCLUIDO'
 
-  const showDevolutivaForm = !isDesvio && nc?.status === 'ABERTA' && isExterno
-  const showExecucaoForm = false // externo não pode criar execução enquanto engenheiro não validar
-  const showAguardandoValidacao = !isDesvio && nc?.status === 'EM_TRATAMENTO' && isExterno
-  const showValidacaoForm = !isDesvio && nc?.status === 'EM_TRATAMENTO' && podeValidar
+  // Condições de exibição por status
+  const showInvestigacaoForm = !isDesvio && (nc?.status === 'ABERTA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && (isExterno || isTecnico)
+  const showAguardandoAprovacaoPlano = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isExterno
+  const showAprovacaoPlanoForm = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isEngenheiro
+  const showExecucaoForm = !isDesvio && nc?.status === 'EM_EXECUCAO' && (isExterno || isTecnico)
+  const showEngenheiroAguardaExecucao = !isDesvio && nc?.status === 'EM_EXECUCAO' && isEngenheiro
+  const showAguardandoValidacaoFinal = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isExterno
+  const showAprovacaoEvidenciasForm = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isEngenheiro
+  const showAbertaEngenheiro = !isDesvio && nc?.status === 'ABERTA' && isEngenheiro
+
+  const investigacaoValida = porques.every(p => p.pergunta.trim() && p.resposta.trim()) && causaRaiz.trim() && atividades.some(a => a.trim())
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      {/* Back */}
       <button onClick={() => navigate('/tratativas')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
         <ArrowLeft size={16} /> Voltar
       </button>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HEADER */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══ HEADER ═══ */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -120,9 +215,7 @@ export default function TrativaDetailPage() {
                 )}
               </>
             )}
-            {isDesvio && desvio && (
-              <StatusBadge status={desvio.status} type="desvio" />
-            )}
+            {isDesvio && desvio && <StatusBadge status={desvio.status} type="desvio" />}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {(ocorrencia as any).regraDeOuro && (
@@ -140,7 +233,6 @@ export default function TrativaDetailPage() {
 
         <h2 className="text-xl font-bold text-slate-800 mb-5">{(ocorrencia as any).titulo}</h2>
 
-        {/* Info grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><Building2 size={11} /> Estabelecimento</p>
@@ -160,15 +252,11 @@ export default function TrativaDetailPage() {
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><Calendar size={11} /> Prazo para Resolução</p>
               <div className="flex items-center gap-2">
-                <p className={`font-medium ${prazoVencido ? 'text-red-600' : 'text-slate-800'}`}>
-                  {formatDate(nc.dataLimiteResolucao)}
-                </p>
+                <p className={`font-medium ${prazoVencido ? 'text-red-600' : 'text-slate-800'}`}>{formatDate(nc.dataLimiteResolucao)}</p>
                 {dias !== null && dias >= 0 && nc.status !== 'CONCLUIDO' && (
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{dias} dias restantes</span>
                 )}
-                {prazoVencido && (
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Vencido</span>
-                )}
+                {prazoVencido && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Vencido</span>}
               </div>
             </div>
           )}
@@ -202,7 +290,7 @@ export default function TrativaDetailPage() {
           )}
         </div>
 
-        {/* Normas Vinculadas (dentro do card) */}
+        {/* Normas */}
         {!isDesvio && nc && nc.normas.length > 0 && (
           <div className="mt-5 pt-5 border-t border-gray-100">
             <div className="flex items-center gap-2 mb-3">
@@ -212,18 +300,10 @@ export default function TrativaDetailPage() {
             <div className="space-y-2">
               {nc.normas.map(n => (
                 <div key={n.id} className="border border-indigo-100 rounded-lg bg-indigo-50 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => toggleNorma(n.id)}
-                    className="w-full flex items-center justify-between p-3 text-left hover:bg-indigo-100/50 transition"
-                  >
+                  <button type="button" onClick={() => toggleNorma(n.id)}
+                    className="w-full flex items-center justify-between p-3 text-left hover:bg-indigo-100/50 transition">
                     <span className="text-sm font-medium text-slate-800">{n.titulo}</span>
-                    <svg
-                      className={`w-4 h-4 text-slate-400 transition-transform ${normaAberta === n.id ? 'rotate-180' : ''}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${normaAberta === n.id ? 'rotate-180' : ''}`} />
                   </button>
                   {normaAberta === n.id && n.descricao && (
                     <div className="px-3 pb-3 border-t border-indigo-100">
@@ -236,7 +316,7 @@ export default function TrativaDetailPage() {
           </div>
         )}
 
-        {/* Evidências da Ocorrência (dentro do card) */}
+        {/* Evidências da ocorrência */}
         {!isDesvio && id && (
           <div className="mt-5 pt-5 border-t border-gray-100">
             <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" readOnly titulo="Evidências da Ocorrência" />
@@ -244,8 +324,7 @@ export default function TrativaDetailPage() {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* RASTRO DE REINCIDÊNCIAS */}
+      {/* ═══ RASTRO DE REINCIDÊNCIAS ═══ */}
       {!isDesvio && nc && (nc.reincidencia || (nc.reincidencias?.length ?? 0) > 0) && (
         <div className="bg-white rounded-xl border border-orange-200 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -256,114 +335,196 @@ export default function TrativaDetailPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {nc.cadeiaReincidencias?.map((item) => (
+            {nc.cadeiaReincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>
-                  {item.titulo}
-                </span>
+                <span className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>{item.titulo}</span>
                 <span className="text-slate-300 text-sm">→</span>
               </span>
             ))}
-            <span className="px-2.5 py-1 rounded-md bg-orange-600 text-white text-xs font-semibold ring-2 ring-orange-300 max-w-[180px] truncate" title={nc.titulo}>
-              {nc.titulo}
-            </span>
-            {nc.reincidencias?.map((item) => (
+            <span className="px-2.5 py-1 rounded-md bg-orange-600 text-white text-xs font-semibold ring-2 ring-orange-300 max-w-[180px] truncate" title={nc.titulo}>{nc.titulo}</span>
+            {nc.reincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
                 <span className="text-slate-300 text-sm">→</span>
-                <span className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>
-                  {item.titulo}
-                </span>
+                <span className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>{item.titulo}</span>
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HISTÓRICO - Devolutivas */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {!isDesvio && nc && nc.devolutivas.length > 0 && !showAguardandoValidacao && !showValidacaoForm && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      {/* ═══ INVESTIGAÇÃO — histórico de submissões ═══ */}
+      {!isDesvio && nc && nc.investigacaoSnapshots?.length > 0 && (
+        <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <FileText size={16} className="text-blue-500" />
-            <h3 className="font-semibold text-slate-700">Tratativa / Plano de Ação</h3>
+            <h3 className="font-semibold text-slate-700">Análise de Causa Raiz — 5 Porquês</h3>
+            {nc.investigacaoSnapshots.length > 1 && (
+              <span className="text-xs text-slate-400 ml-1">({nc.investigacaoSnapshots.length} submissões)</span>
+            )}
           </div>
           <div className="space-y-3">
-            {nc.devolutivas.map(d => (
-              <div key={d.id} className="border border-blue-100 rounded-lg p-4 bg-blue-50">
-                <p className="text-sm text-slate-800 break-words">{d.descricaoPlanoAcao}</p>
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(d.dataDevolutiva)}{d.engenheiroNome ? ` — ${d.engenheiroNome}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-          {id && (
-            <div className="mt-4">
-              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HISTÓRICO - Execuções de Ação */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {!isDesvio && nc && nc.execucoes.length > 0 && !showAguardandoValidacao && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock size={16} className="text-purple-500" />
-            <h3 className="font-semibold text-slate-700">Execuções de Ação</h3>
-          </div>
-          <div className="space-y-3">
-            {nc.execucoes.map(e => (
-              <div key={e.id} className="border border-purple-100 rounded-lg p-4 bg-purple-50">
-                <p className="text-sm text-slate-800">{e.descricaoAcaoExecutada}</p>
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(e.dataExecucao)}{e.engenheiroNome ? ` — ${e.engenheiroNome}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HISTÓRICO - Validação */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {!isDesvio && nc && nc.validacoes.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle size={16} className="text-green-500" />
-            <h3 className="font-semibold text-slate-700">Histórico de Validações</h3>
-          </div>
-          <div className="space-y-3">
-            {nc.validacoes.map(v => (
-              <div key={v.id} className={`border rounded-lg p-4 ${v.parecer === 'APROVADO' ? 'border-green-100 bg-green-50' : 'border-red-100 bg-red-50'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v.parecer === 'APROVADO' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                    {v.parecer === 'APROVADO' ? 'Aprovado' : 'Reprovado'}
-                  </span>
+            {nc.investigacaoSnapshots.map((snap, idx) => {
+              const isLatest = idx === nc.investigacaoSnapshots.length - 1
+              const isExpanded = isLatest || expandedSnapshotIds.has(snap.id)
+              const statusColor = snap.status === 'APROVADO'
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : snap.status === 'REPROVADO'
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
+              const statusLabel = snap.status === 'APROVADO' ? 'Aprovada' : snap.status === 'REPROVADO' ? 'Reprovada' : 'Pendente'
+              return (
+                <div key={snap.id} className={`rounded-lg border ${isLatest ? 'border-blue-200' : 'border-gray-200'}`}>
+                  <button
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left gap-3 ${!isLatest ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'} rounded-lg`}
+                    onClick={() => !isLatest && toggleSnapshot(snap.id)}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-500">Submissão {idx + 1}</span>
+                      <span className="text-xs text-slate-400">{formatDateTime(snap.dataSubmissao)}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                    </div>
+                    {!isLatest && (
+                      isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 pb-4 space-y-3">
+                      {snap.comentarioRevisao && (
+                        <div className={`rounded-lg px-3 py-2 text-xs border ${snap.status === 'REPROVADO' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                          <span className="font-semibold">{snap.status === 'REPROVADO' ? 'Motivo da reprovação: ' : 'Comentário: '}</span>
+                          {snap.comentarioRevisao}
+                        </div>
+                      )}
+                      <div className="space-y-3">
+                        {[
+                          { pergunta: snap.porqueUm, resposta: snap.porqueUmResposta },
+                          { pergunta: snap.porqueDois, resposta: snap.porqueDoisResposta },
+                          { pergunta: snap.porqueTres, resposta: snap.porqueTresResposta },
+                          { pergunta: snap.porqueQuatro, resposta: snap.porqueQuatroResposta },
+                          { pergunta: snap.porqueCinco, resposta: snap.porqueCincoResposta },
+                        ].map((p, i) => p.pergunta && (
+                          <div key={i} className="flex gap-3">
+                            <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-1">{i + 1}</span>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-sm font-medium text-slate-800 break-words">{p.pergunta}</p>
+                              {p.resposta && <p className="text-sm text-slate-600 break-words pl-3 border-l-2 border-blue-200">{p.resposta}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-3 border-t border-blue-100">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Causa Raiz Identificada</p>
+                        <p className="text-sm font-medium text-slate-800 bg-blue-50 rounded-lg px-3 py-2 break-words">{snap.causaRaiz}</p>
+                      </div>
+                      {snap.atividades?.length > 0 && (
+                        <div className="pt-3 border-t border-blue-100">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Plano de Atividades</p>
+                          <div className="space-y-2">
+                            {snap.atividades.map((a, i) => (
+                              <div key={i} className="flex gap-3 items-start">
+                                <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                <p className="text-sm text-slate-800 break-words">{a}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {v.observacao && <p className="text-sm text-slate-800 break-words overflow-hidden">{v.observacao}</p>}
-                <p className="text-xs text-slate-500 mt-2">
-                  {formatDateTime(v.dataValidacao)}{v.engenheiroNome ? ` — ${v.engenheiroNome}` : ''}
-                </p>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ EXECUÇÃO — histórico de submissões ═══ */}
+      {!isDesvio && nc && nc.execucaoSnapshots?.length > 0 && (
+        <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle size={16} className="text-purple-500" />
+            <h3 className="font-semibold text-slate-700">O que foi executado</h3>
+            {nc.execucaoSnapshots.length > 1 && (
+              <span className="text-xs text-slate-400 ml-1">({nc.execucaoSnapshots.length} submissões)</span>
+            )}
+          </div>
+          <div className="space-y-3">
+            {nc.execucaoSnapshots.map((snap, idx) => {
+              const isLatest = idx === nc.execucaoSnapshots.length - 1
+              const isExpanded = isLatest || expandedSnapshotIds.has(snap.id)
+              const statusColor = snap.status === 'APROVADO'
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : snap.status === 'REPROVADO'
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-purple-50 text-purple-700 border-purple-200'
+              const statusLabel = snap.status === 'APROVADO' ? 'Aprovada' : snap.status === 'REPROVADO' ? 'Reprovada' : 'Pendente'
+              return (
+                <div key={snap.id} className={`rounded-lg border ${isLatest ? 'border-purple-200' : 'border-gray-200'}`}>
+                  <button
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left gap-3 ${!isLatest ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'} rounded-lg`}
+                    onClick={() => !isLatest && toggleSnapshot(snap.id)}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-500">Submissão {idx + 1}</span>
+                      <span className="text-xs text-slate-400">{formatDateTime(snap.dataSubmissao)}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                    </div>
+                    {!isLatest && (
+                      isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 pb-4 space-y-3">
+                      {snap.comentarioRevisao && (
+                        <div className={`rounded-lg px-3 py-2 text-xs border ${snap.status === 'REPROVADO' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                          <span className="font-semibold">{snap.status === 'REPROVADO' ? 'Motivo da reprovação: ' : 'Comentário: '}</span>
+                          {snap.comentarioRevisao}
+                        </div>
+                      )}
+                      <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{snap.descricaoExecucao}</p>
+                      {isLatest && id && (
+                        <div className="pt-2">
+                          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Execução" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ HISTÓRICO DE DECISÕES ═══ */}
+      {!isDesvio && nc && nc.historico?.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <History size={16} className="text-slate-500" />
+            <h3 className="font-semibold text-slate-700">Histórico</h3>
+          </div>
+          <div className="space-y-2">
+            {nc.historico.map(h => (
+              <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
+                  <span className="text-xs opacity-70">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                </div>
+                {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* SEÇÃO DE AÇÃO DO EXTERNO - em destaque */}
+      {/* ÁREA DE AÇÃO — depende de status + perfil */}
       {/* ═══════════════════════════════════════════════════════════════ */}
 
-      {/* Desvio - sempre concluído */}
+      {/* Desvio — sempre concluído */}
       {isDesvio && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
-          <CheckCircle size={32} className="text-green-500 flex-shrink-0" />
+          <CheckCircle size={32} className="text-green-500 shrink-0" />
           <div>
             <div className="font-bold text-green-800 text-base">Desvio Concluído</div>
             <div className="text-sm text-green-600 mt-0.5">Este desvio foi registrado e concluído automaticamente.</div>
@@ -371,70 +532,147 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* NC ABERTA → Formulário de devolutiva (destaque para EXTERNO) */}
-      {showDevolutivaForm && (
+      {/* ABERTA + Engenheiro → aguardando investigação do Externo */}
+      {showAbertaEngenheiro && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-center gap-4">
+          <Clock size={32} className="text-amber-500 shrink-0" />
+          <div>
+            <div className="font-bold text-amber-800 text-base">Aguardando Investigação</div>
+            <div className="text-sm text-amber-600 mt-0.5">O responsável da empresa contratada deve preencher os 5 Porquês e o plano de atividades.</div>
+          </div>
+        </div>
+      )}
+
+      {/* ABERTA ou EM_AJUSTE + Externo/Tecnico → Formulário de investigação */}
+      {showInvestigacaoForm && (
         <div className="bg-white rounded-xl border-2 border-blue-400 shadow-md p-6 ring-2 ring-blue-100">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
               <FileText size={16} className="text-blue-600" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">Registrar Devolutiva / Plano de Ação</h3>
+            <h3 className="text-base font-bold text-slate-800">
+              {nc?.status === 'EM_AJUSTE_PELO_EXTERNO' ? 'Ajustar Investigação e Plano de Ação' : 'Preencher Investigação e Plano de Ação'}
+            </h3>
           </div>
-          <p className="text-sm text-blue-500 mb-5 ml-11">Preencha o plano de ação para resolver esta ocorrência</p>
+          {nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && (
+            <p className="text-sm text-orange-600 mb-5 ml-11">O engenheiro solicitou ajustes. Verifique o histórico abaixo e corrija o plano.</p>
+          )}
 
-          <div className="space-y-4">
-            {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
-              <div className="bg-orange-50 border border-orange-300 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <RefreshCw size={14} className="text-orange-600 shrink-0" />
-                  <p className="text-sm font-bold text-orange-700">
-                    Esta é a {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência do mesmo problema
-                  </p>
-                </div>
-                <p className="text-xs text-orange-600 mb-2">As abordagens anteriores não resolveram o problema. Proponha uma solução diferente que ataque a causa raiz.</p>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {nc.cadeiaReincidencias?.map((item) => (
-                    <span key={item.id} className="flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[140px] truncate" title={item.titulo}>
-                        {item.titulo}
-                      </span>
-                      <span className="text-orange-300">→</span>
-                    </span>
-                  ))}
-                  <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[140px] truncate" title={nc.titulo}>
-                    {nc.titulo}
-                  </span>
-                </div>
+          {/* Alerta de reincidência */}
+          {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
+            <div className="mb-5 bg-orange-50 border border-orange-300 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <RefreshCw size={14} className="text-orange-600 shrink-0" />
+                <p className="text-sm font-bold text-orange-700">Esta é a {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência do mesmo problema</p>
               </div>
-            )}
+              <p className="text-xs text-orange-600">Proponha uma solução diferente que ataque a causa raiz.</p>
+            </div>
+          )}
+
+          <div className="space-y-5">
+            {/* 5 Porquês */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do Plano de Ação *</label>
-              <textarea
-                value={planoAcao}
-                onChange={e => setPlanoAcao(e.target.value)}
-                rows={4}
-                placeholder="Descreva detalhadamente as ações que serão tomadas para resolver esta ocorrência..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
-              />
-              <p className="text-xs text-blue-400 mt-1">Inclua: ações corretivas, responsáveis, prazos específicos e recursos necessários</p>
+              <p className="text-sm font-semibold text-slate-700 mb-3">Análise dos 5 Porquês *</p>
+              <div className="space-y-4">
+                {porques.map((p, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-2">{i + 1}</span>
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Pergunta *</label>
+                        <input
+                          type="text"
+                          value={p.pergunta}
+                          onChange={e => {
+                            const novo = [...porques]
+                            novo[i] = { ...novo[i], pergunta: e.target.value }
+                            setPorques(novo)
+                          }}
+                          placeholder={`Por que ${i + 1}? (ex: Por que o funcionário estava sem capacete?)`}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Resposta *</label>
+                        <input
+                          type="text"
+                          value={p.resposta}
+                          onChange={e => {
+                            const novo = [...porques]
+                            novo[i] = { ...novo[i], resposta: e.target.value }
+                            setPorques(novo)
+                          }}
+                          placeholder="Resposta..."
+                          className="w-full border border-gray-100 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:bg-white transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {id && (
-              <div>
-                <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" titulo="Evidências da Tratativa" />
+            {/* Causa raiz */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Causa Raiz Identificada *</label>
+              <textarea
+                value={causaRaiz}
+                onChange={e => setCausaRaiz(e.target.value)}
+                rows={3}
+                placeholder="Descreva a causa raiz identificada pela análise dos 5 Porquês..."
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+              />
+            </div>
+
+            {/* Atividades */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-slate-700">Plano de Atividades *</p>
+                <button
+                  type="button"
+                  onClick={() => setAtividades([...atividades, ''])}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  <Plus size={13} /> Adicionar atividade
+                </button>
               </div>
-            )}
+              <div className="space-y-2">
+                {atividades.map((a, i) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <span className="w-6 h-6 rounded bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 mt-2">{i + 1}</span>
+                    <input
+                      type="text"
+                      value={a}
+                      onChange={e => {
+                        const novas = [...atividades]
+                        novas[i] = e.target.value
+                        setAtividades(novas)
+                      }}
+                      placeholder={`Atividade ${i + 1}...`}
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+                    />
+                    {atividades.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setAtividades(atividades.filter((_, j) => j !== i))}
+                        className="mt-2 text-slate-400 hover:text-red-500 transition"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => navigate('/tratativas')}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
-              >
+              <button onClick={() => navigate('/tratativas')}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                 Cancelar
               </button>
               <button
                 onClick={() => setConfirmarEnvio(true)}
-                disabled={!planoAcao.trim()}
+                disabled={!investigacaoValida}
                 className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
                 <Eye size={16} /> Revisar e Enviar
@@ -444,150 +682,207 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* NC EM_TRATAMENTO + EXTERNO → Aguardando validação do engenheiro */}
-      {showAguardandoValidacao && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-              <Clock size={16} className="text-amber-600" />
-            </div>
+      {/* AGUARDANDO_APROVACAO_PLANO + Externo → aguardando */}
+      {showAguardandoAprovacaoPlano && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Clock size={20} className="text-amber-600 shrink-0" />
             <div>
-              <h3 className="text-base font-bold text-amber-800">Aguardando Validação do Engenheiro</h3>
-              <p className="text-sm text-amber-600">Sua tratativa foi enviada e está sendo analisada pelo engenheiro responsável.</p>
+              <h3 className="font-bold text-amber-800">Aguardando Aprovação do Plano</h3>
+              <p className="text-sm text-amber-600">Sua investigação e plano de atividades estão sendo analisados pelo engenheiro.</p>
             </div>
           </div>
-
-          {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 flex items-center gap-2">
-              <RefreshCw size={14} className="text-orange-600 shrink-0" />
-              <p className="text-xs text-orange-700 font-medium">
-                Esta é a {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência — o engenheiro pode solicitar uma nova abordagem se considerar insuficiente.
-              </p>
-            </div>
-          )}
-          {nc?.devolutivas && nc.devolutivas.length > 0 && (
-            <div className="bg-white border border-amber-200 rounded-lg p-4 mb-4">
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">Seu Plano de Ação</p>
-              <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{nc.devolutivas[nc.devolutivas.length - 1].descricaoPlanoAcao}</p>
-              <p className="text-xs text-slate-400 mt-2">
-                Enviado em {formatDateTime(nc.devolutivas[nc.devolutivas.length - 1].dataDevolutiva)}
-              </p>
-            </div>
-          )}
-
-          {id && (
-            <div className="bg-white border border-amber-200 rounded-lg p-4">
-              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências Enviadas" />
-            </div>
-          )}
         </div>
       )}
 
-      {/* NC EM_TRATAMENTO + pode validar → Formulário de validação */}
-      {showValidacaoForm && (
+      {/* AGUARDANDO_APROVACAO_PLANO + Engenheiro → aprovar/rejeitar plano */}
+      {showAprovacaoPlanoForm && (
         <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle size={16} className="text-green-600" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">Validação da Tratativa</h3>
+            <h3 className="text-base font-bold text-slate-800">Aprovação do Plano de Ação</h3>
           </div>
-          <p className="text-sm text-green-600 mb-5 ml-11">Revise o plano de ação enviado e aprove ou rejeite a tratativa</p>
+          <p className="text-sm text-green-600 mb-5 ml-11">Revise a investigação e o plano de atividades acima e aprove ou rejeite.</p>
 
-          {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
-            <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 mb-5">
-              <div className="flex items-center gap-2 mb-1.5">
-                <RefreshCw size={14} className="text-orange-600 shrink-0" />
-                <p className="text-sm font-bold text-orange-700">
-                  Atenção: {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência do mesmo problema
-                </p>
-              </div>
-              <p className="text-xs text-orange-600 mb-2">Verifique se o plano de ação proposto é diferente das tentativas anteriores e ataca a causa raiz.</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                {nc.cadeiaReincidencias?.map((item) => (
-                  <span key={item.id} className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded bg-orange-100 border border-orange-200 text-orange-700 font-medium max-w-[140px] truncate" title={item.titulo}>
-                      {item.titulo}
-                    </span>
-                    <span className="text-orange-300">→</span>
-                  </span>
-                ))}
-                <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-semibold max-w-[140px] truncate" title={nc.titulo}>
-                  {nc.titulo}
-                </span>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Comentário (opcional para aprovação)</label>
+              <textarea
+                value={comentarioAprovacao}
+                onChange={e => setComentarioAprovacao(e.target.value)}
+                rows={2}
+                placeholder="Adicione um comentário sobre sua decisão..."
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
+              />
             </div>
-          )}
 
-          {nc?.devolutivas && nc.devolutivas.length > 0 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-5">
-              <div className="text-xs text-blue-500 font-medium mb-1">Último Plano de Ação Enviado</div>
-              <div className="text-sm text-slate-700 break-words overflow-hidden">{nc.devolutivas[nc.devolutivas.length - 1].descricaoPlanoAcao}</div>
-              <div className="text-xs text-slate-400 mt-1">
-                Registrado por {nc.devolutivas[nc.devolutivas.length - 1].engenheiroNome ?? 'responsável'} em {formatDate(nc.devolutivas[nc.devolutivas.length - 1].dataDevolutiva)}
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">Motivo da Rejeição (obrigatório para reprovar)</label>
+              <textarea
+                value={motivoRejeicao}
+                onChange={e => setMotivoRejeicao(e.target.value)}
+                rows={3}
+                placeholder="Explique o motivo da rejeição para que o responsável possa ajustar..."
+                className="w-full border border-red-200 rounded-lg px-4 py-3 text-sm bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:bg-white transition"
+              />
             </div>
-          )}
 
-          {id && (
-            <div className="mb-5">
-              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
+            <div className="flex gap-3">
+              <button onClick={() => navigate('/tratativas')}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button
+                onClick={() => mutRejeitarPlano.mutate()}
+                disabled={!motivoRejeicao.trim() || mutRejeitarPlano.isPending}
+                className="flex-1 bg-red-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <XCircle size={16} /> {mutRejeitarPlano.isPending ? 'Enviando...' : 'Rejeitar Plano'}
+              </button>
+              <button
+                onClick={() => mutAprovarPlano.mutate()}
+                disabled={mutAprovarPlano.isPending}
+                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} /> {mutAprovarPlano.isPending ? 'Enviando...' : 'Aprovar Plano'}
+              </button>
             </div>
-          )}
-
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Observação (opcional)</label>
-            <textarea
-              value={observacao}
-              onChange={e => setObservacao(e.target.value)}
-              rows={3}
-              placeholder="Adicione uma observação sobre sua decisão..."
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/tratativas')}
-              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => mutationValidacao.mutate('REPROVADO')}
-              disabled={mutationValidacao.isPending}
-              className="flex-1 bg-red-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-            >
-              <XCircle size={16} />
-              {mutationValidacao.isPending ? 'Enviando...' : 'Reprovar'}
-            </button>
-            <button
-              onClick={() => mutationValidacao.mutate('APROVADO')}
-              disabled={mutationValidacao.isPending}
-              className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-            >
-              <CheckCircle size={16} />
-              {mutationValidacao.isPending ? 'Enviando...' : 'Aprovar'}
-            </button>
           </div>
         </div>
       )}
 
-      {/* NC EM_TRATAMENTO + sem permissão → aguardando */}
-      {!isDesvio && nc?.status === 'EM_TRATAMENTO' && !podeValidar && !isExterno && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex items-center gap-4">
-          <Clock size={32} className="text-blue-500 flex-shrink-0" />
+      {/* EM_EXECUCAO + Externo/Tecnico → upload evidências + descrição */}
+      {showExecucaoForm && (
+        <div className="bg-white rounded-xl border-2 border-purple-400 shadow-md p-6 ring-2 ring-purple-100">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <FileText size={16} className="text-purple-600" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800">Execução e Envio de Evidências</h3>
+          </div>
+          <p className="text-sm text-purple-600 mb-5 ml-11">Execute as atividades do plano, anexe as evidências e descreva o que foi feito.</p>
+
+          <div className="space-y-4">
+            {id && (
+              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" titulo="Evidências da Execução (PDF / Imagens)" />
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do que foi executado *</label>
+              <textarea
+                value={descricaoExecucao}
+                onChange={e => setDescricaoExecucao(e.target.value)}
+                rows={4}
+                placeholder="Descreva as ações realizadas para resolver a não conformidade..."
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white transition"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => navigate('/tratativas')}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button
+                onClick={() => mutSubmeterEvidencias.mutate()}
+                disabled={!descricaoExecucao.trim() || mutSubmeterEvidencias.isPending}
+                className="flex-1 bg-purple-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} /> {mutSubmeterEvidencias.isPending ? 'Enviando...' : 'Enviar para Validação Final'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EM_EXECUCAO + Engenheiro → aguardando */}
+      {showEngenheiroAguardaExecucao && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 flex items-center gap-4">
+          <Clock size={32} className="text-purple-500 shrink-0" />
           <div>
-            <div className="font-bold text-blue-800 text-base">Aguardando Validação do Engenheiro</div>
-            <div className="text-sm text-blue-600 mt-0.5">O plano de ação foi enviado e está sendo analisado pelo engenheiro responsável.</div>
+            <div className="font-bold text-purple-800 text-base">Plano Aprovado — Aguardando Execução</div>
+            <div className="text-sm text-purple-600 mt-0.5">O responsável está executando as atividades e irá enviar as evidências quando concluir.</div>
           </div>
         </div>
       )}
 
-      {/* NC Concluída */}
-      {!isDesvio && nc?.status === 'CONCLUIDO' && nc.validacoes.length === 0 && (
+      {/* AGUARDANDO_VALIDACAO_FINAL + Externo → aguardando */}
+      {showAguardandoValidacaoFinal && (
+        <div className="bg-indigo-50 border-2 border-indigo-300 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Clock size={20} className="text-indigo-600 shrink-0" />
+            <div>
+              <h3 className="font-bold text-indigo-800">Aguardando Validação Final</h3>
+              <p className="text-sm text-indigo-600">Suas evidências foram enviadas e estão sendo validadas pelo engenheiro.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AGUARDANDO_VALIDACAO_FINAL + Engenheiro → aprovar/rejeitar evidências */}
+      {showAprovacaoEvidenciasForm && (
+        <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle size={16} className="text-green-600" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800">Validação Final das Evidências</h3>
+          </div>
+          <p className="text-sm text-green-600 mb-5 ml-11">Revise as evidências e a descrição da execução acima. Aprove para concluir a NC ou rejeite para solicitar reenvio.</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Comentário (opcional para aprovação)</label>
+              <textarea
+                value={comentarioAprovacao}
+                onChange={e => setComentarioAprovacao(e.target.value)}
+                rows={2}
+                placeholder="Adicione um comentário sobre sua decisão..."
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">Motivo da Rejeição (obrigatório para reprovar)</label>
+              <textarea
+                value={motivoRejeicao}
+                onChange={e => setMotivoRejeicao(e.target.value)}
+                rows={3}
+                placeholder="Explique o motivo da rejeição das evidências..."
+                className="w-full border border-red-200 rounded-lg px-4 py-3 text-sm bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:bg-white transition"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => navigate('/tratativas')}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button
+                onClick={() => mutRejeitarEvidencias.mutate()}
+                disabled={!motivoRejeicao.trim() || mutRejeitarEvidencias.isPending}
+                className="flex-1 bg-red-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <XCircle size={16} /> {mutRejeitarEvidencias.isPending ? 'Enviando...' : 'Rejeitar Evidências'}
+              </button>
+              <button
+                onClick={() => mutAprovarEvidencias.mutate()}
+                disabled={mutAprovarEvidencias.isPending}
+                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} /> {mutAprovarEvidencias.isPending ? 'Enviando...' : 'Aprovar e Concluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONCLUIDO */}
+      {!isDesvio && nc?.status === 'CONCLUIDO' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
-          <CheckCircle size={32} className="text-green-500 flex-shrink-0" />
+          <CheckCircle size={32} className="text-green-500 shrink-0" />
           <div>
             <div className="font-bold text-green-800 text-base">Não Conformidade Concluída</div>
             <div className="text-sm text-green-600 mt-0.5">Esta ocorrência foi tratada e validada com sucesso.</div>
@@ -595,65 +890,66 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* NC Não Resolvida */}
-      {!isDesvio && nc?.status === 'NAO_RESOLVIDA' && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center gap-4">
-          <Ban size={32} className="text-red-500 flex-shrink-0" />
-          <div>
-            <div className="font-bold text-red-800 text-base">Prazo Vencido</div>
-            <div className="text-sm text-red-600 mt-0.5">O prazo para resolução desta não conformidade expirou sem tratativa.</div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de confirmação de envio (devolutiva) */}
+      {/* Modal de confirmação de envio da investigação */}
       {confirmarEnvio && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setConfirmarEnvio(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                   <AlertTriangle size={20} className="text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">Confirme sua Tratativa</h3>
-                  <p className="text-sm text-slate-500">Verifique as informações antes de enviar. Após o envio, não será possível alterar.</p>
+                  <h3 className="text-base font-bold text-slate-800">Confirmar Envio</h3>
+                  <p className="text-sm text-slate-500">Verifique antes de enviar. Você poderá ajustar caso o engenheiro solicite.</p>
                 </div>
               </div>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Plano de Ação</p>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-slate-700 whitespace-pre-wrap break-words overflow-hidden">
-                  {planoAcao}
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">5 Porquês</p>
+                <div className="space-y-3">
+                  {porques.map((p, i) => p.pergunta && (
+                    <div key={i} className="flex gap-2">
+                      <span className="font-semibold text-slate-500 shrink-0 text-sm">{i + 1}.</span>
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium text-slate-700 break-words">{p.pergunta}</p>
+                        {p.resposta && <p className="text-sm text-slate-500 break-words pl-2 border-l-2 border-blue-200">{p.resposta}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {id && (
-                <div>
-                  <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências Anexadas" />
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Causa Raiz</p>
+                <p className="text-sm text-slate-700 bg-gray-50 rounded-lg p-3 break-words">{causaRaiz}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Atividades do Plano</p>
+                <div className="space-y-1">
+                  {atividades.filter(a => a.trim()).map((a, i) => (
+                    <div key={i} className="flex gap-2 text-sm">
+                      <span className="font-semibold text-slate-500 shrink-0">{i + 1}.</span>
+                      <span className="text-slate-700 break-words">{a}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="p-6 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => setConfirmarEnvio(false)}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
-              >
+              <button onClick={() => setConfirmarEnvio(false)}
+                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                 Voltar e Revisar
               </button>
               <button
-                onClick={() => {
-                  setConfirmarEnvio(false)
-                  mutationDevolutiva.mutate()
-                }}
-                disabled={mutationDevolutiva.isPending}
-                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+                onClick={() => mutSubmeterInvestigacao.mutate()}
+                disabled={mutSubmeterInvestigacao.isPending}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
                 <CheckCircle size={16} />
-                {mutationDevolutiva.isPending ? 'Enviando...' : 'Confirmar Envio'}
+                {mutSubmeterInvestigacao.isPending ? 'Enviando...' : 'Confirmar Envio'}
               </button>
             </div>
           </div>

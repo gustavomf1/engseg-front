@@ -2,15 +2,23 @@ import { StatusNaoConformidade, StatusDesvio } from '../types'
 
 const ncColors: Record<StatusNaoConformidade, string> = {
   ABERTA: 'bg-yellow-100 text-yellow-800',
-  EM_TRATAMENTO: 'bg-blue-100 text-blue-800',
+  AGUARDANDO_APROVACAO_PLANO: 'bg-blue-100 text-blue-800',
+  EM_AJUSTE_PELO_EXTERNO: 'bg-orange-100 text-orange-800',
+  EM_EXECUCAO: 'bg-purple-100 text-purple-800',
+  AGUARDANDO_VALIDACAO_FINAL: 'bg-indigo-100 text-indigo-800',
   CONCLUIDO: 'bg-green-100 text-green-800',
+  EM_TRATAMENTO: 'bg-blue-100 text-blue-800',
   NAO_RESOLVIDA: 'bg-red-100 text-red-800',
 }
 
 const ncLabels: Record<StatusNaoConformidade, string> = {
   ABERTA: 'Aberta',
-  EM_TRATAMENTO: 'Em Tratamento',
+  AGUARDANDO_APROVACAO_PLANO: 'Aguard. Aprovação',
+  EM_AJUSTE_PELO_EXTERNO: 'Em Ajuste',
+  EM_EXECUCAO: 'Em Execução',
+  AGUARDANDO_VALIDACAO_FINAL: 'Aguard. Validação',
   CONCLUIDO: 'Concluído',
+  EM_TRATAMENTO: 'Em Tratamento',
   NAO_RESOLVIDA: 'Não Resolvida',
 }
 

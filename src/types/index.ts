@@ -1,6 +1,23 @@
 export type PerfilUsuario = 'ENGENHEIRO' | 'TECNICO' | 'EXTERNO'
 export type NivelSeveridade = 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO'
-export type StatusNaoConformidade = 'ABERTA' | 'EM_TRATAMENTO' | 'CONCLUIDO' | 'NAO_RESOLVIDA'
+export type StatusNaoConformidade =
+  | 'ABERTA'
+  | 'AGUARDANDO_APROVACAO_PLANO'
+  | 'EM_AJUSTE_PELO_EXTERNO'
+  | 'EM_EXECUCAO'
+  | 'AGUARDANDO_VALIDACAO_FINAL'
+  | 'CONCLUIDO'
+  | 'EM_TRATAMENTO'   // legado
+  | 'NAO_RESOLVIDA'   // legado
+
+export type TipoAcaoHistorico =
+  | 'CRIACAO'
+  | 'SUBMISSAO_INVESTIGACAO'
+  | 'APROVACAO_PLANO'
+  | 'REJEICAO_PLANO'
+  | 'SUBMISSAO_EVIDENCIAS'
+  | 'APROVACAO_EVIDENCIAS'
+  | 'REJEICAO_EVIDENCIAS'
 export type StatusDesvio = 'CONCLUIDO'
 export type ParecerValidacao = 'APROVADO' | 'REPROVADO'
 
@@ -139,6 +156,22 @@ export interface NcResumo {
   status: StatusNaoConformidade
 }
 
+export interface AtividadeResponse {
+  id: string
+  descricao: string
+  ordem: number
+}
+
+export interface HistoricoNcResponse {
+  id: string
+  acao: TipoAcaoHistorico
+  usuarioNome?: string
+  comentario?: string
+  statusAnterior?: StatusNaoConformidade
+  statusAtual?: StatusNaoConformidade
+  dataAcao: string
+}
+
 export interface NaoConformidade {
   id: string
   estabelecimentoId: string
@@ -167,6 +200,24 @@ export interface NaoConformidade {
   ncAnteriorTitulo?: string
   cadeiaReincidencias: NcResumo[]
   reincidencias: NcResumo[]
+  // Investigação — pergunta + resposta por porquê
+  porqueUm?: string
+  porqueUmResposta?: string
+  porqueDois?: string
+  porqueDoisResposta?: string
+  porqueTres?: string
+  porqueTresResposta?: string
+  porqueQuatro?: string
+  porqueQuatroResposta?: string
+  porqueCinco?: string
+  porqueCincoResposta?: string
+  causaRaiz?: string
+  descricaoExecucao?: string
+  atividades: AtividadeResponse[]
+  historico: HistoricoNcResponse[]
+  investigacaoSnapshots: InvestigacaoSnapshot[]
+  execucaoSnapshots: ExecucaoSnapshot[]
+  // Legado
   devolutivas: DevolutivaResponse[]
   execucoes: ExecucaoAcaoResponse[]
   validacoes: ValidacaoResponse[]
@@ -187,6 +238,30 @@ export interface NaoConformidadeRequest {
   ncAnteriorId?: string
 }
 
+export interface InvestigacaoRequest {
+  porqueUm: string
+  porqueUmResposta: string
+  porqueDois: string
+  porqueDoisResposta: string
+  porqueTres: string
+  porqueTresResposta: string
+  porqueQuatro: string
+  porqueQuatroResposta: string
+  porqueCinco: string
+  porqueCincoResposta: string
+  causaRaiz: string
+  atividades: string[]
+}
+
+export interface AprovarRejeitarRequest {
+  comentario?: string
+}
+
+export interface SubmeterEvidenciasRequest {
+  descricaoExecucao: string
+}
+
+// Legado
 export interface DevolutivaRequest {
   descricaoPlanoAcao: string
 }
@@ -236,6 +311,35 @@ export interface DashboardStats {
   ncConcluidas: number
   ncNaoResolvidas: number
   totalDesviosConcluidos: number
+}
+
+export type StatusSnapshot = 'PENDENTE' | 'APROVADO' | 'REPROVADO'
+
+export interface InvestigacaoSnapshot {
+  id: string
+  porqueUm: string
+  porqueUmResposta: string
+  porqueDois: string
+  porqueDoisResposta: string
+  porqueTres: string
+  porqueTresResposta: string
+  porqueQuatro: string
+  porqueQuatroResposta: string
+  porqueCinco: string
+  porqueCincoResposta: string
+  causaRaiz: string
+  atividades: string[]
+  dataSubmissao: string
+  status: StatusSnapshot
+  comentarioRevisao?: string
+}
+
+export interface ExecucaoSnapshot {
+  id: string
+  descricaoExecucao: string
+  dataSubmissao: string
+  status: StatusSnapshot
+  comentarioRevisao?: string
 }
 
 export type TipoEvidencia = 'OCORRENCIA' | 'TRATATIVA'
