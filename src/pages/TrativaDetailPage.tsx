@@ -263,19 +263,19 @@ export default function TrativaDetailPage() {
           {(ocorrencia as any).tecnicoNome && (
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Usuário de Registro</p>
-              <p className="text-slate-800">{(ocorrencia as any).tecnicoNome}</p>
+              <p className="text-slate-800 break-words">{(ocorrencia as any).tecnicoNome}</p>
             </div>
           )}
           {!isDesvio && nc?.engConstruturaNome && (
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável pela Tratativa</p>
-              <p className="text-slate-800">{nc.engConstruturaNome}{nc.engConstrutoraEmail ? ` (${nc.engConstrutoraEmail})` : ''}</p>
+              <p className="text-slate-800 break-words">{nc.engConstruturaNome}{nc.engConstrutoraEmail ? ` (${nc.engConstrutoraEmail})` : ''}</p>
             </div>
           )}
           {!isDesvio && nc?.engVerificacaoNome && (
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável</p>
-              <p className="text-slate-800">{nc.engVerificacaoNome}{nc.engVerificacaoEmail ? ` (${nc.engVerificacaoEmail})` : ''}</p>
+              <p className="text-slate-800 break-words">{nc.engVerificacaoNome}{nc.engVerificacaoEmail ? ` (${nc.engVerificacaoEmail})` : ''}</p>
             </div>
           )}
           <div className="sm:col-span-2">
@@ -285,7 +285,7 @@ export default function TrativaDetailPage() {
           {isDesvio && desvio?.orientacaoRealizada && (
             <div className="sm:col-span-2">
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Orientação Realizada</p>
-              <p className="text-slate-800 whitespace-pre-wrap">{desvio.orientacaoRealizada}</p>
+              <p className="text-slate-800 whitespace-pre-wrap break-words">{desvio.orientacaoRealizada}</p>
             </div>
           )}
         </div>
@@ -508,7 +508,7 @@ export default function TrativaDetailPage() {
               <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
-                  <span className="text-xs opacity-70">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                  <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
                 </div>
                 {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
               </div>

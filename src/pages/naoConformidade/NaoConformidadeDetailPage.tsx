@@ -99,19 +99,19 @@ export default function NaoConformidadeDetailPage() {
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Usuário de Criação</p>
-            <p className="text-slate-800">{nc.usuarioCriacaoNome ? `${nc.usuarioCriacaoNome} (${nc.usuarioCriacaoEmail})` : '—'}</p>
+            <p className="text-slate-800 break-words">{nc.usuarioCriacaoNome ? `${nc.usuarioCriacaoNome} (${nc.usuarioCriacaoEmail})` : '—'}</p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Usuário de Registro</p>
-            <p className="text-slate-800">{nc.tecnicoNome || '—'}</p>
+            <p className="text-slate-800 break-words">{nc.tecnicoNome || '—'}</p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável pela Tratativa</p>
-            <p className="text-slate-800">{nc.engConstruturaNome ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail})` : nc.engConstrutoraEmail || '—'}</p>
+            <p className="text-slate-800 break-words">{nc.engConstruturaNome ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail})` : nc.engConstrutoraEmail || '—'}</p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável</p>
-            <p className="text-slate-800">{nc.engVerificacaoNome ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail})` : nc.engVerificacaoEmail || '—'}</p>
+            <p className="text-slate-800 break-words">{nc.engVerificacaoNome ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail})` : nc.engVerificacaoEmail || '—'}</p>
           </div>
           <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição</p>
@@ -229,7 +229,7 @@ export default function NaoConformidadeDetailPage() {
               <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
-                  <span className="text-xs opacity-70">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                  <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
                 </div>
                 {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
               </div>
