@@ -217,7 +217,7 @@ export default function OcorrenciaDetailPage() {
       </div>
 
       {/* Header card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 overflow-hidden">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDesvio ? 'bg-yellow-100' : 'bg-red-100'}`}>
@@ -262,7 +262,7 @@ export default function OcorrenciaDetailPage() {
         <div className="mb-6">
           {editando
             ? <input value={form.titulo} onChange={e => set('titulo', e.target.value)} className={`${inputClass} text-lg font-bold`} />
-            : <h2 className="text-xl font-bold text-slate-800">{(ocorrencia as any).titulo}</h2>
+            : <h2 className="text-xl font-bold text-slate-800 break-words overflow-hidden">{(ocorrencia as any).titulo}</h2>
           }
         </div>
 
