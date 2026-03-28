@@ -18,12 +18,29 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData)
 
+/** Decodifica o payload do JWT (sem verificar assinatura — isso é responsabilidade do backend).
+ *  O objetivo é impedir que o perfil seja alterado via edição do localStorage. */
+function decodeTokenPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1]
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
+
 function loadUserFromStorage(): AuthUser | null {
   try {
     const raw = localStorage.getItem('engseg_user')
     const token = localStorage.getItem('engseg_token')
     if (raw && token) {
-      return JSON.parse(raw)
+      const stored = JSON.parse(raw) as AuthUser
+      const claims = decodeTokenPayload(token)
+      // Sempre sobrescreve o perfil com o valor vindo do token assinado,
+      // ignorando o que estiver salvo no localStorage.
+      const perfil = (claims?.perfil as PerfilUsuario) ?? stored.perfil
+      return { ...stored, token, perfil }
     }
   } catch {
     // ignore
