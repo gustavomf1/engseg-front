@@ -75,11 +75,28 @@ export default function RegistroOcorrenciaPage() {
     enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoSelecionado?.id,
   })
 
+  type NcItem = { id: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
+
   const ncsParaAnterior = useMemo(() =>
-    (ncsEstabelecimento as Array<{ id: string; titulo: string; status: string; dataRegistro: string }>)
-      .filter(nc => nc.id !== id),
+    (ncsEstabelecimento as NcItem[]).filter(nc => nc.id !== id),
     [ncsEstabelecimento, id]
   )
+
+  const reincidenciaWarning = useMemo(() => {
+    if (!ncAnteriorId) return null
+    const allNcs = ncsEstabelecimento as NcItem[]
+    // verifica se a NC selecionada já é ncAnterior de alguma outra NC (exceto a que está sendo editada)
+    const successor = allNcs.find(nc => nc.ncAnteriorId === ncAnteriorId && nc.id !== id)
+    if (!successor) return null
+    // percorre a cadeia até o fim real
+    let fim = successor
+    while (true) {
+      const prox = allNcs.find(nc => nc.ncAnteriorId === fim.id && nc.id !== id)
+      if (!prox) break
+      fim = prox
+    }
+    return fim
+  }, [ncAnteriorId, ncsEstabelecimento, id])
 
   const { data: ncAnteriorData } = useQuery({
     queryKey: ['nc-anterior-preview', ncAnteriorId],
@@ -361,7 +378,7 @@ export default function RegistroOcorrenciaPage() {
                       <select
                         value={ncAnteriorId}
                         onChange={e => setNcAnteriorId(e.target.value)}
-                        className={inputClass}
+                        className={`${inputClass} ${reincidenciaWarning ? 'border-orange-400 ring-1 ring-orange-300' : ''}`}
                       >
                         <option value="">Selecione a NC anterior</option>
                         {ncsParaAnterior.map(nc => (
@@ -370,6 +387,21 @@ export default function RegistroOcorrenciaPage() {
                           </option>
                         ))}
                       </select>
+                      {reincidenciaWarning && (
+                        <div className="mt-2 bg-orange-50 border border-orange-300 rounded-lg p-3 text-sm">
+                          <p className="font-semibold text-orange-700 mb-1">⚠ Esta NC já possui uma reincidência registrada</p>
+                          <p className="text-orange-600 text-xs mb-2">
+                            Para manter o rastro linear, selecione a última NC da cadeia:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setNcAnteriorId(reincidenciaWarning.id)}
+                            className="inline-flex items-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-semibold px-3 py-1.5 rounded-md transition"
+                          >
+                            Usar "{reincidenciaWarning.titulo}"
+                          </button>
+                        </div>
+                      )}
                     </div>
                     {ncAnteriorId && ncAnteriorData && (
                       <div className="bg-white border border-red-200 rounded-lg p-3">
