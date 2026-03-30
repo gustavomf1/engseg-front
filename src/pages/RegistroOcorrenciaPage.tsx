@@ -10,8 +10,17 @@ import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import { getNormas } from '../api/norma'
+import { vincularTrechoNorma } from '../api/ncTrechoNorma'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Camera, AlertCircle, FileText, Calendar } from 'lucide-react'
+import { Camera, AlertCircle, FileText, Calendar, Search, X } from 'lucide-react'
+import BuscaTrechoModal from '../components/BuscaTrechoModal'
+
+interface TrechoPendente {
+  normaId: string
+  normaTitulo: string
+  clausulaReferencia?: string
+  textoEditado: string
+}
 
 type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
 
@@ -35,6 +44,8 @@ export default function RegistroOcorrenciaPage() {
   const [normasSelecionadas, setNormasSelecionadas] = useState<string[]>([])
   const [isReincidencia, setIsReincidencia] = useState(false)
   const [ncAnteriorId, setNcAnteriorId] = useState<string>('')
+  const [trechosPendentes, setTrechosPendentes] = useState<TrechoPendente[]>([])
+  const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
@@ -194,6 +205,17 @@ export default function RegistroOcorrenciaPage() {
         }
       }
 
+      // Vincular trechos pendentes (somente na criação de NC)
+      if (!isEditing && tipo === 'NAO_CONFORMIDADE' && result?.id && trechosPendentes.length > 0) {
+        for (const t of trechosPendentes) {
+          await vincularTrechoNorma(result.id, {
+            normaId: t.normaId,
+            clausulaReferencia: t.clausulaReferencia,
+            textoEditado: t.textoEditado,
+          })
+        }
+      }
+
       return result
     },
     onSuccess: () => {
@@ -329,26 +351,59 @@ export default function RegistroOcorrenciaPage() {
                 ) : (
                   <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
                     {normas.map(norma => (
-                      <label key={norma.id} className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4 rounded"
-                          checked={normasSelecionadas.includes(norma.id)}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setNormasSelecionadas(prev => [...prev, norma.id])
-                            } else {
-                              setNormasSelecionadas(prev => prev.filter(id => id !== norma.id))
-                            }
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
-                          {norma.descricao && (
-                            <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{norma.descricao}</p>
-                          )}
+                      <div key={norma.id} className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50">
+                        <label className="flex items-start gap-3 flex-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4 rounded"
+                            checked={normasSelecionadas.includes(norma.id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setNormasSelecionadas(prev => [...prev, norma.id])
+                              } else {
+                                setNormasSelecionadas(prev => prev.filter(nid => nid !== norma.id))
+                                setTrechosPendentes(prev => prev.filter(t => t.normaId !== norma.id))
+                              }
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
+                            {norma.descricao && (
+                              <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{norma.descricao}</p>
+                            )}
+                          </div>
+                        </label>
+                        {normasSelecionadas.includes(norma.id) && norma.conteudo && !isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition shrink-0"
+                          >
+                            <Search size={11} />
+                            Buscar trecho
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {trechosPendentes.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Trechos a vincular ({trechosPendentes.length})</p>
+                    {trechosPendentes.map((t, i) => (
+                      <div key={i} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-blue-700">{t.normaTitulo}{t.clausulaReferencia ? ` — ${t.clausulaReferencia}` : ''}</p>
+                          <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{t.textoEditado}</p>
                         </div>
-                      </label>
+                        <button
+                          type="button"
+                          onClick={() => setTrechosPendentes(prev => prev.filter((_, idx) => idx !== i))}
+                          className="p-1 text-slate-400 hover:text-red-500 transition shrink-0"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -500,6 +555,15 @@ export default function RegistroOcorrenciaPage() {
           </div>
         </form>
       </div>
+
+      {buscaModal && (
+        <BuscaTrechoModal
+          normaId={buscaModal.normaId}
+          normaTitulo={buscaModal.normaTitulo}
+          onTrechoSelecionado={trecho => setTrechosPendentes(prev => [...prev, trecho])}
+          onClose={() => setBuscaModal(null)}
+        />
+      )}
     </div>
   )
 }

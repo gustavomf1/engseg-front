@@ -1,13 +1,18 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getNaoConformidade } from '../../api/naoConformidade'
+import { getTrechosNorma } from '../../api/ncTrechoNorma'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import SeveridadeBadge from '../../components/SeveridadeBadge'
-import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2 } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
+import BuscaTrechoModal from '../../components/BuscaTrechoModal'
 import { formatDate, formatDateTime } from '../../utils/date'
 import { TipoAcaoHistorico } from '../../types'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { deletarTrechoNorma } from '../../api/ncTrechoNorma'
 
 const acaoLabels: Record<TipoAcaoHistorico, string> = {
   CRIACAO: 'NC Criada',
@@ -33,11 +38,24 @@ export default function NaoConformidadeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
 
   const { data: nc, isLoading } = useQuery({
     queryKey: ['nao-conformidade', id],
     queryFn: () => getNaoConformidade(id!),
     enabled: !!id,
+  })
+
+  const { data: trechos = [] } = useQuery({
+    queryKey: ['trechos-norma', id],
+    queryFn: () => getTrechosNorma(id!),
+    enabled: !!id,
+  })
+
+  const deletarTrechoMutation = useMutation({
+    mutationFn: (trechoId: string) => deletarTrechoNorma(id!, trechoId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trechos-norma', id] }),
   })
 
   if (isLoading) return <div className="text-slate-400 py-8 text-center">Carregando...</div>
@@ -217,6 +235,72 @@ export default function NaoConformidadeDetailPage() {
         </div>
       )}
 
+      {/* Normas vinculadas */}
+      {nc.normas?.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen size={16} className="text-slate-500" />
+            <h3 className="font-semibold text-slate-700">Normas Vinculadas</h3>
+          </div>
+          <div className="space-y-2">
+            {nc.normas.map(norma => (
+              <div key={norma.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
+                  {norma.descricao && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{norma.descricao}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                  title={norma.conteudo ? 'Buscar trecho por IA' : 'Esta norma não possui conteúdo cadastrado'}
+                  disabled={!norma.conteudo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
+                >
+                  <Search size={12} />
+                  Buscar trecho
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trechos de normas vinculados */}
+      {trechos.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText size={16} className="text-blue-500" />
+            <h3 className="font-semibold text-slate-700">Trechos de Normas Vinculados</h3>
+            <span className="text-xs text-slate-400">({trechos.length})</span>
+          </div>
+          <div className="space-y-3">
+            {trechos.map(t => (
+              <div key={t.id} className="border border-blue-100 rounded-lg p-4 bg-blue-50/30">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <span className="text-xs font-semibold text-blue-700">{t.normaTitulo}</span>
+                    {t.clausulaReferencia && (
+                      <span className="ml-2 text-xs text-slate-500">— {t.clausulaReferencia}</span>
+                    )}
+                    <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(t.dataVinculo)}</p>
+                  </div>
+                  {(user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO') && (
+                    <button
+                      onClick={() => deletarTrechoMutation.mutate(t.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                      title="Remover trecho"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{t.textoEditado}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Histórico de decisões */}
       {nc.historico?.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
@@ -247,6 +331,15 @@ export default function NaoConformidadeDetailPage() {
             <div className="text-sm text-green-600 mt-0.5">Esta ocorrência foi tratada e validada com sucesso.</div>
           </div>
         </div>
+      )}
+
+      {buscaModal && (
+        <BuscaTrechoModal
+          ncId={id!}
+          normaId={buscaModal.normaId}
+          normaTitulo={buscaModal.normaTitulo}
+          onClose={() => setBuscaModal(null)}
+        />
       )}
     </div>
   )

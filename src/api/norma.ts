@@ -22,6 +22,16 @@ export const updateNorma = async (id: string, data: NormaRequest): Promise<Norma
   return res.data
 }
 
+export const salvarConteudoNorma = async (id: string, conteudo: string): Promise<Norma> => {
+  const res = await client.put<Norma>(`/normas/${id}/conteudo`, { conteudo })
+  return res.data
+}
+
+export const buscarTrechoNorma = async (id: string, prompt: string): Promise<{ trecho: string; clausulaReferencia?: string }> => {
+  const res = await client.post(`/normas/${id}/buscar-trecho`, { prompt })
+  return res.data
+}
+
 export const deleteNorma = async (id: string): Promise<void> => {
   await client.delete(`/normas/${id}`)
 }

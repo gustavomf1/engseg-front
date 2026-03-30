@@ -128,12 +128,23 @@ export interface Norma {
   id: string
   titulo: string
   descricao?: string
+  conteudo?: string
   ativo: boolean
 }
 
 export interface NormaRequest {
   titulo: string
   descricao?: string
+  conteudo?: string
+}
+
+export interface NcTrechoNorma {
+  id: string
+  normaId: string
+  normaTitulo: string
+  clausulaReferencia?: string
+  textoEditado: string
+  dataVinculo: string
 }
 
 export interface Localizacao {
