@@ -18,6 +18,7 @@ import {
   RefreshCw, Plus, Trash2, History, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
+import { downloadEvidencia } from '../api/evidencia'
 import StatusBadge from '../components/StatusBadge'
 import SeveridadeBadge from '../components/SeveridadeBadge'
 import { formatDate, formatDateTime } from '../utils/date'
@@ -89,6 +90,16 @@ export default function TrativaDetailPage() {
   const toggleNorma = useCallback((nId: string) => {
     setNormaAberta(prev => prev === nId ? null : nId)
   }, [])
+
+  const handleDownloadEvidencia = async (evidenciaId: string, nomeArquivo: string) => {
+    const blob = await downloadEvidencia(evidenciaId)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nomeArquivo
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -231,7 +242,7 @@ export default function TrativaDetailPage() {
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-slate-800 mb-5">{(ocorrencia as any).titulo}</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-5 break-words">{(ocorrencia as any).titulo}</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
@@ -482,11 +493,25 @@ export default function TrativaDetailPage() {
                         </div>
                       )}
                       <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{snap.descricaoExecucao}</p>
-                      {isLatest && id && (
-                        <div className="pt-2">
-                          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Execução" />
-                        </div>
-                      )}
+                      <div className="pt-2">
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Evidências da Execução</p>
+                        {snap.evidencias?.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {snap.evidencias.map(ev => (
+                              <button
+                                key={ev.id}
+                                onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                              >
+                                <FileText size={12} />
+                                {ev.nomeArquivo}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400">Nenhuma evidência anexada</p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

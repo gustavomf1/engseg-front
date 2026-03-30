@@ -340,6 +340,7 @@ export interface ExecucaoSnapshot {
   dataSubmissao: string
   status: StatusSnapshot
   comentarioRevisao?: string
+  evidencias: Evidencia[]
 }
 
 export type TipoEvidencia = 'OCORRENCIA' | 'TRATATIVA'
