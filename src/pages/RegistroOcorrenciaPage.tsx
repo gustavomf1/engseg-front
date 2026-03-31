@@ -12,8 +12,9 @@ import { getUsuarios } from '../api/usuario'
 import { getNormas } from '../api/norma'
 import { vincularTrechoNorma } from '../api/ncTrechoNorma'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Camera, AlertCircle, FileText, Calendar, Search, X } from 'lucide-react'
+import { Camera, AlertCircle, FileText, Calendar, Search, X, PenLine } from 'lucide-react'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
+import TrechoManualModal from '../components/TrechoManualModal'
 
 interface TrechoPendente {
   normaId: string
@@ -46,6 +47,7 @@ export default function RegistroOcorrenciaPage() {
   const [ncAnteriorId, setNcAnteriorId] = useState<string>('')
   const [trechosPendentes, setTrechosPendentes] = useState<TrechoPendente[]>([])
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
+  const [manualModal, setManualModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
@@ -373,15 +375,27 @@ export default function RegistroOcorrenciaPage() {
                             )}
                           </div>
                         </label>
-                        {normasSelecionadas.includes(norma.id) && norma.conteudo && !isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition shrink-0"
-                          >
-                            <Search size={11} />
-                            Buscar trecho
-                          </button>
+                        {normasSelecionadas.includes(norma.id) && !isEditing && (
+                          <div className="flex gap-1 shrink-0">
+                            {norma.conteudo && (
+                              <button
+                                type="button"
+                                onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                              >
+                                <Search size={11} />
+                                Buscar trecho
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setManualModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700 transition"
+                            >
+                              <PenLine size={11} />
+                              Escrever manual
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -562,6 +576,14 @@ export default function RegistroOcorrenciaPage() {
           normaTitulo={buscaModal.normaTitulo}
           onTrechoSelecionado={trecho => setTrechosPendentes(prev => [...prev, trecho])}
           onClose={() => setBuscaModal(null)}
+        />
+      )}
+      {manualModal && (
+        <TrechoManualModal
+          normaId={manualModal.normaId}
+          normaTitulo={manualModal.normaTitulo}
+          onSalvar={trecho => setTrechosPendentes(prev => [...prev, trecho])}
+          onClose={() => setManualModal(null)}
         />
       )}
     </div>
