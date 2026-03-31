@@ -27,3 +27,8 @@ export const updateLocalizacao = async (id: string, data: LocalizacaoRequest): P
 export const deleteLocalizacao = async (id: string): Promise<void> => {
   await client.delete(`/localizacoes/${id}`)
 }
+
+export const reativarLocalizacao = async (id: string): Promise<Localizacao> => {
+  const res = await client.put<Localizacao>(`/localizacoes/${id}/reativar`)
+  return res.data
+}

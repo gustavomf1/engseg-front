@@ -44,6 +44,7 @@ export interface Empresa {
   empresaMaeId?: string
   empresaMaeNome?: string
   ativo: boolean
+  dtInativacao?: string
 }
 
 export interface EmpresaRequest {
@@ -68,6 +69,7 @@ export interface Estabelecimento {
   cidade?: string
   estado?: string
   ativo: boolean
+  dtInativacao?: string
 }
 
 export interface EstabelecimentoRequest {
@@ -91,6 +93,7 @@ export interface Usuario {
   empresaNome: string
   telefone?: string
   ativo: boolean
+  dtInativacao?: string
 }
 
 export interface UsuarioRequest {
@@ -130,6 +133,7 @@ export interface Norma {
   descricao?: string
   conteudo?: string
   ativo: boolean
+  dtInativacao?: string
 }
 
 export interface NormaRequest {
@@ -153,6 +157,7 @@ export interface Localizacao {
   estabelecimentoId: string
   estabelecimentoNome: string
   ativo: boolean
+  dtInativacao?: string
 }
 
 export interface LocalizacaoRequest {

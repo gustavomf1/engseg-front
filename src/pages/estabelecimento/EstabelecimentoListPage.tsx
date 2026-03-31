@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getEstabelecimentos, deleteEstabelecimento } from '../../api/estabelecimento'
+import { getEstabelecimentos, deleteEstabelecimento, reativarEstabelecimento } from '../../api/estabelecimento'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, MapPin, Eye, X, Building2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, MapPin, Eye, X, Building2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Estabelecimento } from '../../types'
@@ -26,6 +26,13 @@ export default function EstabelecimentoListPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] })
       setConfirmando(null)
+    },
+  })
+
+  const reativarMutation = useMutation({
+    mutationFn: reativarEstabelecimento,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] })
     },
   })
 
@@ -99,9 +106,15 @@ export default function EstabelecimentoListPage() {
                           <Link to={`/estabelecimentos/${item.id}/editar`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
                             <Pencil size={15} />
                           </Link>
-                          <button onClick={() => setConfirmando(item)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
-                            <Trash2 size={15} />
-                          </button>
+                          {item.ativo ? (
+                            <button onClick={() => setConfirmando(item)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded" title="Desativar">
+                              <Trash2 size={15} />
+                            </button>
+                          ) : (
+                            <button onClick={() => reativarMutation.mutate(item.id)} className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded" title="Reativar">
+                              <RotateCcw size={15} />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>

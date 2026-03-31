@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getEmpresas, deleteEmpresa } from '../../api/empresa'
+import { getEmpresas, deleteEmpresa, reativarEmpresa } from '../../api/empresa'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Building2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Empresa } from '../../types'
@@ -33,6 +33,14 @@ export default function EmpresaListPage() {
       queryClient.invalidateQueries({ queryKey: ['empresas'] })
       queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
       setConfirmando(null)
+    },
+  })
+
+  const reativarMutation = useMutation({
+    mutationFn: reativarEmpresa,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
     },
   })
 
@@ -134,12 +142,23 @@ export default function EmpresaListPage() {
                         >
                           <Pencil size={15} />
                         </Link>
-                        <button
-                          onClick={() => setConfirmando(empresa)}
-                          className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {empresa.ativo ? (
+                          <button
+                            onClick={() => setConfirmando(empresa)}
+                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
+                            title="Desativar"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => reativarMutation.mutate(empresa.id)}
+                            className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded"
+                            title="Reativar"
+                          >
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

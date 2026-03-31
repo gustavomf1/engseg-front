@@ -26,6 +26,11 @@ export const deleteEstabelecimento = async (id: string): Promise<void> => {
   await client.delete(`/estabelecimentos/${id}`)
 }
 
+export const reativarEstabelecimento = async (id: string): Promise<Estabelecimento> => {
+  const res = await client.put<Estabelecimento>(`/estabelecimentos/${id}/reativar`)
+  return res.data
+}
+
 // Empresas vinculadas a um estabelecimento
 export const getEmpresasDoEstabelecimento = async (estabelecimentoId: string): Promise<Empresa[]> => {
   const res = await client.get<Empresa[]>(`/estabelecimentos/${estabelecimentoId}/empresas`)

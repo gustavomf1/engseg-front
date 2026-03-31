@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsuarios, deleteUsuario } from '../../api/usuario'
+import { getUsuarios, deleteUsuario, reativarUsuario } from '../../api/usuario'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Users } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Usuario } from '../../types'
@@ -38,6 +38,13 @@ export default function UsuarioListPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
       setConfirmando(null)
+    },
+  })
+
+  const reativarMutation = useMutation({
+    mutationFn: reativarUsuario,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
     },
   })
 
@@ -111,9 +118,15 @@ export default function UsuarioListPage() {
                         <Link to={`/usuarios/${u.id}/editar`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded">
                           <Pencil size={15} />
                         </Link>
-                        <button onClick={() => setConfirmando(u)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded">
-                          <Trash2 size={15} />
-                        </button>
+                        {u.ativo ? (
+                          <button onClick={() => setConfirmando(u)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded" title="Desativar">
+                            <Trash2 size={15} />
+                          </button>
+                        ) : (
+                          <button onClick={() => reativarMutation.mutate(u.id)} className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded" title="Reativar">
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

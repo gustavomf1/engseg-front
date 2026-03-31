@@ -27,3 +27,8 @@ export const updateUsuario = async (id: string, data: UsuarioRequest): Promise<U
 export const deleteUsuario = async (id: string): Promise<void> => {
   await client.delete(`/usuarios/${id}`)
 }
+
+export const reativarUsuario = async (id: string): Promise<Usuario> => {
+  const res = await client.put<Usuario>(`/usuarios/${id}/reativar`)
+  return res.data
+}

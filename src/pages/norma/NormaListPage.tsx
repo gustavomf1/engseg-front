@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getNormas, deleteNorma } from '../../api/norma'
+import { getNormas, deleteNorma, reativarNorma } from '../../api/norma'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, BookOpen } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, BookOpen } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Norma } from '../../types'
 
@@ -23,6 +23,13 @@ export default function NormaListPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['normas'] })
       setConfirmando(null)
+    },
+  })
+
+  const reativarMutation = useMutation({
+    mutationFn: reativarNorma,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['normas'] })
     },
   })
 
@@ -92,12 +99,15 @@ export default function NormaListPage() {
                       >
                         <Pencil size={15} />
                       </Link>
-                      <button
-                        onClick={() => setConfirmando(item)}
-                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {item.ativo ? (
+                        <button onClick={() => setConfirmando(item)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded" title="Desativar">
+                          <Trash2 size={15} />
+                        </button>
+                      ) : (
+                        <button onClick={() => reativarMutation.mutate(item.id)} className="p-1.5 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded" title="Reativar">
+                          <RotateCcw size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

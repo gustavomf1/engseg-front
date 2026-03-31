@@ -38,3 +38,8 @@ export const updateEmpresa = async (id: string, data: EmpresaRequest): Promise<E
 export const deleteEmpresa = async (id: string): Promise<void> => {
   await client.delete(`/empresas/${id}`)
 }
+
+export const reativarEmpresa = async (id: string): Promise<Empresa> => {
+  const res = await client.put<Empresa>(`/empresas/${id}/reativar`)
+  return res.data
+}

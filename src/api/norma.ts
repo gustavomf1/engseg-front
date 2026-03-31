@@ -35,3 +35,8 @@ export const buscarTrechoNorma = async (id: string, prompt: string): Promise<{ t
 export const deleteNorma = async (id: string): Promise<void> => {
   await client.delete(`/normas/${id}`)
 }
+
+export const reativarNorma = async (id: string): Promise<Norma> => {
+  const res = await client.put<Norma>(`/normas/${id}/reativar`)
+  return res.data
+}
