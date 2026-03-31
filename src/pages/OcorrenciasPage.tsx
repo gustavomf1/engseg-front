@@ -5,6 +5,7 @@ import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } f
 import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import { formatDate } from '../utils/date'
 
 export default function OcorrenciasPage() {
@@ -121,8 +122,21 @@ export default function OcorrenciasPage() {
           return (
             <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="flex items-start gap-3 sm:gap-5">
-                {/* Icon */}
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${item.tipo === 'DESVIO' ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                {/* Thumbnail */}
+                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center overflow-hidden">
+                  {item.primeiraEvidenciaId && item.primeiraEvidenciaNome ? (
+                    <EvidenciaThumbnail
+                      evidenciaId={item.primeiraEvidenciaId}
+                      nomeArquivo={item.primeiraEvidenciaNome}
+                    />
+                  ) : (
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.tipo === 'DESVIO' ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                      <AlertTriangle size={18} className={item.tipo === 'DESVIO' ? 'text-yellow-500' : 'text-red-500'} />
+                    </div>
+                  )}
+                </div>
+                {/* Mobile icon only */}
+                <div className={`sm:hidden w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${item.tipo === 'DESVIO' ? 'bg-yellow-100' : 'bg-red-100'}`}>
                   <AlertTriangle size={18} className={item.tipo === 'DESVIO' ? 'text-yellow-500' : 'text-red-500'} />
                 </div>
 
