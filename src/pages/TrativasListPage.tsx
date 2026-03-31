@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
 import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import { formatDate } from '../utils/date'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
@@ -166,12 +167,19 @@ export default function TrativasListPage() {
             <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="flex items-start gap-3 sm:gap-5">
                 {/* Thumbnail - hidden on mobile */}
-                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center">
-                  <div className="space-y-1 px-2 w-full">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
-                    ))}
-                  </div>
+                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center overflow-hidden">
+                  {item.primeiraEvidenciaId && item.primeiraEvidenciaNome ? (
+                    <EvidenciaThumbnail
+                      evidenciaId={item.primeiraEvidenciaId}
+                      nomeArquivo={item.primeiraEvidenciaNome}
+                    />
+                  ) : (
+                    <div className="space-y-1 px-2 w-full">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
