@@ -15,6 +15,8 @@ export interface OcorrenciaItem {
   engResponsavelConstrutoraId?: string
   engResponsavelVerificacaoId?: string
   vencida?: boolean
+  primeiraEvidenciaId?: string
+  primeiraEvidenciaNome?: string
 }
 
 export const getOcorrencias = () =>

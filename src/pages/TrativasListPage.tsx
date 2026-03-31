@@ -3,11 +3,22 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
-import { Search, AlertTriangle, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
+import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
-type StatusFiltro = 'TODOS' | 'AGUARDANDO_TRATATIVA' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
+type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
+
+const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[]; activeColor: string }[] = [
+  { key: 'TODOS',                label: 'Todos',             tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
+  { key: 'ABERTAS',              label: 'Abertas',           tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-yellow-500 text-white' },
+  { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento',      tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-blue-600 text-white' },
+  { key: 'AGUARDANDO_VALIDACAO', label: 'Aguard. Validação', tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-indigo-600 text-white' },
+  { key: 'CONCLUIDAS',           label: 'Concluídos',        tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-green-600 text-white' },
+  { key: 'VENCIDAS',             label: 'Vencidas',          tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
+]
 
 export default function TrativasListPage() {
   const navigate = useNavigate()
@@ -15,6 +26,8 @@ export default function TrativasListPage() {
   const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<TipoFiltro>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('TODOS')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
 
@@ -34,10 +47,18 @@ export default function TrativasListPage() {
     if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
     if (item.status === 'AGUARDANDO_VALIDACAO_FINAL') return 'AGUARDANDO_VALIDACAO'
-    if (['ABERTA', 'AGUARDANDO_APROVACAO_PLANO', 'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
+    if (item.status === 'ABERTA') return 'ABERTAS'
+    if (['AGUARDANDO_APROVACAO_PLANO', 'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
     const dias = getDiasRestantes(item.dataLimiteResolucao)
     if (dias !== null && dias < 0) return 'VENCIDAS'
     return 'TODOS'
+  }
+
+  function handleTipoChange(tipo: TipoFiltro) {
+    const available = STATUS_TABS_CONFIG.filter(t => t.tipos.includes(tipo)).map(t => t.key)
+    setFiltroTipo(tipo)
+    setPage(1)
+    if (!available.includes(filtroStatus)) setFiltroStatus('TODOS')
   }
 
   const filtradas = visiveis.filter(o => {
@@ -49,12 +70,15 @@ export default function TrativasListPage() {
     return matchTipo && matchBusca && matchStatus
   })
 
-  const contadores = {
-    AGUARDANDO_TRATATIVA: visiveis.filter(o => getStatusFiltroLabel(o) === 'AGUARDANDO_TRATATIVA').length,
-    AGUARDANDO_VALIDACAO: visiveis.filter(o => getStatusFiltroLabel(o) === 'AGUARDANDO_VALIDACAO').length,
-    CONCLUIDAS: visiveis.filter(o => getStatusFiltroLabel(o) === 'CONCLUIDAS').length,
-    VENCIDAS: visiveis.filter(o => getStatusFiltroLabel(o) === 'VENCIDAS').length,
-  }
+  const totalPages = Math.ceil(filtradas.length / PAGE_SIZE)
+  const paginadas = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const tipoFiltradas = visiveis.filter(o => filtroTipo === 'TODOS' || o.tipo === filtroTipo)
+  const contadores = Object.fromEntries(
+    STATUS_TABS_CONFIG.map(t => [t.key, tipoFiltradas.filter(o => getStatusFiltroLabel(o) === t.key).length])
+  ) as Record<StatusFiltro, number>
+
+  const visibleTabs = STATUS_TABS_CONFIG.filter(t => t.tipos.includes(filtroTipo))
 
   function getDiasRestantes(dataLimite?: string) {
     if (!dataLimite) return null
@@ -108,7 +132,7 @@ export default function TrativasListPage() {
           <Search size={16} className="text-gray-400" />
           <input
             value={busca}
-            onChange={e => setBusca(e.target.value)}
+            onChange={e => { setBusca(e.target.value); setPage(1) }}
             placeholder="Buscar por título ou localização..."
             className="flex-1 bg-transparent text-sm outline-none"
           />
@@ -117,7 +141,7 @@ export default function TrativasListPage() {
           {(['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'] as TipoFiltro[]).map(f => (
             <button
               key={f}
-              onClick={() => setFiltroTipo(f)}
+              onClick={() => handleTipoChange(f)}
               className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition ${filtroTipo === f ? 'bg-slate-800 text-white' : 'text-slate-600 border border-gray-200 hover:bg-gray-50'}`}
             >
               {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'NCs'}
@@ -128,10 +152,10 @@ export default function TrativasListPage() {
 
       {/* Status filter tabs */}
       <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
-        {statusTabs.map(tab => (
+        {visibleTabs.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setFiltroStatus(tab.key)}
+            onClick={() => { setFiltroStatus(tab.key); setPage(1) }}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               filtroStatus === tab.key
                 ? tab.activeColor
@@ -139,11 +163,11 @@ export default function TrativasListPage() {
             }`}
           >
             {tab.label}
-            {tab.count !== undefined && tab.count > 0 && (
+            {tab.key !== 'TODOS' && contadores[tab.key] > 0 && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
                 filtroStatus === tab.key ? 'bg-white/20' : 'bg-slate-100 text-slate-600'
               }`}>
-                {tab.count}
+                {contadores[tab.key]}
               </span>
             )}
           </button>
@@ -158,27 +182,42 @@ export default function TrativasListPage() {
         </div>
       )}
       <div className="space-y-3">
-        {filtradas.map(item => {
+        {paginadas.map(item => {
           const statusInfo = getStatusInfo(item)
           const dias = item.tipo === 'NAO_CONFORMIDADE' ? getDiasRestantes(item.dataLimiteResolucao) : null
 
+          const concluido = item.status === 'CONCLUIDO' || item.tipo === 'DESVIO'
           return (
             <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="flex items-start gap-3 sm:gap-5">
                 {/* Thumbnail - hidden on mobile */}
-                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center">
-                  <div className="space-y-1 px-2 w-full">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
-                    ))}
-                  </div>
+                <div className="hidden sm:flex w-24 h-20 bg-gray-100 rounded-lg flex-shrink-0 items-center justify-center overflow-hidden">
+                  {item.primeiraEvidenciaId && item.primeiraEvidenciaNome ? (
+                    <EvidenciaThumbnail
+                      evidenciaId={item.primeiraEvidenciaId}
+                      nomeArquivo={item.primeiraEvidenciaNome}
+                    />
+                  ) : (
+                    <div className="space-y-1 px-2 w-full">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-1.5 bg-gray-200 rounded" style={{ width: `${60 + i * 10}%` }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <AlertTriangle size={16} className={item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'} />
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                    {concluido
+                      ? <CheckCircle2 size={16} className="text-green-500" />
+                      : <AlertTriangle size={16} className={item.tipo === 'DESVIO' ? 'text-yellow-400' : 'text-red-400'} />
+                    }
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      concluido
+                        ? 'bg-green-100 text-green-700'
+                        : item.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>
                       {item.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
                     </span>
                     {item.regraDeOuro && (
@@ -225,6 +264,8 @@ export default function TrativasListPage() {
           )
         })}
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} />
     </div>
   )
 }
