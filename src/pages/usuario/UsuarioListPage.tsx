@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsuarios, deleteUsuario, reativarUsuario } from '../../api/usuario'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RotateCcw, Users, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck } from 'lucide-react'
+import { formatCnpj, formatTelefone } from '../../utils/date'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
@@ -43,6 +44,7 @@ export default function UsuarioListPage() {
   function handleBusca(v: string) { setBusca(v); setPage(1) }
   function handlePageSize(v: number) { setPageSize(v); setPage(1) }
 
+  const [visualizando, setVisualizando] = useState<Usuario | null>(null)
   const [confirmando, setConfirmando] = useState<Usuario | null>(null)
 
   const deleteMutation = useMutation({
@@ -135,6 +137,7 @@ export default function UsuarioListPage() {
                     {user?.perfil === 'ENGENHEIRO' && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => setVisualizando(u)} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded" title="Ver detalhes"><Eye size={15} /></button>
                           <Link to={`/usuarios/${u.id}/editar`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded"><Pencil size={15} /></Link>
                           {u.ativo ? (
                             <button onClick={() => setConfirmando(u)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 size={15} /></button>
@@ -155,6 +158,104 @@ export default function UsuarioListPage() {
             <span>Página {page} de {totalPages}</span>
           </div>
         </>
+      )}
+
+      {/* Modal de visualização */}
+      {visualizando && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setVisualizando(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg font-bold text-slate-600">{visualizando.nome.charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">{visualizando.nome}</h3>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${perfilColors[visualizando.perfil]}`}>
+                    {perfilLabels[visualizando.perfil]}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setVisualizando(null)} className="text-slate-400 hover:text-slate-600 transition p-1">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {/* Email */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <Mail size={15} className="text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400">Email</p>
+                  <p className="text-sm font-medium text-slate-700">{visualizando.email}</p>
+                </div>
+              </div>
+
+              {/* Telefone */}
+              {visualizando.telefone && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Phone size={15} className="text-slate-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-slate-400">Telefone</p>
+                    <p className="text-sm font-medium text-slate-700">{formatTelefone(visualizando.telefone)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Empresa */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <Building2 size={15} className="text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400">Empresa</p>
+                  <p className="text-sm font-medium text-slate-700">{visualizando.empresaNome}</p>
+                  {visualizando.empresaCnpj && (
+                    <p className="text-xs text-slate-400 mt-0.5">CNPJ: {formatCnpj(visualizando.empresaCnpj)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Status + datas */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-400 mb-1">Status</p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${visualizando.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {visualizando.ativo ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+                {visualizando.dtCriacao && (
+                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                    <Calendar size={13} className="text-slate-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-400">Criado em</p>
+                      <p className="text-xs font-medium text-slate-700">
+                        {new Date(visualizando.dtCriacao).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {visualizando.dtInativacao && (
+                <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+                  <ShieldCheck size={15} className="text-red-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-red-400">Inativado em</p>
+                    <p className="text-sm font-medium text-red-600">
+                      {new Date(visualizando.dtInativacao).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-5">
+              <button onClick={() => setVisualizando(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog

@@ -91,8 +91,10 @@ export interface Usuario {
   perfil: PerfilUsuario
   empresaId: string
   empresaNome: string
+  empresaCnpj?: string
   telefone?: string
   ativo: boolean
+  dtCriacao?: string
   dtInativacao?: string
 }
 

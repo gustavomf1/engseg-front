@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEmpresas, deleteEmpresa, reativarEmpresa } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, Building2, Search } from 'lucide-react'
+import { formatCnpj } from '../../utils/date'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
@@ -135,7 +136,7 @@ export default function EmpresaListPage() {
                 {paginadas.map(empresa => (
                   <tr key={empresa.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-slate-800">{empresa.razaoSocial}</td>
-                    <td className="px-4 py-3 text-slate-600">{empresa.cnpj}</td>
+                    <td className="px-4 py-3 text-slate-600">{formatCnpj(empresa.cnpj)}</td>
                     <td className="px-4 py-3 text-slate-600">{empresa.nomeFantasia || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${empresa.empresaMaeId ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -185,7 +186,7 @@ export default function EmpresaListPage() {
         detail={confirmando && (
           <div>
             <p className="text-sm font-medium text-slate-700">{confirmando.nomeFantasia || confirmando.razaoSocial}</p>
-            <p className="text-xs text-slate-400 mt-0.5">CNPJ: {confirmando.cnpj}</p>
+            <p className="text-xs text-slate-400 mt-0.5">CNPJ: {formatCnpj(confirmando.cnpj)}</p>
           </div>
         )}
         confirmLabel="Desativar"
