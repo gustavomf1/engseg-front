@@ -25,6 +25,7 @@ import LocalizacaoListPage from './pages/localizacao/LocalizacaoListPage'
 import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
 import NormaListPage from './pages/norma/NormaListPage'
 import NormaFormPage from './pages/norma/NormaFormPage'
+import ConvitePage from './pages/ConvitePage'
 
 function DefaultRedirect() {
   const { user } = useAuth()
@@ -39,6 +40,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/convite/:token" element={<ConvitePage />} />
             <Route path="/selecionar" element={
               <PrivateRoute>
                 <SeletorPage />

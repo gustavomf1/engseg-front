@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsuarios, deleteUsuario, reativarUsuario } from '../../api/usuario'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck, Link2, Copy, Check, Clock, CheckCircle2 } from 'lucide-react'
 import { formatCnpj, formatTelefone } from '../../utils/date'
+import { criarConvite } from '../../api/convite'
+import { getEmpresas } from '../../api/empresa'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
@@ -46,6 +48,37 @@ export default function UsuarioListPage() {
 
   const [visualizando, setVisualizando] = useState<Usuario | null>(null)
   const [confirmando, setConfirmando] = useState<Usuario | null>(null)
+  const [conviteOpen, setConviteOpen] = useState(false)
+  const [conviteForm, setConviteForm] = useState({ empresaId: '', perfil: 'EXTERNO', minutos: 30 })
+  const [conviteLink, setConviteLink] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+
+  const { data: empresas = [] } = useQuery({ queryKey: ['empresas'], queryFn: () => getEmpresas(true) })
+
+  const conviteMutation = useMutation({
+    mutationFn: () => criarConvite({
+      empresaId: conviteForm.empresaId,
+      perfil: conviteForm.perfil,
+      minutos: conviteForm.minutos,
+    }),
+    onSuccess: (data) => {
+      const link = `${window.location.origin}/convite/${data.token}`
+      setConviteLink(link)
+    },
+  })
+
+  function handleCopiar() {
+    if (!conviteLink) return
+    navigator.clipboard.writeText(conviteLink)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  function handleConviteClose() {
+    setConviteOpen(false)
+    setConviteLink(null)
+    setConviteForm({ empresaId: '', perfil: 'EXTERNO', minutos: 30 })
+  }
 
   const deleteMutation = useMutation({
     mutationFn: deleteUsuario,
@@ -71,9 +104,17 @@ export default function UsuarioListPage() {
             <option value="">Todos</option>
           </select>
           {user?.perfil === 'ENGENHEIRO' && (
-            <Link to="/usuarios/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <Plus size={16} /> Novo Usuário
-            </Link>
+            <>
+              <button
+                onClick={() => setConviteOpen(true)}
+                className="flex items-center gap-2 border border-gray-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              >
+                <Link2 size={16} /> Gerar Convite
+              </button>
+              <Link to="/usuarios/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
+                <Plus size={16} /> Novo Usuário
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -158,6 +199,109 @@ export default function UsuarioListPage() {
             <span>Página {page} de {totalPages}</span>
           </div>
         </>
+      )}
+
+      {/* Modal de convite */}
+      {conviteOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={handleConviteClose}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Link2 size={18} className="text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Gerar Link de Convite</h3>
+                  <p className="text-xs text-slate-400">O link expira automaticamente</p>
+                </div>
+              </div>
+              <button onClick={handleConviteClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+            </div>
+
+            {!conviteLink ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Empresa *</label>
+                  <select
+                    value={conviteForm.empresaId}
+                    onChange={e => setConviteForm(f => ({ ...f, empresaId: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione a empresa</option>
+                    {empresas.map(e => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Perfil *</label>
+                  <select
+                    value={conviteForm.perfil}
+                    onChange={e => setConviteForm(f => ({ ...f, perfil: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ENGENHEIRO">Engenheiro</option>
+                    <option value="TECNICO">Técnico</option>
+                    <option value="EXTERNO">Externo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Validade: <span className="font-bold text-slate-800">{conviteForm.minutos} min</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={1} max={60}
+                    value={conviteForm.minutos}
+                    onChange={e => setConviteForm(f => ({ ...f, minutos: Number(e.target.value) }))}
+                    className="w-full accent-slate-800"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+                    <span>1 min</span><span>60 min</span>
+                  </div>
+                </div>
+
+                {conviteMutation.isError && (
+                  <p className="text-xs text-red-500">Erro ao gerar convite. Tente novamente.</p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={handleConviteClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                  <button
+                    onClick={() => conviteMutation.mutate()}
+                    disabled={!conviteForm.empresaId || conviteMutation.isPending}
+                    className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
+                  >
+                    {conviteMutation.isPending ? 'Gerando...' : 'Gerar Link'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                  <CheckCircle2 size={28} className="text-green-500 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-green-700">Link gerado com sucesso!</p>
+                  <p className="text-xs text-green-600 mt-0.5 flex items-center justify-center gap-1">
+                    <Clock size={11} /> Expira em {conviteForm.minutos} minuto{conviteForm.minutos !== 1 ? 's' : ''}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-slate-600 break-all">
+                  {conviteLink}
+                </div>
+
+                <button
+                  onClick={handleCopiar}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition ${copiado ? 'bg-green-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                >
+                  {copiado ? <><Check size={16} /> Copiado!</> : <><Copy size={16} /> Copiar Link</>}
+                </button>
+
+                <button onClick={handleConviteClose} className="w-full text-sm text-slate-500 hover:text-slate-700 py-1">
+                  Fechar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Modal de visualização */}
