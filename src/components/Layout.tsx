@@ -16,7 +16,7 @@ export default function Layout() {
         onToggleCollapse={() => setCollapsed(c => !c)}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex-shrink-0 flex items-center gap-3">
+        <header className="bg-white dark:bg-[var(--bg-surface)] border-b border-gray-200 dark:border-[var(--border-main)] px-4 lg:px-8 py-4 flex-shrink-0 flex items-center gap-3">
           {/* Mobile: abre drawer. Desktop: colapsa/expande */}
           <button
             onClick={() => {
@@ -35,7 +35,7 @@ export default function Layout() {
             <p className="text-xs lg:text-sm text-slate-500">Controle e gerenciamento de ocorrências</p>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 lg:p-8 overflow-auto bg-[var(--bg-base)]">
           <Outlet />
         </main>
       </div>
