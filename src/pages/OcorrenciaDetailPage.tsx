@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio, updateDesvio } from '../api/desvio'
 import { getNaoConformidade, updateNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade, Norma } from '../types'
+import { getTrechosNorma } from '../api/ncTrechoNorma'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
@@ -53,6 +54,12 @@ export default function OcorrenciaDetailPage() {
     queryKey: ['nc', id],
     queryFn: () => getNaoConformidade(id!),
     enabled: !isDesvio,
+  })
+
+  const { data: trechos = [] } = useQuery({
+    queryKey: ['trechos-norma', id],
+    queryFn: () => getTrechosNorma(id!),
+    enabled: !isDesvio && !!id,
   })
 
   const { data: estabelecimentos = [] } = useQuery({
@@ -332,22 +339,29 @@ export default function OcorrenciaDetailPage() {
               <>
                 <Field label="Normas Vinculadas">
                   <div className="space-y-2">
-                    {nc!.normas && nc!.normas.length > 0 && (
+                    {nc!.normas && nc!.normas.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {nc!.normas.map(n => (
-                          <button
-                            key={n.id}
-                            type="button"
-                            onClick={() => setNormaModal(n)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
-                          >
-                            <BookOpen size={11} />
-                            {n.titulo}
-                          </button>
-                        ))}
+                        {nc!.normas.map(n => {
+                          const count = trechos.filter(t => t.normaId === n.id).length
+                          return (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => setNormaModal(n)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+                            >
+                              <BookOpen size={11} />
+                              {n.titulo}
+                              {count > 0 && (
+                                <span className="ml-0.5 bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full text-xs font-semibold">
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
                       </div>
-                    )}
-                    {(!nc!.normas || nc!.normas.length === 0) && (
+                    ) : (
                       <div className={valueClass}>—</div>
                     )}
                   </div>
@@ -531,11 +545,26 @@ export default function OcorrenciaDetailPage() {
                 <X size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {normaModal.descricao ? (
                 <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{normaModal.descricao}</p>
               ) : (
                 <p className="text-sm text-slate-400 italic">Nenhuma descrição cadastrada para esta norma.</p>
+              )}
+              {trechos.filter(t => t.normaId === normaModal.id).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Trechos Vinculados à NC</p>
+                  <div className="space-y-3">
+                    {trechos.filter(t => t.normaId === normaModal.id).map(t => (
+                      <div key={t.id} className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+                        {t.clausulaReferencia && (
+                          <p className="text-xs font-semibold text-blue-700 mb-1.5">{t.clausulaReferencia}</p>
+                        )}
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">{t.textoEditado}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex justify-end p-6 pt-4 border-t border-gray-100 flex-shrink-0">

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio } from '../api/desvio'
+import { getTrechosNorma } from '../api/ncTrechoNorma'
 import {
   getNaoConformidade,
   submeterInvestigacao,
@@ -58,10 +59,6 @@ export default function TrativaDetailPage() {
   // State — investigação (pergunta + resposta por porquê)
   const [porques, setPorques] = useState<{ pergunta: string; resposta: string }[]>([
     { pergunta: '', resposta: '' },
-    { pergunta: '', resposta: '' },
-    { pergunta: '', resposta: '' },
-    { pergunta: '', resposta: '' },
-    { pergunta: '', resposta: '' },
   ])
   const [causaRaiz, setCausaRaiz] = useState('')
   const [atividades, setAtividades] = useState<string[]>([''])
@@ -113,17 +110,23 @@ export default function TrativaDetailPage() {
     enabled: !isDesvio,
   })
 
+  const { data: trechos = [] } = useQuery({
+    queryKey: ['trechos-norma', id],
+    queryFn: () => getTrechosNorma(id!),
+    enabled: !isDesvio && !!id,
+  })
+
   // Pré-popula formulário de investigação ao carregar dados
   useEffect(() => {
     if (nc && !initialized.current) {
       initialized.current = true
       if (nc.porqueUm) {
         setPorques([
-          { pergunta: nc.porqueUm ?? '', resposta: nc.porqueUmResposta ?? '' },
-          { pergunta: nc.porqueDois ?? '', resposta: nc.porqueDoisResposta ?? '' },
-          { pergunta: nc.porqueTres ?? '', resposta: nc.porqueTresResposta ?? '' },
-          { pergunta: nc.porqueQuatro ?? '', resposta: nc.porqueQuatroResposta ?? '' },
-          { pergunta: nc.porqueCinco ?? '', resposta: nc.porqueCincoResposta ?? '' },
+          { pergunta: nc.porqueUm, resposta: nc.porqueUmResposta ?? '' },
+          ...(nc.porqueDois ? [{ pergunta: nc.porqueDois, resposta: nc.porqueDoisResposta ?? '' }] : []),
+          ...(nc.porqueTres ? [{ pergunta: nc.porqueTres, resposta: nc.porqueTresResposta ?? '' }] : []),
+          ...(nc.porqueQuatro ? [{ pergunta: nc.porqueQuatro, resposta: nc.porqueQuatroResposta ?? '' }] : []),
+          ...(nc.porqueCinco ? [{ pergunta: nc.porqueCinco, resposta: nc.porqueCincoResposta ?? '' }] : []),
         ])
       }
       if (nc.causaRaiz) setCausaRaiz(nc.causaRaiz)
@@ -138,11 +141,7 @@ export default function TrativaDetailPage() {
 
   const mutSubmeterInvestigacao = useMutation({
     mutationFn: () => submeterInvestigacao(id!, {
-      porqueUm: porques[0].pergunta, porqueUmResposta: porques[0].resposta,
-      porqueDois: porques[1].pergunta, porqueDoisResposta: porques[1].resposta,
-      porqueTres: porques[2].pergunta, porqueTresResposta: porques[2].resposta,
-      porqueQuatro: porques[3].pergunta, porqueQuatroResposta: porques[3].resposta,
-      porqueCinco: porques[4].pergunta, porqueCincoResposta: porques[4].resposta,
+      porques,
       causaRaiz,
       atividades: atividades.filter(a => a.trim()),
     }),
@@ -309,20 +308,44 @@ export default function TrativaDetailPage() {
               <h3 className="font-semibold text-slate-700">Normas Vinculadas</h3>
             </div>
             <div className="space-y-2">
-              {nc.normas.map(n => (
-                <div key={n.id} className="border border-indigo-100 rounded-lg bg-indigo-50 overflow-hidden">
-                  <button type="button" onClick={() => toggleNorma(n.id)}
-                    className="w-full flex items-center justify-between p-3 text-left hover:bg-indigo-100/50 transition">
-                    <span className="text-sm font-medium text-slate-800">{n.titulo}</span>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${normaAberta === n.id ? 'rotate-180' : ''}`} />
-                  </button>
-                  {normaAberta === n.id && n.descricao && (
-                    <div className="px-3 pb-3 border-t border-indigo-100">
-                      <p className="text-xs text-slate-600 mt-2 break-words whitespace-pre-wrap">{n.descricao}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {nc.normas.map(n => {
+                const trechosNorma = trechos.filter(t => t.normaId === n.id)
+                return (
+                  <div key={n.id} className="border border-indigo-100 rounded-lg bg-indigo-50 overflow-hidden">
+                    <button type="button" onClick={() => toggleNorma(n.id)}
+                      className="w-full flex items-center justify-between p-3 text-left hover:bg-indigo-100/50 transition">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-slate-800">{n.titulo}</span>
+                        {trechosNorma.length > 0 && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
+                            {trechosNorma.length} trecho{trechosNorma.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${normaAberta === n.id ? 'rotate-180' : ''}`} />
+                    </button>
+                    {normaAberta === n.id && (
+                      <div className="border-t border-indigo-100">
+                        {n.descricao && (
+                          <p className="text-xs text-slate-600 px-3 pt-2 pb-2 break-words whitespace-pre-wrap">{n.descricao}</p>
+                        )}
+                        {trechosNorma.length > 0 && (
+                          <div className={`divide-y divide-blue-100 ${n.descricao ? 'border-t border-indigo-100' : ''}`}>
+                            {trechosNorma.map(t => (
+                              <div key={t.id} className="px-3 py-2.5 bg-blue-50/50">
+                                {t.clausulaReferencia && (
+                                  <p className="text-xs font-semibold text-blue-700 mb-1">{t.clausulaReferencia}</p>
+                                )}
+                                <p className="text-xs text-slate-700 whitespace-pre-wrap break-words">{t.textoEditado}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -595,9 +618,20 @@ export default function TrativaDetailPage() {
           )}
 
           <div className="space-y-5">
-            {/* 5 Porquês */}
+            {/* Porquês dinâmicos */}
             <div>
-              <p className="text-sm font-semibold text-slate-700 mb-3">Análise dos 5 Porquês *</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-slate-700">Análise dos Porquês * <span className="text-xs font-normal text-slate-400">(mín. 1, máx. 5)</span></p>
+                {porques.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setPorques([...porques, { pergunta: '', resposta: '' }])}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    <Plus size={13} /> Adicionar porquê
+                  </button>
+                )}
+              </div>
               <div className="space-y-4">
                 {porques.map((p, i) => (
                   <div key={i} className="flex gap-3 items-start">
@@ -632,6 +666,15 @@ export default function TrativaDetailPage() {
                         />
                       </div>
                     </div>
+                    {porques.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setPorques(porques.filter((_, j) => j !== i))}
+                        className="mt-2 text-slate-400 hover:text-red-500 transition shrink-0"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

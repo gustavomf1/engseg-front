@@ -255,16 +255,7 @@ export interface NaoConformidadeRequest {
 }
 
 export interface InvestigacaoRequest {
-  porqueUm: string
-  porqueUmResposta: string
-  porqueDois: string
-  porqueDoisResposta: string
-  porqueTres: string
-  porqueTresResposta: string
-  porqueQuatro: string
-  porqueQuatroResposta: string
-  porqueCinco: string
-  porqueCincoResposta: string
+  porques: { pergunta: string; resposta: string }[]
   causaRaiz: string
   atividades: string[]
 }

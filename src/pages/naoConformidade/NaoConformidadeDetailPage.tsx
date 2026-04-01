@@ -235,68 +235,65 @@ export default function NaoConformidadeDetailPage() {
         </div>
       )}
 
-      {/* Normas vinculadas */}
+      {/* Normas vinculadas + trechos */}
       {nc.normas?.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <BookOpen size={16} className="text-slate-500" />
             <h3 className="font-semibold text-slate-700">Normas Vinculadas</h3>
           </div>
-          <div className="space-y-2">
-            {nc.normas.map(norma => (
-              <div key={norma.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
-                  {norma.descricao && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{norma.descricao}</p>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
-                  title={norma.conteudo ? 'Buscar trecho por IA' : 'Esta norma não possui conteúdo cadastrado'}
-                  disabled={!norma.conteudo}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
-                >
-                  <Search size={12} />
-                  Buscar trecho
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Trechos de normas vinculados */}
-      {trechos.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText size={16} className="text-blue-500" />
-            <h3 className="font-semibold text-slate-700">Trechos de Normas Vinculados</h3>
-            <span className="text-xs text-slate-400">({trechos.length})</span>
-          </div>
           <div className="space-y-3">
-            {trechos.map(t => (
-              <div key={t.id} className="border border-blue-100 rounded-lg p-4 bg-blue-50/30">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <span className="text-xs font-semibold text-blue-700">{t.normaTitulo}</span>
-                    {t.clausulaReferencia && (
-                      <span className="ml-2 text-xs text-slate-500">— {t.clausulaReferencia}</span>
-                    )}
-                    <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(t.dataVinculo)}</p>
-                  </div>
-                  {(user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO') && (
+            {nc.normas.map(norma => {
+              const trechosNorma = trechos.filter(t => t.normaId === norma.id)
+              return (
+                <div key={norma.id} className="rounded-lg border border-gray-100 bg-gray-50 overflow-hidden">
+                  {/* Cabeçalho da norma */}
+                  <div className="flex items-center justify-between gap-3 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
+                      {norma.descricao && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{norma.descricao}</p>}
+                    </div>
                     <button
-                      onClick={() => deletarTrechoMutation.mutate(t.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
-                      title="Remover trecho"
+                      type="button"
+                      onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                      title={norma.conteudo ? 'Buscar trecho por IA' : 'Esta norma não possui conteúdo cadastrado'}
+                      disabled={!norma.conteudo}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
                     >
-                      <Trash2 size={14} />
+                      <Search size={12} />
+                      Buscar trecho
                     </button>
+                  </div>
+                  {/* Trechos vinculados a esta norma */}
+                  {trechosNorma.length > 0 && (
+                    <div className="border-t border-gray-100 divide-y divide-blue-50">
+                      {trechosNorma.map(t => (
+                        <div key={t.id} className="px-3 py-3 bg-blue-50/40">
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {t.clausulaReferencia && (
+                                <span className="text-xs font-semibold text-blue-700">{t.clausulaReferencia}</span>
+                              )}
+                              <span className="text-xs text-slate-400">{formatDateTime(t.dataVinculo)}</span>
+                            </div>
+                            {(user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO') && (
+                              <button
+                                onClick={() => deletarTrechoMutation.mutate(t.id)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition shrink-0"
+                                title="Remover trecho"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{t.textoEditado}</p>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{t.textoEditado}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
