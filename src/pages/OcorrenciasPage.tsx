@@ -10,7 +10,7 @@ import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
-type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
+type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
 
 const PAGE_SIZE = 10
 
@@ -18,6 +18,7 @@ const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[
   { key: 'TODOS',                label: 'Todos',             tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
   { key: 'ABERTAS',              label: 'Abertas',           tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-yellow-500 text-white' },
   { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento',      tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-blue-600 text-white' },
+  { key: 'REPROVADOS',           label: 'Reprovado',         tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
   { key: 'AGUARDANDO_VALIDACAO', label: 'Aguard. Validação', tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-indigo-600 text-white' },
   { key: 'CONCLUIDAS',           label: 'Concluídos',        tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-green-600 text-white' },
   { key: 'VENCIDAS',             label: 'Vencidas',          tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
@@ -56,7 +57,9 @@ export default function OcorrenciasPage() {
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
     if (item.status === 'AGUARDANDO_VALIDACAO_FINAL') return 'AGUARDANDO_VALIDACAO'
     if (item.status === 'ABERTA') return 'ABERTAS'
-    if (['AGUARDANDO_APROVACAO_PLANO', 'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
+    if (item.status === 'EM_AJUSTE_PELO_EXTERNO') return 'REPROVADOS'
+    if (item.status === 'AGUARDANDO_APROVACAO_PLANO') return 'AGUARDANDO_VALIDACAO'
+    if (['EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
     return 'TODOS'
   }
 
@@ -90,7 +93,7 @@ export default function OcorrenciasPage() {
     const map: Record<string, { label: string; color: string }> = {
       ABERTA: { label: 'Aberta', color: 'text-yellow-600 bg-yellow-50' },
       AGUARDANDO_APROVACAO_PLANO: { label: 'Aguard. Aprovação', color: 'text-blue-600 bg-blue-50' },
-      EM_AJUSTE_PELO_EXTERNO: { label: 'Em Ajuste', color: 'text-orange-600 bg-orange-50' },
+      EM_AJUSTE_PELO_EXTERNO: { label: 'Reprovado', color: 'text-red-600 bg-red-50' },
       EM_EXECUCAO: { label: 'Em Execução', color: 'text-purple-600 bg-purple-50' },
       AGUARDANDO_VALIDACAO_FINAL: { label: 'Aguard. Validação', color: 'text-indigo-600 bg-indigo-50' },
       CONCLUIDO: { label: 'Concluído', color: 'text-green-600 bg-green-50' },

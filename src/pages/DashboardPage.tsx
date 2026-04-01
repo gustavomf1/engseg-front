@@ -2,15 +2,26 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getDashboardStats } from '../api/dashboard'
 import { getOcorrencias } from '../api/ocorrencia'
+import { useAuth } from '../contexts/AuthContext'
 import { TrendingUp, AlertTriangle, ClipboardList, Shield, FilePlus } from 'lucide-react'
 import { formatDate } from '../utils/date'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { data: stats } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboardStats })
   const { data: ocorrencias = [] } = useQuery({ queryKey: ['ocorrencias'], queryFn: getOcorrencias })
 
-  const recentes = ocorrencias.slice(0, 5)
+  const recentes = ocorrencias.filter(item => {
+    if (user?.perfil === 'ENGENHEIRO') {
+      if (item.tipo === 'NAO_CONFORMIDADE') return item.engResponsavelVerificacaoId === user.id
+      return item.usuarioCriacaoEmail === user.email
+    }
+    if (user?.perfil === 'TECNICO') {
+      return item.usuarioCriacaoEmail === user.email || item.engResponsavelVerificacaoId === user.id
+    }
+    return true
+  }).slice(0, 5)
 
   const cards = [
     { label: 'Total de Ocorrências', value: stats?.totalOcorrencias ?? 0, icon: TrendingUp, bg: 'bg-blue-50', iconColor: 'text-blue-500' },

@@ -13,6 +13,7 @@ import {
   FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
+import SearchableSelect from '../components/SearchableSelect'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/date'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -90,7 +91,7 @@ export default function OcorrenciaDetailPage() {
   })
 
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
-    .filter(u => u.perfil === 'ENGENHEIRO' && u.ativo)
+    .filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
 
   const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
@@ -386,10 +387,13 @@ export default function OcorrenciaDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6 pt-6 border-t border-gray-100">
             <Field label="Eng. Responsável pela Tratativa">
               {editando
-                ? <select value={form.engResponsavelConstrutoraId} onChange={e => set('engResponsavelConstrutoraId', e.target.value)} className={inputClass}>
-                    <option value="">— Nenhum —</option>
-                    {externos.map(u => <option key={u.id} value={u.id}>{u.nome} ({u.perfil})</option>)}
-                  </select>
+                ? <SearchableSelect
+                    options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                    value={form.engResponsavelConstrutoraId ?? ''}
+                    onChange={id => set('engResponsavelConstrutoraId', id)}
+                    placeholder="Selecione o responsável pela tratativa"
+                    className={inputClass}
+                  />
                 : <div className={`${valueClass} flex items-center gap-1.5`}>
                     <User size={13} className="text-slate-400" />
                     {nc!.engConstruturaNome ? `${nc!.engConstruturaNome} (${nc!.engConstrutoraEmail})` : nc!.engConstrutoraEmail || '—'}
@@ -399,10 +403,13 @@ export default function OcorrenciaDetailPage() {
 
             <Field label="Eng. Responsável pela NC">
               {editando
-                ? <select value={form.engResponsavelVerificacaoId} onChange={e => set('engResponsavelVerificacaoId', e.target.value)} className={inputClass}>
-                    <option value="">— Nenhum —</option>
-                    {engenheiros.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                  </select>
+                ? <SearchableSelect
+                    options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                    value={form.engResponsavelVerificacaoId ?? ''}
+                    onChange={id => set('engResponsavelVerificacaoId', id)}
+                    placeholder="Selecione o responsável pela verificação"
+                    className={inputClass}
+                  />
                 : <div className={`${valueClass} flex items-center gap-1.5`}>
                     <User size={13} className="text-slate-400" />
                     {nc!.engVerificacaoNome ? `${nc!.engVerificacaoNome} (${nc!.engVerificacaoEmail})` : nc!.engVerificacaoEmail || '—'}

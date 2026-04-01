@@ -32,8 +32,10 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
 
   const pendentesValidacao = ocorrencias.filter(o => {
-    if (o.tipo !== 'NAO_CONFORMIDADE' || o.status !== 'EM_TRATAMENTO') return false
-    return isEngenheiro || o.engResponsavelVerificacaoId === user?.id
+    if (o.tipo !== 'NAO_CONFORMIDADE') return false
+    const aguardandoAcao = o.status === 'AGUARDANDO_APROVACAO_PLANO' || o.status === 'AGUARDANDO_VALIDACAO_FINAL'
+    if (!aguardandoAcao) return false
+    return o.engResponsavelVerificacaoId === user?.id
   }).length
 
   function handleLogout() {

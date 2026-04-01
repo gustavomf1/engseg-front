@@ -13,6 +13,7 @@ import { getNormas } from '../api/norma'
 import { vincularTrechoNorma } from '../api/ncTrechoNorma'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Camera, AlertCircle, FileText, Calendar, Search, X, PenLine } from 'lucide-react'
+import SearchableSelect from '../components/SearchableSelect'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
 
@@ -72,7 +73,7 @@ export default function RegistroOcorrenciaPage() {
   })
 
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
-    .filter(u => u.perfil === 'ENGENHEIRO' && u.ativo)
+    .filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
 
   const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
@@ -129,7 +130,7 @@ export default function RegistroOcorrenciaPage() {
     enabled: isEditing && tipoParam === 'NAO_CONFORMIDADE',
   })
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       regraDeOuro: false,
@@ -320,23 +321,25 @@ export default function RegistroOcorrenciaPage() {
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela Tratativa</label>
-                <select {...register('engResponsavelConstrutoraId')} className={inputClass}>
-                  <option value="">Selecione o responsável pela tratativa</option>
-                  {externos.map(u => (
-                    <option key={u.id} value={u.id}>{u.nome} ({u.perfil})</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                  value={watch('engResponsavelConstrutoraId') ?? ''}
+                  onChange={id => setValue('engResponsavelConstrutoraId', id)}
+                  placeholder="Selecione o responsável pela tratativa"
+                  className={inputClass}
+                />
                 <p className="text-xs text-slate-400 mt-1">Quem irá enviar o plano de ação (geralmente EXTERNO)</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela NC</label>
-                <select {...register('engResponsavelVerificacaoId')} className={inputClass}>
-                  <option value="">Selecione o responsável pela verificação</option>
-                  {engenheiros.map(u => (
-                    <option key={u.id} value={u.id}>{u.nome}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                  value={watch('engResponsavelVerificacaoId') ?? ''}
+                  onChange={id => setValue('engResponsavelVerificacaoId', id)}
+                  placeholder="Selecione o responsável pela verificação"
+                  className={inputClass}
+                />
                 <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
               </div>
 
