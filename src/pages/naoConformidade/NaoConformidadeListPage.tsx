@@ -8,6 +8,7 @@ import SeveridadeBadge from '../../components/SeveridadeBadge'
 import { useState } from 'react'
 import { StatusNaoConformidade } from '../../types'
 import { formatDate } from '../../utils/date'
+import PrazoBar from '../../components/PrazoBar'
 
 export default function NaoConformidadeListPage() {
   const { user } = useAuth()
@@ -78,7 +79,9 @@ export default function NaoConformidadeListPage() {
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{nc.descricao}</td>
                   <td className="px-4 py-3"><SeveridadeBadge nivel={nc.nivelSeveridade} /></td>
                   <td className="px-4 py-3"><StatusBadge status={nc.status} type="nc" /></td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(nc.dataLimiteResolucao)}</td>
+                  <td className="px-4 py-3">
+                    <PrazoBar dataLimite={nc.dataLimiteResolucao} vencida={nc.vencida} />
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <Link to={`/nao-conformidades/${nc.id}`} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-gray-100 rounded inline-flex">
                       <Eye size={15} />

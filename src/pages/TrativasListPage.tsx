@@ -7,6 +7,7 @@ import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus } 
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
+import PrazoBar from '../components/PrazoBar'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
 type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
@@ -242,10 +243,12 @@ export default function TrativasListPage() {
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
                     {item.localizacao && <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>}
                     <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
-                    {dias !== null && item.status !== 'CONCLUIDO' && dias >= 0 && (
-                      <span className="text-green-600">{dias}d restantes</span>
-                    )}
                   </div>
+                  {item.tipo === 'NAO_CONFORMIDADE' && item.dataLimiteResolucao && item.status !== 'CONCLUIDO' && (
+                    <div className="mt-2">
+                      <PrazoBar dataLimite={item.dataLimiteResolucao} vencida={item.vencida} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Right side - desktop */}

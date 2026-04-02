@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
+import PrazoBar from '../components/PrazoBar'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
 type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
@@ -235,6 +236,11 @@ export default function OcorrenciasPage() {
                     <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
                     <span className="text-slate-300 hidden sm:inline">{item.estabelecimentoNome}</span>
                   </div>
+                  {item.tipo === 'NAO_CONFORMIDADE' && item.dataLimiteResolucao && item.status !== 'CONCLUIDO' && (
+                    <div className="mt-2">
+                      <PrazoBar dataLimite={item.dataLimiteResolucao} vencida={item.vencida} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Right - desktop */}
