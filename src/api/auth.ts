@@ -1,4 +1,4 @@
-import client from './client'
+import client from './client' //rota
 import { LoginRequest, LoginResponse } from '../types'
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
