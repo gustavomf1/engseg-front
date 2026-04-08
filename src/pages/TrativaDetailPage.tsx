@@ -8,9 +8,9 @@ import {
   submeterInvestigacao,
   aprovarPlano,
   rejeitarPlano,
-  submeterEvidencias,
-  aprovarEvidencias,
-  rejeitarEvidencias,
+  revisarAtividades,
+  submeterExecucao,
+  revisarExecucao,
 } from '../api/naoConformidade'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -61,11 +61,17 @@ export default function TrativaDetailPage() {
     { pergunta: '', resposta: '' },
   ])
   const [causaRaiz, setCausaRaiz] = useState('')
-  const [atividades, setAtividades] = useState<string[]>([''])
+  const [atividades, setAtividades] = useState<{ titulo: string; descricao: string }[]>([{ titulo: '', descricao: '' }])
+
+  // State — revisão por atividade (Engenheiro): APROVADA | REJEITADA | undefined (sem decisão ainda)
+  const [decisoes, setDecisoes] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
+  const [comentarioRevisao, setComentarioRevisao] = useState('')
   const [normaAberta, setNormaAberta] = useState<string | null>(null)
 
-  // State — execução
-  const [descricaoExecucao, setDescricaoExecucao] = useState('')
+  // State — execução por atividade
+  const [execucaoDescricoes, setExecucaoDescricoes] = useState<Record<string, string>>({})
+  const [decisoesExecucao, setDecisoesExecucao] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
+  const [comentarioRevisaoExecucao, setComentarioRevisaoExecucao] = useState('')
 
   // State — snapshots expandidos
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set())
@@ -130,7 +136,21 @@ export default function TrativaDetailPage() {
         ])
       }
       if (nc.causaRaiz) setCausaRaiz(nc.causaRaiz)
-      if (nc.atividades?.length > 0) setAtividades(nc.atividades.map(a => a.descricao))
+      // Pre-fill execution descriptions from rejected activities
+      const descricoes: Record<string, string> = {}
+      nc.atividades?.forEach(a => {
+        if (a.descricaoExecucao) descricoes[a.id] = a.descricaoExecucao
+      })
+      if (Object.keys(descricoes).length > 0) setExecucaoDescricoes(descricoes)
+      if (nc.status === 'EM_AJUSTE_PELO_EXTERNO') {
+        const rejeitadas = nc.atividades?.filter(a => a.status === 'REJEITADA') ?? []
+        setAtividades(rejeitadas.length > 0
+          ? rejeitadas.map(a => ({ titulo: a.titulo || '', descricao: a.descricao }))
+          : [{ titulo: '', descricao: '' }]
+        )
+      } else if (nc.atividades?.length > 0) {
+        setAtividades(nc.atividades.map(a => ({ titulo: a.titulo || '', descricao: a.descricao })))
+      }
     }
   }, [nc])
 
@@ -143,9 +163,17 @@ export default function TrativaDetailPage() {
     mutationFn: () => submeterInvestigacao(id!, {
       porques,
       causaRaiz,
-      atividades: atividades.filter(a => a.trim()),
+      atividades: atividades.filter(a => a.titulo.trim() && a.descricao.trim()),
     }),
     onSuccess: () => { invalidate(); setConfirmarEnvio(false) },
+  })
+
+  const mutRevisarAtividades = useMutation({
+    mutationFn: () => revisarAtividades(id!, {
+      decisoes: Object.entries(decisoes).map(([atividadeId, d]) => ({ atividadeId, status: d.status, motivo: d.motivo || undefined })),
+      comentario: comentarioRevisao || undefined,
+    }),
+    onSuccess: () => { invalidate(); setDecisoes({}); setComentarioRevisao('') },
   })
 
   const mutAprovarPlano = useMutation({
@@ -158,19 +186,21 @@ export default function TrativaDetailPage() {
     onSuccess: () => { invalidate(); setMotivoRejeicao('') },
   })
 
-  const mutSubmeterEvidencias = useMutation({
-    mutationFn: () => submeterEvidencias(id!, { descricaoExecucao }),
-    onSuccess: () => { invalidate(); setDescricaoExecucao('') },
+  const mutSubmeterExecucao = useMutation({
+    mutationFn: () => submeterExecucao(id!, {
+      atividades: (nc?.atividades ?? [])
+        .filter(a => a.statusExecucao !== 'APROVADA')
+        .map(a => ({ atividadeId: a.id, descricaoExecucao: execucaoDescricoes[a.id] || '' })),
+    }),
+    onSuccess: () => { invalidate() },
   })
 
-  const mutAprovarEvidencias = useMutation({
-    mutationFn: () => aprovarEvidencias(id!, { comentario: comentarioAprovacao || undefined }),
-    onSuccess: () => { invalidate(); navigate('/tratativas') },
-  })
-
-  const mutRejeitarEvidencias = useMutation({
-    mutationFn: () => rejeitarEvidencias(id!, { comentario: motivoRejeicao }),
-    onSuccess: () => { invalidate(); setMotivoRejeicao('') },
+  const mutRevisarExecucao = useMutation({
+    mutationFn: () => revisarExecucao(id!, {
+      decisoes: Object.entries(decisoesExecucao).map(([atividadeId, d]) => ({ atividadeId, status: d.status, motivo: d.motivo || undefined })),
+      comentario: comentarioRevisaoExecucao || undefined,
+    }),
+    onSuccess: () => { invalidate(); setDecisoesExecucao({}); setComentarioRevisaoExecucao('') },
   })
 
   function getDiasRestantes(dataLimite?: string) {
@@ -196,7 +226,7 @@ export default function TrativaDetailPage() {
   const showAprovacaoEvidenciasForm = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isEngenheiro
   const showAbertaEngenheiro = !isDesvio && nc?.status === 'ABERTA' && isEngenheiro
 
-  const investigacaoValida = porques.every(p => p.pergunta.trim() && p.resposta.trim()) && causaRaiz.trim() && atividades.some(a => a.trim())
+  const investigacaoValida = porques.every(p => p.pergunta.trim() && p.resposta.trim()) && causaRaiz.trim() && atividades.some(a => a.titulo.trim() && a.descricao.trim())
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -439,7 +469,7 @@ export default function TrativaDetailPage() {
                         ].map((p, i) => p.pergunta && (
                           <div key={i} className="flex gap-3">
                             <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-1">{i + 1}</span>
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 min-w-0 space-y-1">
                               <p className="text-sm font-medium text-slate-800 break-words">{p.pergunta}</p>
                               {p.resposta && <p className="text-sm text-slate-600 break-words pl-3 border-l-2 border-blue-200">{p.resposta}</p>}
                             </div>
@@ -454,12 +484,66 @@ export default function TrativaDetailPage() {
                         <div className="pt-3 border-t border-blue-100">
                           <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Plano de Atividades</p>
                           <div className="space-y-2">
-                            {snap.atividades.map((a, i) => (
-                              <div key={i} className="flex gap-3 items-start">
-                                <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                                <p className="text-sm text-slate-800 break-words">{a}</p>
-                              </div>
-                            ))}
+                            {isLatest
+                              ? nc.atividades?.map((a) => (
+                                <div key={a.id} className={`flex gap-3 items-start rounded-lg border p-2 ${
+                                  a.status === 'APROVADA' ? 'border-green-200 bg-green-50'
+                                  : a.status === 'REJEITADA' ? 'border-red-200 bg-red-50'
+                                  : 'border-blue-100 bg-blue-50/40'
+                                }`}>
+                                  <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{a.ordem}</span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-sm font-medium text-slate-800 break-words">{a.titulo}</p>
+                                      {a.status === 'APROVADA' && (
+                                        <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0">
+                                          <CheckCircle size={11} /> Aprovada
+                                        </span>
+                                      )}
+                                      {a.status === 'REJEITADA' && (
+                                        <span className="flex items-center gap-0.5 text-xs text-red-700 font-medium shrink-0">
+                                          <XCircle size={11} /> Rejeitada
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-slate-600 break-words mt-0.5">{a.descricao}</p>
+                                    {a.motivoRejeicao && (
+                                      <p className="text-xs text-red-600 break-words mt-1">Motivo: {a.motivoRejeicao}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                              : snap.atividades.map((a, i) => {
+                                // Format: "titulo — descricao || APROVADA" or "titulo — descricao || REJEITADA: motivo"
+                                const splitStatus = a.split(' || ')
+                                const body = splitStatus[0]
+                                const statusRaw = splitStatus[1] ?? ''
+                                const isAprovada = statusRaw.startsWith('APROVADA')
+                                const isRejeitada = statusRaw.startsWith('REJEITADA')
+                                const motivoHist = isRejeitada && statusRaw.includes(': ') ? statusRaw.slice(statusRaw.indexOf(': ') + 2) : ''
+                                const sepIdx = body.indexOf(' — ')
+                                const titulo = sepIdx >= 0 ? body.slice(0, sepIdx) : body
+                                const descricao = sepIdx >= 0 ? body.slice(sepIdx + 3) : ''
+                                return (
+                                  <div key={i} className={`flex gap-3 items-start rounded-lg border p-2 ${
+                                    isAprovada ? 'border-green-200 bg-green-50'
+                                    : isRejeitada ? 'border-red-200 bg-red-50'
+                                    : 'border-blue-100 bg-blue-50/40'
+                                  }`}>
+                                    <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-sm font-medium text-slate-800 break-words">{titulo}</p>
+                                        {isAprovada && <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0"><CheckCircle size={11} /> Aprovada</span>}
+                                        {isRejeitada && <span className="flex items-center gap-0.5 text-xs text-red-700 font-medium shrink-0"><XCircle size={11} /> Rejeitada</span>}
+                                      </div>
+                                      {descricao && <p className="text-xs text-slate-600 break-words mt-0.5">{descricao}</p>}
+                                      {motivoHist && <p className="text-xs text-red-600 break-words mt-1">Motivo: {motivoHist}</p>}
+                                    </div>
+                                  </div>
+                                )
+                              })
+                            }
                           </div>
                         </div>
                       )}
@@ -515,26 +599,103 @@ export default function TrativaDetailPage() {
                           {snap.comentarioRevisao}
                         </div>
                       )}
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{snap.descricaoExecucao}</p>
-                      <div className="pt-2">
-                        <p className="text-xs font-semibold text-slate-600 mb-2">Evidências da Execução</p>
-                        {snap.evidencias?.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {snap.evidencias.map(ev => (
-                              <button
-                                key={ev.id}
-                                onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                              >
-                                <FileText size={12} />
-                                {ev.nomeArquivo}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-400">Nenhuma evidência anexada</p>
-                        )}
-                      </div>
+                      {/* Per-activity execution details — only for latest (current state is reliable) */}
+                      {isLatest ? (
+                        <div className="space-y-2">
+                          {nc.atividades?.map(a => (
+                            <div key={a.id} className={`rounded-lg border p-3 ${
+                              a.statusExecucao === 'APROVADA' ? 'border-green-200 bg-green-50'
+                              : a.statusExecucao === 'REJEITADA' ? 'border-red-200 bg-red-50'
+                              : 'border-gray-200 bg-gray-50'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                {a.statusExecucao === 'APROVADA' && <CheckCircle size={13} className="text-green-500 shrink-0" />}
+                                {a.statusExecucao === 'REJEITADA' && <XCircle size={13} className="text-red-500 shrink-0" />}
+                                {!a.statusExecucao && <Clock size={13} className="text-slate-400 shrink-0" />}
+                                <p className="text-xs font-semibold text-slate-800 break-words">{a.titulo}</p>
+                              </div>
+                              {a.descricaoExecucao && (
+                                <p className="text-xs text-slate-600 break-words italic ml-5">"{a.descricaoExecucao}"</p>
+                              )}
+                              {a.motivoRejeicaoExecucao && (
+                                <p className="text-xs text-red-600 break-words ml-5 mt-1">Motivo: {a.motivoRejeicaoExecucao}</p>
+                              )}
+                              {a.evidencias?.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
+                                  {a.evidencias.map(ev => (
+                                    <button
+                                      key={ev.id}
+                                      onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]"
+                                    >
+                                      <FileText size={11} className="shrink-0" />
+                                      <span className="truncate">{ev.nomeArquivo}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : snap.atividades?.length > 0 ? (
+                        <div className="space-y-2">
+                          {snap.atividades.map((a, i) => {
+                            // Split evidence IDs (after §§)
+                            const evSplit = a.split(' §§ ')
+                            const mainPart = evSplit[0]
+                            const evIds = evSplit[1]?.split(',').filter(Boolean) ?? []
+                            // Parse status (after ||)
+                            const splitStatus = mainPart.split(' || ')
+                            const body = splitStatus[0]
+                            const statusRaw = splitStatus[1] ?? ''
+                            const isAprovada = statusRaw.startsWith('APROVADA')
+                            const isRejeitada = statusRaw.startsWith('REJEITADA')
+                            const motivoHist = isRejeitada && statusRaw.includes(': ') ? statusRaw.slice(statusRaw.indexOf(': ') + 2) : ''
+                            const sepIdx = body.indexOf(' — ')
+                            const titulo = sepIdx >= 0 ? body.slice(0, sepIdx) : body
+                            const descExec = sepIdx >= 0 ? body.slice(sepIdx + 3) : ''
+                            // Resolve evidence IDs to objects from nc.atividades
+                            const allEvs = nc.atividades?.flatMap(at => at.evidencias ?? []) ?? []
+                            const evs = evIds.length > 0
+                              ? evIds.map(id => allEvs.find(e => e.id === id)).filter(Boolean) as typeof allEvs
+                              : []
+                            return (
+                              <div key={i} className={`rounded-lg border p-3 ${
+                                isAprovada ? 'border-green-200 bg-green-50'
+                                : isRejeitada ? 'border-red-200 bg-red-50'
+                                : 'border-gray-200 bg-gray-50'
+                              }`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  {isAprovada && <CheckCircle size={13} className="text-green-500 shrink-0" />}
+                                  {isRejeitada && <XCircle size={13} className="text-red-500 shrink-0" />}
+                                  {!isAprovada && !isRejeitada && <Clock size={13} className="text-slate-400 shrink-0" />}
+                                  <p className="text-xs font-semibold text-slate-800 break-words">{titulo}</p>
+                                  {isAprovada && <span className="text-xs text-green-700 font-medium">Aprovada</span>}
+                                  {isRejeitada && <span className="text-xs text-red-700 font-medium">Rejeitada</span>}
+                                </div>
+                                {descExec && <p className="text-xs text-slate-600 break-words italic ml-5">"{descExec}"</p>}
+                                {motivoHist && <p className="text-xs text-red-600 break-words ml-5 mt-1">Motivo: {motivoHist}</p>}
+                                {evs.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
+                                    {evs.map(ev => (
+                                      <button
+                                        key={ev.id}
+                                        onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]"
+                                      >
+                                        <FileText size={11} className="shrink-0" />
+                                        <span className="truncate">{ev.nomeArquivo}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">Detalhe por atividade não disponível para esta submissão.</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -603,7 +764,23 @@ export default function TrativaDetailPage() {
             </h3>
           </div>
           {nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && (
-            <p className="text-sm text-orange-600 mb-5 ml-11">O engenheiro solicitou ajustes. Verifique o histórico abaixo e corrija o plano.</p>
+            <div className="mb-5 ml-11 space-y-3">
+              <p className="text-sm text-orange-600">Corrija somente as atividades rejeitadas e reenvie o plano.</p>
+              {nc?.atividades?.some(a => a.status === 'APROVADA') && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas (não precisam de ajuste)</p>
+                  {nc.atividades.filter(a => a.status === 'APROVADA').map(a => (
+                    <div key={a.id} className="flex gap-2 items-start p-2.5 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                      <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-green-800 break-words">{a.titulo}</p>
+                        <p className="text-xs text-green-700 break-words">{a.descricao}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Alerta de reincidência */}
@@ -611,7 +788,7 @@ export default function TrativaDetailPage() {
             <div className="mb-5 bg-orange-50 border border-orange-300 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-1">
                 <RefreshCw size={14} className="text-orange-600 shrink-0" />
-                <p className="text-sm font-bold text-orange-700">Esta é a {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência do mesmo problema</p>
+                <p className="text-sm font-bold text-orange-700 min-w-0 break-words">Esta é a {(nc.cadeiaReincidencias?.length ?? 0) + 1}ª ocorrência do mesmo problema</p>
               </div>
               <p className="text-xs text-orange-600">Proponha uma solução diferente que ataque a causa raiz.</p>
             </div>
@@ -698,38 +875,61 @@ export default function TrativaDetailPage() {
                 <p className="text-sm font-semibold text-slate-700">Plano de Atividades *</p>
                 <button
                   type="button"
-                  onClick={() => setAtividades([...atividades, ''])}
+                  onClick={() => setAtividades([...atividades, { titulo: '', descricao: '' }])}
                   className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
                 >
                   <Plus size={13} /> Adicionar atividade
                 </button>
               </div>
-              <div className="space-y-2">
-                {atividades.map((a, i) => (
-                  <div key={i} className="flex gap-2 items-start">
-                    <span className="w-6 h-6 rounded bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 mt-2">{i + 1}</span>
-                    <input
-                      type="text"
-                      value={a}
-                      onChange={e => {
-                        const novas = [...atividades]
-                        novas[i] = e.target.value
-                        setAtividades(novas)
-                      }}
-                      placeholder={`Atividade ${i + 1}...`}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
-                    />
-                    {atividades.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setAtividades(atividades.filter((_, j) => j !== i))}
-                        className="mt-2 text-slate-400 hover:text-red-500 transition"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {atividades.map((a, i) => {
+                  // Quando em EM_AJUSTE, os itens do estado são as atividades rejeitadas
+                  const ncRejeitadas = nc?.atividades?.filter(at => at.status === 'REJEITADA') ?? []
+                  const motivoRejeicao = ncRejeitadas[i]?.motivoRejeicao
+                  return (
+                    <div key={i} className={`rounded-lg border p-3 ${motivoRejeicao ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-6 h-6 rounded bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        {motivoRejeicao && (
+                          <span className="text-xs text-red-600 font-medium flex items-center gap-1 min-w-0"><XCircle size={11} className="shrink-0" /><span className="break-words">{motivoRejeicao}</span></span>
+                        )}
+                        {atividades.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setAtividades(atividades.filter((_, j) => j !== i))}
+                            className="ml-auto text-slate-400 hover:text-red-500 transition"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={a.titulo}
+                          onChange={e => {
+                            const novas = [...atividades]
+                            novas[i] = { ...novas[i], titulo: e.target.value }
+                            setAtividades(novas)
+                          }}
+                          placeholder={`Título da atividade ${i + 1}...`}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition font-medium"
+                        />
+                        <textarea
+                          value={a.descricao}
+                          onChange={e => {
+                            const novas = [...atividades]
+                            novas[i] = { ...novas[i], descricao: e.target.value }
+                            setAtividades(novas)
+                          }}
+                          placeholder="Descrição detalhada da atividade..."
+                          rows={2}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -755,7 +955,7 @@ export default function TrativaDetailPage() {
         <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-2">
             <Clock size={20} className="text-amber-600 shrink-0" />
-            <div>
+            <div className="min-w-0">
               <h3 className="font-bold text-amber-800">Aguardando Aprovação do Plano</h3>
               <p className="text-sm text-amber-600">Sua investigação e plano de atividades estão sendo analisados pelo engenheiro.</p>
             </div>
@@ -774,79 +974,167 @@ export default function TrativaDetailPage() {
           </div>
           <p className="text-sm text-green-600 mb-5 ml-11">Revise a investigação e o plano de atividades acima e aprove ou rejeite.</p>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Atividades previamente aprovadas (rodadas anteriores) */}
+            {nc?.atividades?.some(a => a.status === 'APROVADA') && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
+                {nc.atividades.filter(a => a.status === 'APROVADA').map(a => (
+                  <div key={a.id} className="flex gap-2 items-start p-3 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                    <CheckCircle size={15} className="text-green-500 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-green-800 break-words">{a.titulo}</p>
+                      <p className="text-xs text-green-700 mt-0.5 break-words">{a.descricao}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Atividades PENDENTE — engenheiro decide uma a uma */}
+            {nc?.atividades?.filter(a => a.status === 'PENDENTE').map(a => {
+              const decisao = decisoes[a.id]
+              return (
+                <div key={a.id} className={`rounded-lg border p-3 transition ${
+                  decisao?.status === 'APROVADA' ? 'border-green-300 bg-green-50'
+                  : decisao?.status === 'REJEITADA' ? 'border-red-300 bg-red-50'
+                  : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <p className="text-sm font-semibold text-slate-800 break-words mb-0.5">{a.titulo}</p>
+                  <p className="text-xs text-slate-600 break-words mb-3">{a.descricao}</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                        decisao?.status === 'APROVADA'
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
+                      }`}
+                    >
+                      <CheckCircle size={13} /> Aprovar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                        decisao?.status === 'REJEITADA'
+                          ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-white text-red-700 border-red-300 hover:bg-red-50'
+                      }`}
+                    >
+                      <XCircle size={13} /> Rejeitar
+                    </button>
+                  </div>
+                  {decisao?.status === 'REJEITADA' && (
+                    <textarea
+                      value={decisao.motivo}
+                      onChange={e => setDecisoes(prev => ({ ...prev, [a.id]: { ...prev[a.id], motivo: e.target.value } }))}
+                      placeholder="Motivo da rejeição *"
+                      rows={2}
+                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition"
+                    />
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Comentário geral opcional */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Comentário (opcional para aprovação)</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
               <textarea
-                value={comentarioAprovacao}
-                onChange={e => setComentarioAprovacao(e.target.value)}
+                value={comentarioRevisao}
+                onChange={e => setComentarioRevisao(e.target.value)}
                 rows={2}
-                placeholder="Adicione um comentário sobre sua decisão..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
+                placeholder="Comentário sobre esta revisão..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-red-700 mb-1">Motivo da Rejeição (obrigatório para reprovar)</label>
-              <textarea
-                value={motivoRejeicao}
-                onChange={e => setMotivoRejeicao(e.target.value)}
-                rows={3}
-                placeholder="Explique o motivo da rejeição para que o responsável possa ajustar..."
-                className="w-full border border-red-200 rounded-lg px-4 py-3 text-sm bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:bg-white transition"
-              />
-            </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-1">
               <button onClick={() => navigate('/tratativas')}
                 className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                 Cancelar
               </button>
               <button
-                onClick={() => mutRejeitarPlano.mutate()}
-                disabled={!motivoRejeicao.trim() || mutRejeitarPlano.isPending}
-                className="flex-1 bg-red-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+                onClick={() => mutRevisarAtividades.mutate()}
+                disabled={
+                  // Todas as atividades PENDENTE precisam ter decisão
+                  (nc?.atividades?.filter(a => a.status === 'PENDENTE') ?? []).some(a => !decisoes[a.id]) ||
+                  // Atividades rejeitadas precisam ter motivo
+                  Object.values(decisoes).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
+                  mutRevisarAtividades.isPending
+                }
+                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
-                <XCircle size={16} /> {mutRejeitarPlano.isPending ? 'Enviando...' : 'Rejeitar Plano'}
-              </button>
-              <button
-                onClick={() => mutAprovarPlano.mutate()}
-                disabled={mutAprovarPlano.isPending}
-                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={16} /> {mutAprovarPlano.isPending ? 'Enviando...' : 'Aprovar Plano'}
+                <CheckCircle size={16} /> {mutRevisarAtividades.isPending ? 'Enviando...' : 'Confirmar Revisão'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* EM_EXECUCAO + Externo/Tecnico → upload evidências + descrição */}
+      {/* EM_EXECUCAO + Externo/Tecnico → execução por atividade */}
       {showExecucaoForm && (
         <div className="bg-white rounded-xl border-2 border-purple-400 shadow-md p-6 ring-2 ring-purple-100">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
               <FileText size={16} className="text-purple-600" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">Execução e Envio de Evidências</h3>
+            <h3 className="text-base font-bold text-slate-800">Execução das Atividades</h3>
           </div>
-          <p className="text-sm text-purple-600 mb-5 ml-11">Execute as atividades do plano, anexe as evidências e descreva o que foi feito.</p>
+          <p className="text-sm text-purple-600 mb-5 ml-11">Para cada atividade, descreva o que foi feito e anexe as evidências (imagens/documentos).</p>
 
           <div className="space-y-4">
-            {id && (
-              <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" titulo="Evidências da Execução (PDF / Imagens)" />
+            {/* Atividades já aprovadas em execução */}
+            {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já validadas pelo engenheiro</p>
+                {nc.atividades.filter(a => a.statusExecucao === 'APROVADA').map(a => (
+                  <div key={a.id} className="p-3 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                    <div className="flex gap-2 items-start mb-1">
+                      <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-green-800 break-words">{a.titulo}</p>
+                        <p className="text-xs text-green-700 break-words">{a.descricao}</p>
+                      </div>
+                    </div>
+                    {a.descricaoExecucao && (
+                      <p className="text-xs text-green-700 ml-5 break-words italic">"{a.descricaoExecucao}"</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Descrição do que foi executado *</label>
-              <textarea
-                value={descricaoExecucao}
-                onChange={e => setDescricaoExecucao(e.target.value)}
-                rows={4}
-                placeholder="Descreva as ações realizadas para resolver a não conformidade..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white transition"
-              />
-            </div>
+            {/* Atividades pendentes de execução */}
+            {nc?.atividades?.filter(a => a.statusExecucao !== 'APROVADA').map(a => (
+              <div key={a.id} className={`rounded-lg border p-4 space-y-3 ${a.statusExecucao === 'REJEITADA' ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50/30'}`}>
+                <div className="flex gap-2 items-start">
+                  <span className="w-6 h-6 rounded bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{a.ordem}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 break-words">{a.titulo}</p>
+                    <p className="text-xs text-slate-600 break-words">{a.descricao}</p>
+                    {a.statusExecucao === 'REJEITADA' && a.motivoRejeicaoExecucao && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1 break-words">
+                        <XCircle size={11} className="shrink-0" /> {a.motivoRejeicaoExecucao}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">O que foi feito *</label>
+                  <textarea
+                    value={execucaoDescricoes[a.id] ?? ''}
+                    onChange={e => setExecucaoDescricoes(prev => ({ ...prev, [a.id]: e.target.value }))}
+                    rows={3}
+                    placeholder="Descreva as ações realizadas para esta atividade..."
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+                  />
+                </div>
+                <EvidenciaUpload atividadeId={a.id} tipoEvidencia="TRATATIVA" titulo="Evidências desta atividade" />
+              </div>
+            ))}
 
             <div className="flex gap-3 pt-2">
               <button onClick={() => navigate('/tratativas')}
@@ -854,11 +1142,14 @@ export default function TrativaDetailPage() {
                 Cancelar
               </button>
               <button
-                onClick={() => mutSubmeterEvidencias.mutate()}
-                disabled={!descricaoExecucao.trim() || mutSubmeterEvidencias.isPending}
+                onClick={() => mutSubmeterExecucao.mutate()}
+                disabled={
+                  (nc?.atividades ?? []).filter(a => a.statusExecucao !== 'APROVADA').some(a => !execucaoDescricoes[a.id]?.trim()) ||
+                  mutSubmeterExecucao.isPending
+                }
                 className="flex-1 bg-purple-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
-                <CheckCircle size={16} /> {mutSubmeterEvidencias.isPending ? 'Enviando...' : 'Enviar para Validação Final'}
+                <CheckCircle size={16} /> {mutSubmeterExecucao.isPending ? 'Enviando...' : 'Enviar para Validação'}
               </button>
             </div>
           </div>
@@ -889,58 +1180,125 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* AGUARDANDO_VALIDACAO_FINAL + Engenheiro → aprovar/rejeitar evidências */}
+      {/* AGUARDANDO_VALIDACAO_FINAL + Engenheiro → revisão por atividade */}
       {showAprovacaoEvidenciasForm && (
         <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle size={16} className="text-green-600" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">Validação Final das Evidências</h3>
+            <h3 className="text-base font-bold text-slate-800">Validação da Execução</h3>
           </div>
-          <p className="text-sm text-green-600 mb-5 ml-11">Revise as evidências e a descrição da execução acima. Aprove para concluir a NC ou rejeite para solicitar reenvio.</p>
+          <p className="text-sm text-green-600 mb-5 ml-11">Revise a execução de cada atividade. Aprove ou rejeite individualmente.</p>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Já aprovadas */}
+            {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
+                {nc.atividades.filter(a => a.statusExecucao === 'APROVADA').map(a => (
+                  <div key={a.id} className="flex gap-2 items-start p-3 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                    <CheckCircle size={15} className="text-green-500 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-green-800 break-words">{a.titulo}</p>
+                      {a.descricaoExecucao && <p className="text-xs text-green-700 mt-0.5 break-words italic">"{a.descricaoExecucao}"</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* PENDENTE — engenheiro decide uma a uma */}
+            {nc?.atividades?.filter(a => a.statusExecucao === 'PENDENTE').map(a => {
+              const decisao = decisoesExecucao[a.id]
+              return (
+                <div key={a.id} className={`rounded-lg border p-3 transition ${
+                  decisao?.status === 'APROVADA' ? 'border-green-300 bg-green-50'
+                  : decisao?.status === 'REJEITADA' ? 'border-red-300 bg-red-50'
+                  : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <p className="text-sm font-semibold text-slate-800 break-words mb-0.5">{a.titulo}</p>
+                  {a.descricaoExecucao && (
+                    <p className="text-xs text-slate-600 break-words mb-2 italic">"{a.descricaoExecucao}"</p>
+                  )}
+                  {a.evidencias?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {a.evidencias.map(ev => (
+                        <button
+                          key={ev.id}
+                          onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[180px]"
+                        >
+                          <FileText size={11} className="shrink-0" />
+                          <span className="truncate">{ev.nomeArquivo}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                        decisao?.status === 'APROVADA'
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
+                      }`}
+                    >
+                      <CheckCircle size={13} /> Aprovar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                        decisao?.status === 'REJEITADA'
+                          ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-white text-red-700 border-red-300 hover:bg-red-50'
+                      }`}
+                    >
+                      <XCircle size={13} /> Rejeitar
+                    </button>
+                  </div>
+                  {decisao?.status === 'REJEITADA' && (
+                    <textarea
+                      value={decisao.motivo}
+                      onChange={e => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { ...prev[a.id], motivo: e.target.value } }))}
+                      placeholder="Motivo da rejeição *"
+                      rows={2}
+                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition"
+                    />
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Comentário geral */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Comentário (opcional para aprovação)</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
               <textarea
-                value={comentarioAprovacao}
-                onChange={e => setComentarioAprovacao(e.target.value)}
+                value={comentarioRevisaoExecucao}
+                onChange={e => setComentarioRevisaoExecucao(e.target.value)}
                 rows={2}
-                placeholder="Adicione um comentário sobre sua decisão..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
+                placeholder="Comentário sobre esta revisão..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-red-700 mb-1">Motivo da Rejeição (obrigatório para reprovar)</label>
-              <textarea
-                value={motivoRejeicao}
-                onChange={e => setMotivoRejeicao(e.target.value)}
-                rows={3}
-                placeholder="Explique o motivo da rejeição das evidências..."
-                className="w-full border border-red-200 rounded-lg px-4 py-3 text-sm bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:bg-white transition"
-              />
-            </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-1">
               <button onClick={() => navigate('/tratativas')}
                 className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                 Cancelar
               </button>
               <button
-                onClick={() => mutRejeitarEvidencias.mutate()}
-                disabled={!motivoRejeicao.trim() || mutRejeitarEvidencias.isPending}
-                className="flex-1 bg-red-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
+                onClick={() => mutRevisarExecucao.mutate()}
+                disabled={
+                  (nc?.atividades?.filter(a => a.statusExecucao === 'PENDENTE') ?? []).some(a => !decisoesExecucao[a.id]) ||
+                  Object.values(decisoesExecucao).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
+                  mutRevisarExecucao.isPending
+                }
+                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
               >
-                <XCircle size={16} /> {mutRejeitarEvidencias.isPending ? 'Enviando...' : 'Rejeitar Evidências'}
-              </button>
-              <button
-                onClick={() => mutAprovarEvidencias.mutate()}
-                disabled={mutAprovarEvidencias.isPending}
-                className="flex-1 bg-green-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={16} /> {mutAprovarEvidencias.isPending ? 'Enviando...' : 'Aprovar e Concluir'}
+                <CheckCircle size={16} /> {mutRevisarExecucao.isPending ? 'Enviando...' : 'Confirmar Revisão'}
               </button>
             </div>
           </div>
@@ -995,11 +1353,14 @@ export default function TrativaDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Atividades do Plano</p>
-                <div className="space-y-1">
-                  {atividades.filter(a => a.trim()).map((a, i) => (
-                    <div key={i} className="flex gap-2 text-sm">
-                      <span className="font-semibold text-slate-500 shrink-0">{i + 1}.</span>
-                      <span className="text-slate-700 break-words">{a}</span>
+                <div className="space-y-2">
+                  {atividades.filter(a => a.titulo.trim() && a.descricao.trim()).map((a, i) => (
+                    <div key={i} className="flex gap-2">
+                      <span className="font-semibold text-slate-500 shrink-0 text-sm">{i + 1}.</span>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 break-words">{a.titulo}</p>
+                        <p className="text-sm text-slate-500 break-words">{a.descricao}</p>
+                      </div>
                     </div>
                   ))}
                 </div>

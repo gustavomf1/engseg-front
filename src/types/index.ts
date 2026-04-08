@@ -176,8 +176,15 @@ export interface NcResumo {
 
 export interface AtividadeResponse {
   id: string
+  titulo: string
   descricao: string
   ordem: number
+  status: 'PENDENTE' | 'APROVADA' | 'REJEITADA'
+  motivoRejeicao?: string
+  descricaoExecucao?: string
+  statusExecucao?: 'PENDENTE' | 'APROVADA' | 'REJEITADA'
+  motivoRejeicaoExecucao?: string
+  evidencias: Evidencia[]
 }
 
 export interface HistoricoNcResponse {
@@ -259,7 +266,12 @@ export interface NaoConformidadeRequest {
 export interface InvestigacaoRequest {
   porques: { pergunta: string; resposta: string }[]
   causaRaiz: string
-  atividades: string[]
+  atividades: { titulo: string; descricao: string }[]
+}
+
+export interface RevisarAtividadesRequest {
+  decisoes: { atividadeId: string; status: 'APROVADA' | 'REJEITADA'; motivo?: string }[]
+  comentario?: string
 }
 
 export interface AprovarRejeitarRequest {
@@ -268,6 +280,15 @@ export interface AprovarRejeitarRequest {
 
 export interface SubmeterEvidenciasRequest {
   descricaoExecucao: string
+}
+
+export interface SubmeterExecucaoRequest {
+  atividades: { atividadeId: string; descricaoExecucao?: string }[]
+}
+
+export interface RevisarExecucaoRequest {
+  decisoes: { atividadeId: string; status: 'APROVADA' | 'REJEITADA'; motivo?: string }[]
+  comentario?: string
 }
 
 // Legado
@@ -350,6 +371,7 @@ export interface ExecucaoSnapshot {
   status: StatusSnapshot
   comentarioRevisao?: string
   evidencias: Evidencia[]
+  atividades: string[]
 }
 
 export type TipoEvidencia = 'OCORRENCIA' | 'TRATATIVA'
@@ -359,5 +381,5 @@ export interface Evidencia {
   nomeArquivo: string
   urlArquivo: string
   dataUpload: string
-  tipoEvidencia: TipoEvidencia
+  tipoEvidencia?: TipoEvidencia
 }

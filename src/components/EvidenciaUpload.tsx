@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Upload, Download, Trash2, Eye, X, FileImage, File as FileIcon, Loader2 } from 'lucide-react'
-import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
+import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, uploadEvidenciaAtividade, getEvidenciasAtividade, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
 import { Evidencia, TipoEvidencia } from '../types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatDate } from '../utils/date'
@@ -8,13 +8,14 @@ import { formatDate } from '../utils/date'
 interface EvidenciaUploadProps {
   naoConformidadeId?: string
   desvioId?: string
+  atividadeId?: string
   tipoEvidencia?: TipoEvidencia
   readOnly?: boolean
   titulo?: string
 }
 
-export default function EvidenciaUpload({ naoConformidadeId, desvioId, tipoEvidencia = 'OCORRENCIA', readOnly = false, titulo }: EvidenciaUploadProps) {
-  const entityId = (naoConformidadeId || desvioId)!
+export default function EvidenciaUpload({ naoConformidadeId, desvioId, atividadeId, tipoEvidencia = 'OCORRENCIA', readOnly = false, titulo }: EvidenciaUploadProps) {
+  const entityId = (atividadeId || naoConformidadeId || desvioId)!
   const [dragActive, setDragActive] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewName, setPreviewName] = useState('')
@@ -22,30 +23,38 @@ export default function EvidenciaUpload({ naoConformidadeId, desvioId, tipoEvide
   const queryClient = useQueryClient()
   const inputId = `file-upload-${entityId}-${tipoEvidencia}`
 
-  const fetchFn = desvioId
+  const fetchFn = atividadeId
+    ? () => getEvidenciasAtividade(atividadeId)
+    : desvioId
     ? () => getEvidenciasDesvio(entityId, tipoEvidencia)
     : () => getEvidencias(entityId, tipoEvidencia)
 
-  const uploadFn = desvioId
+  const uploadFn = atividadeId
+    ? (file: File) => uploadEvidenciaAtividade(atividadeId, file)
+    : desvioId
     ? (file: File) => uploadEvidenciaDesvio(entityId, file, tipoEvidencia)
     : (file: File) => uploadEvidencia(entityId, file, tipoEvidencia)
 
+  const queryKey = atividadeId
+    ? ['evidencias-atividade', atividadeId]
+    : ['evidencias', entityId, tipoEvidencia]
+
   const { data: evidencias = [], isLoading } = useQuery({
-    queryKey: ['evidencias', entityId, tipoEvidencia],
+    queryKey,
     queryFn: fetchFn,
   })
 
   const uploadMutation = useMutation({
     mutationFn: uploadFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidencias', entityId, tipoEvidencia] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEvidencia(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidencias', entityId, tipoEvidencia] })
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 

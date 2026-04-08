@@ -4,7 +4,10 @@ import {
   NaoConformidadeRequest,
   InvestigacaoRequest,
   AprovarRejeitarRequest,
+  RevisarAtividadesRequest,
   SubmeterEvidenciasRequest,
+  SubmeterExecucaoRequest,
+  RevisarExecucaoRequest,
   HistoricoNcResponse,
   StatusNaoConformidade,
 } from '../types'
@@ -49,6 +52,21 @@ export const aprovarPlano = async (id: string, data?: AprovarRejeitarRequest): P
 
 export const rejeitarPlano = async (id: string, data: AprovarRejeitarRequest): Promise<NaoConformidade> => {
   const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/rejeitar-plano`, data)
+  return res.data
+}
+
+export const revisarAtividades = async (id: string, data: RevisarAtividadesRequest): Promise<NaoConformidade> => {
+  const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/revisar-atividades`, data)
+  return res.data
+}
+
+export const submeterExecucao = async (id: string, data: SubmeterExecucaoRequest): Promise<NaoConformidade> => {
+  const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/submeter-execucao`, data)
+  return res.data
+}
+
+export const revisarExecucao = async (id: string, data: RevisarExecucaoRequest): Promise<NaoConformidade> => {
+  const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/revisar-execucao`, data)
   return res.data
 }
 
