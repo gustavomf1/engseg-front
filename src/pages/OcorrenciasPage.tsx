@@ -289,19 +289,24 @@ export default function OcorrenciasPage() {
 
       <ConfirmDialog
         open={!!excluindo}
-        title="Excluir Ocorrência"
-        detail={excluindo && (
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${excluindo.tipo === 'DESVIO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                {excluindo.tipo === 'DESVIO' ? 'Desvio' : 'NC'}
-              </span>
+        title={excluindo ? `Excluir ${excluindo.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'}` : 'Excluir'}
+        message={excluindo ? `Tem certeza que deseja excluir "${excluindo.titulo}"?` : undefined}
+        warning={excluindo && excluindo.tipo === 'NAO_CONFORMIDADE' && ((excluindo.quantidadeAtividades ?? 0) > 0 || (excluindo.quantidadeHistorico ?? 0) > 0) ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-medium mb-1">Esta NC possui tratativas em andamento ou já executadas:</p>
+                <ul className="list-disc list-inside text-xs space-y-0.5 text-amber-700">
+                  {(excluindo.quantidadeAtividades ?? 0) > 0 && <li>{excluindo.quantidadeAtividades} atividade(s) do plano de ação</li>}
+                  {(excluindo.quantidadeHistorico ?? 0) > 0 && <li>{excluindo.quantidadeHistorico} registro(s) no histórico</li>}
+                </ul>
+                <p className="mt-2 font-medium">Todos esses dados serão apagados permanentemente.</p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-slate-700">{excluindo.titulo}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{formatDate(excluindo.dataRegistro)}</p>
           </div>
-        )}
-        confirmLabel="Excluir"
+        ) : undefined}
+        confirmLabel="Sim, excluir"
         isLoading={deleteMutation.isPending}
         isError={deleteMutation.isError}
         onConfirm={() => excluindo && deleteMutation.mutate(excluindo)}

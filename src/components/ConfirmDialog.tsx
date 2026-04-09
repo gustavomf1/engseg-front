@@ -5,7 +5,9 @@ interface ConfirmDialogProps {
   open: boolean
   title: string
   description?: string
+  message?: string
   detail?: ReactNode
+  warning?: ReactNode
   confirmLabel?: string
   isLoading?: boolean
   isError?: boolean
@@ -17,7 +19,9 @@ export default function ConfirmDialog({
   open,
   title,
   description = 'Esta ação não pode ser desfeita',
+  message,
   detail,
+  warning,
   confirmLabel = 'Confirmar',
   isLoading = false,
   isError = false,
@@ -36,7 +40,7 @@ export default function ConfirmDialog({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
             <Trash2 size={20} className="text-red-600" />
           </div>
           <div>
@@ -45,10 +49,18 @@ export default function ConfirmDialog({
           </div>
         </div>
 
+        {message && (
+          <p className="text-sm text-slate-600 mb-4">{message}</p>
+        )}
+
         {detail && (
-          <div className="bg-gray-50 rounded-lg p-3 mb-5">
+          <div className="bg-gray-50 rounded-lg p-3 mb-4">
             {detail}
           </div>
+        )}
+
+        {warning && (
+          <div className="mb-4">{warning}</div>
         )}
 
         {isError && (
@@ -57,17 +69,17 @@ export default function ConfirmDialog({
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
+            className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition"
+            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition"
           >
             {isLoading ? 'Aguarde...' : confirmLabel}
           </button>

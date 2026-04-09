@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDesvio, updateDesvio } from '../api/desvio'
-import { getNaoConformidade, updateNaoConformidade } from '../api/naoConformidade'
+import { getDesvio, updateDesvio, deleteDesvio } from '../api/desvio'
+import { getNaoConformidade, updateNaoConformidade, deleteNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade, Norma } from '../types'
 import { getTrechosNorma } from '../api/ncTrechoNorma'
 import { getEstabelecimentos } from '../api/estabelecimento'
@@ -10,7 +10,7 @@ import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
-  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw
+  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import SearchableSelect from '../components/SearchableSelect'
@@ -44,6 +44,7 @@ export default function OcorrenciaDetailPage() {
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<Record<string, any>>({})
   const [normaModal, setNormaModal] = useState<Norma | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -159,6 +160,14 @@ export default function OcorrenciaDetailPage() {
     },
   })
 
+  const deleteMutation = useMutation<void, Error, void>({
+    mutationFn: () => isDesvio ? deleteDesvio(id!) : deleteNaoConformidade(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
+      navigate('/ocorrencias')
+    },
+  })
+
   function set(field: string, value: any) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
@@ -213,12 +222,20 @@ export default function OcorrenciaDetailPage() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setEditando(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
-              >
-                <Pencil size={15} /> Editar
-              </button>
+              <>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition"
+                >
+                  <Trash2 size={15} /> Excluir
+                </button>
+                <button
+                  onClick={() => setEditando(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
+                >
+                  <Pencil size={15} /> Editar
+                </button>
+              </>
             )
           })()}
         </div>
@@ -532,6 +549,69 @@ export default function OcorrenciaDetailPage() {
         </div>
       )}
     </div>
+
+      {/* Modal confirmação de exclusão */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <Trash2 size={20} className="text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Excluir {isDesvio ? 'Desvio' : 'Não Conformidade'}</h3>
+                  <p className="text-xs text-slate-400">Esta ação não pode ser desfeita</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 mb-4">
+                Tem certeza que deseja excluir <strong>"{(ocorrencia as any).titulo}"</strong>?
+              </p>
+
+              {!isDesvio && nc && (nc.atividades?.length > 0 || nc.execucoes?.length > 0 || nc.devolutivas?.length > 0 || nc.historico?.length > 0) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium mb-1">Esta NC possui tratativas em andamento ou já executadas:</p>
+                      <ul className="list-disc list-inside text-xs space-y-0.5 text-amber-700">
+                        {nc.atividades?.length > 0 && <li>{nc.atividades.length} atividade(s) do plano de ação</li>}
+                        {nc.devolutivas?.length > 0 && <li>{nc.devolutivas.length} devolutiva(s)</li>}
+                        {nc.execucoes?.length > 0 && <li>{nc.execucoes.length} execução(ões)</li>}
+                        {nc.historico?.length > 0 && <li>{nc.historico.length} registro(s) no histórico</li>}
+                      </ul>
+                      <p className="mt-2 font-medium">Todos esses dados serão apagados permanentemente.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {deleteMutation.isError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+                  Erro ao excluir: {deleteMutation.error?.message || 'Tente novamente.'}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition"
+              >
+                {deleteMutation.isPending ? 'Excluindo...' : 'Sim, excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal detalhes da norma */}
 

@@ -18,6 +18,8 @@ export interface OcorrenciaItem {
   vencida?: boolean
   primeiraEvidenciaId?: string
   primeiraEvidenciaNome?: string
+  quantidadeAtividades?: number
+  quantidadeHistorico?: number
 }
 
 export const getOcorrencias = () =>

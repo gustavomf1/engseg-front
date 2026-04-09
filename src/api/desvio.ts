@@ -21,3 +21,7 @@ export const updateDesvio = async (id: string, data: DesvioRequest): Promise<Des
   return res.data
 }
 
+export const deleteDesvio = async (id: string): Promise<void> => {
+  await client.delete(`/desvios/${id}`)
+}
+
