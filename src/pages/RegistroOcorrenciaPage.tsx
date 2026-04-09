@@ -369,7 +369,6 @@ export default function RegistroOcorrenciaPage() {
                                 setNormasSelecionadas(prev => [...prev, norma.id])
                               } else {
                                 setNormasSelecionadas(prev => prev.filter(nid => nid !== norma.id))
-                                setTrechosPendentes(prev => prev.filter(t => t.normaId !== norma.id))
                               }
                             }}
                           />
