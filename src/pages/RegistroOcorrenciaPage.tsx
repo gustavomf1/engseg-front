@@ -304,21 +304,7 @@ export default function RegistroOcorrenciaPage() {
             {errors.localizacaoId && <p className="text-red-500 text-xs mt-1">{errors.localizacaoId.message}</p>}
           </div>
 
-          {/* Descrição */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              {tipo === 'DESVIO' ? 'Descrição Curta *' : 'Descrição Detalhada *'}
-            </label>
-            <textarea
-              {...register('descricao')}
-              rows={3}
-              placeholder={tipo === 'DESVIO' ? 'Descreva brevemente o desvio identificado' : 'Descreva detalhadamente a não conformidade identificada'}
-              className={inputClass}
-            />
-            {errors.descricao && <p className="text-red-500 text-xs mt-1">{errors.descricao.message}</p>}
-          </div>
-
-          {/* NF-only fields */}
+          {/* NC-only: Eng. responsáveis — acima da descrição */}
           {tipo === 'NAO_CONFORMIDADE' && (
             <>
               <div>
@@ -344,7 +330,26 @@ export default function RegistroOcorrenciaPage() {
                 />
                 <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
               </div>
+            </>
+          )}
 
+          {/* Descrição */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {tipo === 'DESVIO' ? 'Descrição Curta *' : 'Descrição Detalhada *'}
+            </label>
+            <textarea
+              {...register('descricao')}
+              rows={8}
+              placeholder={tipo === 'DESVIO' ? 'Descreva brevemente o desvio identificado' : 'Descreva detalhadamente a não conformidade identificada'}
+              className={inputClass}
+            />
+            {errors.descricao && <p className="text-red-500 text-xs mt-1">{errors.descricao.message}</p>}
+          </div>
+
+          {/* NF-only fields */}
+          {tipo === 'NAO_CONFORMIDADE' && (
+            <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Normas / Regras Violadas</label>
                 {normas.length === 0 ? (
