@@ -84,7 +84,7 @@ export default function BuscaTrechoModal({ normaId, normaTitulo, ncId, onTrechoS
                 type="text"
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && prompt.trim() && buscarMutation.mutate()}
+                onKeyDown={e => { if (e.key === 'Enter' && prompt.trim()) { e.preventDefault(); e.stopPropagation(); buscarMutation.mutate() } }}
                 placeholder='Ex: "linha de vida", "proteção coletiva", "cláusula 7.1.3"'
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
               />

@@ -28,7 +28,7 @@ export const salvarConteudoNorma = async (id: string, conteudo: string): Promise
 }
 
 export const buscarTrechoNorma = async (id: string, prompt: string): Promise<{ trecho: string; clausulaReferencia?: string }> => {
-  const res = await client.post(`/normas/${id}/buscar-trecho`, { prompt })
+  const res = await client.post(`/normas/${id}/buscar-trecho`, { prompt }, { timeout: 150000 })
   return res.data
 }
 
