@@ -62,7 +62,7 @@ export default function App() {
               <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
               <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
               <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativasListPage /></RoleRoute>} />
-              <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativaDetailPage /></RoleRoute>} />
+              <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO', 'TECNICO']}><TrativaDetailPage /></RoleRoute>} />
               <Route path="empresas" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaListPage /></RoleRoute>} />
               <Route path="empresas/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />
               <Route path="empresas/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />

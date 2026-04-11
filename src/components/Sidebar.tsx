@@ -26,7 +26,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
 
   const { data: ocorrencias = [] } = useQuery({
     queryKey: ['ocorrencias'],
-    queryFn: getOcorrencias,
+    queryFn: () => getOcorrencias(),
   })
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'

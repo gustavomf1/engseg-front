@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
@@ -36,10 +37,11 @@ export default function OcorrenciasPage() {
   const [excluindo, setExcluindo] = useState<OcorrenciaItem | null>(null)
 
   const isTecnico = user?.perfil === 'TECNICO'
+  const { estabelecimento } = useWorkspace()
 
   const { data: ocorrencias = [], isLoading } = useQuery({
-    queryKey: ['ocorrencias'],
-    queryFn: getOcorrencias,
+    queryKey: ['ocorrencias', estabelecimento?.id],
+    queryFn: () => getOcorrencias(estabelecimento?.id),
   })
 
   const deleteMutation = useMutation({

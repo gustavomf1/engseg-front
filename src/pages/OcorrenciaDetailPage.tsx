@@ -10,7 +10,7 @@ import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
-  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2
+  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2, Eye
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import SearchableSelect from '../components/SearchableSelect'
@@ -199,6 +199,15 @@ export default function OcorrenciaDetailPage() {
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="flex gap-2">
+          {/* Ver tratativa — NC que já saiu do status ABERTA */}
+          {!isDesvio && nc && nc.status !== 'ABERTA' && (
+            <button
+              onClick={() => navigate(`/tratativas/NC/${id}`)}
+              className="flex items-center gap-2 px-4 py-2 border border-purple-200 rounded-lg text-sm text-purple-700 hover:bg-purple-50 transition"
+            >
+              <Eye size={15} /> Ver tratativa
+            </button>
+          )}
           {/* Técnico só pode editar NC com status ABERTA */}
           {(() => {
             const ncEmTratamento = !isDesvio && nc && nc.status !== 'ABERTA'
@@ -446,13 +455,6 @@ export default function OcorrenciaDetailPage() {
             readOnly={isTecnico && (isDesvio || (!!nc && nc.status !== 'ABERTA'))}
             titulo="Evidências da Ocorrência"
           />
-        </div>
-      )}
-
-      {/* Evidências da Tratativa */}
-      {!isDesvio && id && nc && nc.status !== 'ABERTA' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="TRATATIVA" readOnly titulo="Evidências da Tratativa" />
         </div>
       )}
 

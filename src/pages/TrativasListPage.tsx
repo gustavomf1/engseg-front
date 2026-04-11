@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
 import { useAuth } from '../contexts/AuthContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
@@ -32,10 +33,14 @@ export default function TrativasListPage() {
   const PAGE_SIZE = 10
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
+  const isExterno = user?.perfil === 'EXTERNO'
+  const { estabelecimento } = useWorkspace()
+
+  const estabelecimentoId = isExterno ? undefined : estabelecimento?.id
 
   const { data: ocorrencias = [], isLoading } = useQuery({
-    queryKey: ['ocorrencias'],
-    queryFn: getOcorrencias,
+    queryKey: ['ocorrencias', estabelecimentoId],
+    queryFn: () => getOcorrencias(estabelecimentoId),
   })
 
   // Filtra por visibilidade: NCs só aparecem se o usuário é o eng responsável pela tratativa ou é ENGENHEIRO

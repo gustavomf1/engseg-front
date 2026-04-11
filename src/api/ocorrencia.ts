@@ -22,8 +22,8 @@ export interface OcorrenciaItem {
   quantidadeHistorico?: number
 }
 
-export const getOcorrencias = () =>
-  client.get<OcorrenciaItem[]>('/ocorrencias').then(r => r.data)
+export const getOcorrencias = (estabelecimentoId?: string) =>
+  client.get<OcorrenciaItem[]>('/ocorrencias', { params: estabelecimentoId ? { estabelecimentoId } : {} }).then(r => r.data)
 
 export const getRecentesOcorrencias = () =>
   client.get<OcorrenciaItem[]>('/dashboard/recentes').then(r => r.data)

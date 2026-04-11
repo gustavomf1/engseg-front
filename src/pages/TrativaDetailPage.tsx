@@ -401,7 +401,11 @@ export default function TrativaDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             {nc.cadeiaReincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>{item.titulo}</span>
+                <button
+                  onClick={() => navigate(`/tratativas/NC/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium max-w-[180px] truncate hover:bg-red-100 transition"
+                  title={item.titulo}
+                >{item.titulo}</button>
                 <span className="text-slate-300 text-sm">→</span>
               </span>
             ))}
@@ -409,7 +413,11 @@ export default function TrativaDetailPage() {
             {nc.reincidencias?.map(item => (
               <span key={item.id} className="flex items-center gap-2">
                 <span className="text-slate-300 text-sm">→</span>
-                <span className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium max-w-[180px] truncate" title={item.titulo}>{item.titulo}</span>
+                <button
+                  onClick={() => navigate(`/tratativas/NC/${item.id}`)}
+                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium max-w-[180px] truncate hover:bg-orange-100 transition"
+                  title={item.titulo}
+                >{item.titulo}</button>
               </span>
             ))}
           </div>
@@ -494,7 +502,7 @@ export default function TrativaDetailPage() {
                                   <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{a.ordem}</span>
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="text-sm font-medium text-slate-800 break-words">{a.titulo}</p>
+                                      <p className="text-sm font-medium text-slate-800 break-words min-w-0">{a.titulo}</p>
                                       {a.status === 'APROVADA' && (
                                         <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0">
                                           <CheckCircle size={11} /> Aprovada
@@ -533,7 +541,7 @@ export default function TrativaDetailPage() {
                                     <span className="w-6 h-6 rounded bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-medium text-slate-800 break-words">{titulo}</p>
+                                        <p className="text-sm font-medium text-slate-800 break-words min-w-0">{titulo}</p>
                                         {isAprovada && <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0"><CheckCircle size={11} /> Aprovada</span>}
                                         {isRejeitada && <span className="flex items-center gap-0.5 text-xs text-red-700 font-medium shrink-0"><XCircle size={11} /> Rejeitada</span>}
                                       </div>
@@ -612,7 +620,7 @@ export default function TrativaDetailPage() {
                                 {a.statusExecucao === 'APROVADA' && <CheckCircle size={13} className="text-green-500 shrink-0" />}
                                 {a.statusExecucao === 'REJEITADA' && <XCircle size={13} className="text-red-500 shrink-0" />}
                                 {!a.statusExecucao && <Clock size={13} className="text-slate-400 shrink-0" />}
-                                <p className="text-xs font-semibold text-slate-800 break-words">{a.titulo}</p>
+                                <p className="text-xs font-semibold text-slate-800 break-words min-w-0">{a.titulo}</p>
                               </div>
                               {a.descricaoExecucao && (
                                 <p className="text-xs text-slate-600 break-words italic ml-5">"{a.descricaoExecucao}"</p>
@@ -669,9 +677,9 @@ export default function TrativaDetailPage() {
                                   {isAprovada && <CheckCircle size={13} className="text-green-500 shrink-0" />}
                                   {isRejeitada && <XCircle size={13} className="text-red-500 shrink-0" />}
                                   {!isAprovada && !isRejeitada && <Clock size={13} className="text-slate-400 shrink-0" />}
-                                  <p className="text-xs font-semibold text-slate-800 break-words">{titulo}</p>
-                                  {isAprovada && <span className="text-xs text-green-700 font-medium">Aprovada</span>}
-                                  {isRejeitada && <span className="text-xs text-red-700 font-medium">Rejeitada</span>}
+                                  <p className="text-xs font-semibold text-slate-800 break-words min-w-0 flex-1">{titulo}</p>
+                                  {isAprovada && <span className="text-xs text-green-700 font-medium shrink-0">Aprovada</span>}
+                                  {isRejeitada && <span className="text-xs text-red-700 font-medium shrink-0">Rejeitada</span>}
                                 </div>
                                 {descExec && <p className="text-xs text-slate-600 break-words italic ml-5">"{descExec}"</p>}
                                 {motivoHist && <p className="text-xs text-red-600 break-words ml-5 mt-1">Motivo: {motivoHist}</p>}

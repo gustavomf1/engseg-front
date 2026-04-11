@@ -11,7 +11,7 @@ const perfilLabels: Record<string, string> = {
 
 export default function PerfilPage() {
   const { user } = useAuth()
-  const { data: ocorrencias = [] } = useQuery({ queryKey: ['ocorrencias'], queryFn: getOcorrencias })
+  const { data: ocorrencias = [] } = useQuery({ queryKey: ['ocorrencias'], queryFn: () => getOcorrencias() })
 
   const concluidas = ocorrencias.filter(o => o.status === 'CONCLUIDO').length
   const pendentes = ocorrencias.filter(o => o.status !== 'CONCLUIDO' && o.status !== 'NAO_RESOLVIDA').length
