@@ -57,6 +57,7 @@ export default function TrativaDetailPage() {
   const isTecnico = user?.perfil === 'TECNICO'
 
   // State — investigação (pergunta + resposta por porquê)
+  const [historicoAberto, setHistoricoAberto] = useState(false)
   const [porques, setPorques] = useState<{ pergunta: string; resposta: string }[]>([
     { pergunta: '', resposta: '' },
   ])
@@ -715,22 +716,34 @@ export default function TrativaDetailPage() {
 
       {/* ═══ HISTÓRICO DE DECISÕES ═══ */}
       {!isDesvio && nc && nc.historico?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <History size={16} className="text-slate-500" />
-            <h3 className="font-semibold text-slate-700">Histórico</h3>
-          </div>
-          <div className="space-y-2">
-            {nc.historico.map(h => (
-              <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
-                  <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setHistoricoAberto(v => !v)}
+            className="w-full flex items-center justify-between gap-2 px-6 py-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <History size={16} className="text-slate-500" />
+              <h3 className="font-semibold text-slate-700">Histórico</h3>
+              <span className="text-xs text-slate-400">({nc.historico.length})</span>
+            </div>
+            <ChevronDown
+              size={16}
+              className={`text-slate-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {historicoAberto && (
+            <div className="px-6 pb-6 space-y-2">
+              {nc.historico.map(h => (
+                <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
+                    <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                  </div>
+                  {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
                 </div>
-                {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

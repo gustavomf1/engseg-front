@@ -6,7 +6,7 @@ import { getTrechosNorma } from '../../api/ncTrechoNorma'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import SeveridadeBadge from '../../components/SeveridadeBadge'
-import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2, ChevronDown } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import BuscaTrechoModal from '../../components/BuscaTrechoModal'
 import { formatDate, formatDateTime } from '../../utils/date'
@@ -40,6 +40,7 @@ export default function NaoConformidadeDetailPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
+  const [historicoAberto, setHistoricoAberto] = useState(false)
 
   const { data: nc, isLoading } = useQuery({
     queryKey: ['nao-conformidade', id],
@@ -306,22 +307,34 @@ export default function NaoConformidadeDetailPage() {
 
       {/* Histórico de decisões */}
       {nc.historico?.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <History size={16} className="text-slate-500" />
-            <h3 className="font-semibold text-slate-700">Histórico</h3>
-          </div>
-          <div className="space-y-2">
-            {nc.historico.map(h => (
-              <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
-                  <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 overflow-hidden">
+          <button
+            onClick={() => setHistoricoAberto(v => !v)}
+            className="w-full flex items-center justify-between gap-2 px-6 py-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <History size={16} className="text-slate-500" />
+              <h3 className="font-semibold text-slate-700">Histórico</h3>
+              <span className="text-xs text-slate-400">({nc.historico.length})</span>
+            </div>
+            <ChevronDown
+              size={16}
+              className={`text-slate-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {historicoAberto && (
+            <div className="px-6 pb-6 space-y-2">
+              {nc.historico.map(h => (
+                <div key={h.id} className={`border rounded-lg p-3 ${acaoColors[h.acao]}`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-semibold">{acaoLabels[h.acao]}</span>
+                    <span className="text-xs opacity-70 min-w-0 break-words">{formatDateTime(h.dataAcao)}{h.usuarioNome ? ` — ${h.usuarioNome}` : ''}</span>
+                  </div>
+                  {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
                 </div>
-                {h.comentario && <p className="text-xs mt-1.5 break-words">{h.comentario}</p>}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
