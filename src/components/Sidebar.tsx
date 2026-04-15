@@ -29,8 +29,6 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
     queryFn: () => getOcorrencias(),
   })
 
-  const isEngenheiro = user?.perfil === 'ENGENHEIRO'
-
   const pendentesValidacao = ocorrencias.filter(o => {
     if (o.tipo !== 'NAO_CONFORMIDADE') return false
     const aguardandoAcao = o.status === 'AGUARDANDO_APROVACAO_PLANO' || o.status === 'AGUARDANDO_VALIDACAO_FINAL'
@@ -208,8 +206,8 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
             )}
           </NavLink>}
 
-          {/* Admin section - ENGENHEIRO only */}
-          {user?.perfil === 'ENGENHEIRO' && (
+          {/* Admin section - ADMIN only */}
+          {user?.isAdmin && (
             <>
               {show && (
                 <div className="pt-4 pb-1 px-2">

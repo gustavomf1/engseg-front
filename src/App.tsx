@@ -6,6 +6,7 @@ import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import PrivateRoute from './components/PrivateRoute'
 import WorkspaceRoute from './components/WorkspaceRoute'
 import RoleRoute from './components/RoleRoute'
+import AdminRoute from './components/AdminRoute'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import SeletorPage from './pages/SeletorPage'
@@ -65,21 +66,21 @@ export default function App() {
               <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
               <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativasListPage /></RoleRoute>} />
               <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativaDetailPage /></RoleRoute>} />
-              <Route path="empresas" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaListPage /></RoleRoute>} />
-              <Route path="empresas/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />
-              <Route path="empresas/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><EmpresaFormPage /></RoleRoute>} />
-              <Route path="estabelecimentos" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoListPage /></RoleRoute>} />
-              <Route path="estabelecimentos/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoFormPage /></RoleRoute>} />
-              <Route path="estabelecimentos/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><EstabelecimentoFormPage /></RoleRoute>} />
-              <Route path="localizacoes" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoListPage /></RoleRoute>} />
-              <Route path="localizacoes/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoFormPage /></RoleRoute>} />
-              <Route path="localizacoes/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><LocalizacaoFormPage /></RoleRoute>} />
-              <Route path="usuarios" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioListPage /></RoleRoute>} />
-              <Route path="usuarios/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
-              <Route path="usuarios/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><UsuarioFormPage /></RoleRoute>} />
-              <Route path="normas" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaListPage /></RoleRoute>} />
-              <Route path="normas/novo" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaFormPage /></RoleRoute>} />
-              <Route path="normas/:id/editar" element={<RoleRoute allowed={['ENGENHEIRO']}><NormaFormPage /></RoleRoute>} />
+              <Route path="empresas" element={<AdminRoute><EmpresaListPage /></AdminRoute>} />
+              <Route path="empresas/novo" element={<AdminRoute><EmpresaFormPage /></AdminRoute>} />
+              <Route path="empresas/:id/editar" element={<AdminRoute><EmpresaFormPage /></AdminRoute>} />
+              <Route path="estabelecimentos" element={<AdminRoute><EstabelecimentoListPage /></AdminRoute>} />
+              <Route path="estabelecimentos/novo" element={<AdminRoute><EstabelecimentoFormPage /></AdminRoute>} />
+              <Route path="estabelecimentos/:id/editar" element={<AdminRoute><EstabelecimentoFormPage /></AdminRoute>} />
+              <Route path="localizacoes" element={<AdminRoute><LocalizacaoListPage /></AdminRoute>} />
+              <Route path="localizacoes/novo" element={<AdminRoute><LocalizacaoFormPage /></AdminRoute>} />
+              <Route path="localizacoes/:id/editar" element={<AdminRoute><LocalizacaoFormPage /></AdminRoute>} />
+              <Route path="usuarios" element={<AdminRoute><UsuarioListPage /></AdminRoute>} />
+              <Route path="usuarios/novo" element={<AdminRoute><UsuarioFormPage /></AdminRoute>} />
+              <Route path="usuarios/:id/editar" element={<AdminRoute><UsuarioFormPage /></AdminRoute>} />
+              <Route path="normas" element={<AdminRoute><NormaListPage /></AdminRoute>} />
+              <Route path="normas/novo" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
+              <Route path="normas/:id/editar" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<DefaultRedirect />} />
           </Routes>
