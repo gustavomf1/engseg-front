@@ -112,7 +112,10 @@ export default function UsuarioListPage() {
       setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
       setCriarErro(null)
     },
-    onError: () => setCriarErro('Erro ao criar usuário. Verifique os dados e tente novamente.')
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setCriarErro(msg ?? 'Erro ao criar usuário. Verifique os dados e tente novamente.')
+    }
   })
 
   return (
@@ -437,8 +440,15 @@ export default function UsuarioListPage() {
       )}
 
       {showCriarModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="card w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setShowCriarModal(false)
+            setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+            setCriarErro(null)
+          }}
+        >
+          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-4">Criar Usuário</h2>
             <form
               onSubmit={e => {
@@ -510,7 +520,11 @@ export default function UsuarioListPage() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setShowCriarModal(false)}
+                  onClick={() => {
+                    setShowCriarModal(false)
+                    setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+                    setCriarErro(null)
+                  }}
                 >
                   Cancelar
                 </button>
