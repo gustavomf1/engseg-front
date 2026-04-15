@@ -1,5 +1,5 @@
 import client from './client'
-import { Usuario, UsuarioRequest } from '../types'
+import { Usuario, UsuarioRequest, CriarUsuarioDiretoRequest } from '../types'
 
 export const getUsuarios = async (ativo?: boolean, empresaId?: string): Promise<Usuario[]> => {
   const params: Record<string, boolean | string> = {}
@@ -31,4 +31,9 @@ export const deleteUsuario = async (id: string): Promise<void> => {
 export const reativarUsuario = async (id: string): Promise<Usuario> => {
   const res = await client.put<Usuario>(`/usuarios/${id}/reativar`)
   return res.data
+}
+
+export const criarUsuarioDireto = async (data: CriarUsuarioDiretoRequest): Promise<Usuario> => {
+  const response = await client.post<Usuario>('/usuarios/direto', data)
+  return response.data
 }

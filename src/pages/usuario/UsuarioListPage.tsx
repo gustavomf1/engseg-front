@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsuarios, deleteUsuario, reativarUsuario } from '../../api/usuario'
+import { getUsuarios, deleteUsuario, reativarUsuario, criarUsuarioDireto } from '../../api/usuario'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck, Link2, Copy, Check, Clock, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck, Link2, Copy, Check, Clock, CheckCircle2, UserPlus } from 'lucide-react'
 import { formatCnpj, formatTelefone } from '../../utils/date'
 import { criarConvite } from '../../api/convite'
 import { getEmpresas } from '../../api/empresa'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
-import { Usuario } from '../../types'
+import { Usuario, CriarUsuarioDiretoRequest, PerfilUsuario } from '../../types'
 
 const PAGE_SIZES = [15, 25, 50, 100, 200]
 
@@ -90,6 +90,31 @@ export default function UsuarioListPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
   })
 
+  const [showCriarModal, setShowCriarModal] = useState(false)
+  const [criarForm, setCriarForm] = useState({
+    nome: '', email: '', senha: '',
+    perfil: 'ENGENHEIRO' as PerfilUsuario,
+    empresaId: '', isAdmin: false
+  })
+  const [criarErro, setCriarErro] = useState<string | null>(null)
+
+  const { data: todasEmpresas = [] } = useQuery({
+    queryKey: ['empresas-select'],
+    queryFn: () => getEmpresas(),
+    enabled: showCriarModal
+  })
+
+  const criarDiretoMutation = useMutation({
+    mutationFn: criarUsuarioDireto,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      setShowCriarModal(false)
+      setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+      setCriarErro(null)
+    },
+    onError: () => setCriarErro('Erro ao criar usuário. Verifique os dados e tente novamente.')
+  })
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -111,6 +136,15 @@ export default function UsuarioListPage() {
               >
                 <Link2 size={16} /> Gerar Convite
               </button>
+              {user?.isAdmin && (
+                <button
+                  onClick={() => setShowCriarModal(true)}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <UserPlus size={16} />
+                  Criar Usuário
+                </button>
+              )}
               <Link to="/usuarios/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
                 <Plus size={16} /> Novo Usuário
               </Link>
@@ -398,6 +432,97 @@ export default function UsuarioListPage() {
                 Fechar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCriarModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Criar Usuário</h2>
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                criarDiretoMutation.mutate(criarForm)
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="label">Nome</label>
+                <input className="input" required value={criarForm.nome}
+                  onChange={e => setCriarForm(f => ({ ...f, nome: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Email</label>
+                <input className="input" type="email" required value={criarForm.email}
+                  onChange={e => setCriarForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Senha temporária</label>
+                <input className="input" type="password" required value={criarForm.senha}
+                  onChange={e => setCriarForm(f => ({ ...f, senha: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Empresa</label>
+                <select className="input" required value={criarForm.empresaId}
+                  onChange={e => setCriarForm(f => ({ ...f, empresaId: e.target.value }))}>
+                  <option value="">Selecione...</option>
+                  {todasEmpresas?.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nomeFantasia || emp.razaoSocial}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Perfil</label>
+                <select className="input" value={criarForm.perfil}
+                  onChange={e => {
+                    const perfil = e.target.value as PerfilUsuario
+                    setCriarForm(f => ({
+                      ...f,
+                      perfil,
+                      isAdmin: perfil !== 'ENGENHEIRO' ? false : f.isAdmin
+                    }))
+                  }}>
+                  <option value="ENGENHEIRO">Engenheiro</option>
+                  <option value="TECNICO">Técnico</option>
+                  <option value="EXTERNO">Externo</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isAdmin"
+                  checked={criarForm.isAdmin}
+                  disabled={criarForm.perfil !== 'ENGENHEIRO'}
+                  onChange={e => setCriarForm(f => ({ ...f, isAdmin: e.target.checked }))}
+                />
+                <label
+                  htmlFor="isAdmin"
+                  className={`label mb-0 ${criarForm.perfil !== 'ENGENHEIRO' ? 'opacity-40' : ''}`}
+                >
+                  É administrador
+                </label>
+              </div>
+              {criarErro && <p className="text-red-500 text-sm">{criarErro}</p>}
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowCriarModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={criarDiretoMutation.isPending}
+                >
+                  {criarDiretoMutation.isPending ? 'Criando...' : 'Criar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
