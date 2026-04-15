@@ -32,6 +32,16 @@ export interface LoginResponse {
   nome: string
   email: string
   perfil: PerfilUsuario
+  isAdmin: boolean
+}
+
+export interface CriarUsuarioDiretoRequest {
+  nome: string
+  email: string
+  senha: string
+  perfil: PerfilUsuario
+  empresaId: string
+  isAdmin: boolean
 }
 
 export interface Empresa {

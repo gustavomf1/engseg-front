@@ -7,12 +7,13 @@ interface AuthUser {
   email: string
   perfil: PerfilUsuario
   token: string
+  isAdmin: boolean
 }
 
 interface AuthContextData {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (id: string, token: string, nome: string, email: string, perfil: PerfilUsuario) => void
+  login: (id: string, token: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => void
   logout: () => void
 }
 
@@ -40,7 +41,7 @@ function loadUserFromStorage(): AuthUser | null {
       // Sempre sobrescreve o perfil com o valor vindo do token assinado,
       // ignorando o que estiver salvo no localStorage.
       const perfil = (claims?.perfil as PerfilUsuario) ?? stored.perfil
-      return { ...stored, token, perfil }
+      return { ...stored, token, perfil, isAdmin: stored.isAdmin ?? false }
     }
   } catch {
     // ignore
@@ -51,8 +52,8 @@ function loadUserFromStorage(): AuthUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage)
 
-  const login = useCallback((id: string, token: string, nome: string, email: string, perfil: PerfilUsuario) => {
-    const authUser: AuthUser = { id, token, nome, email, perfil }
+  const login = useCallback((id: string, token: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => {
+    const authUser: AuthUser = { id, token, nome, email, perfil, isAdmin }
     localStorage.setItem('engseg_token', token)
     localStorage.setItem('engseg_user', JSON.stringify(authUser))
     setUser(authUser)

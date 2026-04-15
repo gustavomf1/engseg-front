@@ -29,7 +29,9 @@ import ConvitePage from './pages/ConvitePage'
 
 function DefaultRedirect() {
   const { user } = useAuth()
-  return <Navigate to={user?.perfil === 'EXTERNO' ? '/tratativas' : '/dashboard'} replace />
+  if (user?.perfil === 'EXTERNO') return <Navigate to="/tratativas" replace />
+  if (user?.isAdmin) return <Navigate to="/empresas" replace />
+  return <Navigate to="/dashboard" replace />
 }
 
 export default function App() {

@@ -11,8 +11,8 @@ export default function WorkspaceRoute({ children }: Props) {
   const { selecionado } = useWorkspace()
   const { user } = useAuth()
 
-  // EXTERNO não precisa selecionar workspace
-  if (user?.perfil === 'EXTERNO') {
+  // EXTERNO e ADMIN não precisam selecionar workspace
+  if (user?.perfil === 'EXTERNO' || user?.isAdmin) {
     return <>{children}</>
   }
 
