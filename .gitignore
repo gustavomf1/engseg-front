@@ -1,0 +1,17 @@
+# Git worktrees
+.worktrees/
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
