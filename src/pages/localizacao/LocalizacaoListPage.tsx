@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getLocalizacoes, deleteLocalizacao, reativarLocalizacao } from '../../api/localizacao'
 import { getEstabelecimentos } from '../../api/estabelecimento'
+import { getEmpresas } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, MapPin, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,6 +17,7 @@ const selectClass = "appearance-none border border-gray-300 rounded-lg pl-3 pr-8
 
 export default function LocalizacaoListPage() {
   const { user } = useAuth()
+  const isAdmin = user?.isAdmin === true
   const { estabelecimento: estabelecimentoAtual } = useWorkspace()
   const queryClient = useQueryClient()
   const [filtroStatus, setFiltroStatus] = useState<string>('true')
@@ -23,17 +25,32 @@ export default function LocalizacaoListPage() {
   const [busca, setBusca] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
+  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
 
   const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
-  const estabelecimentoIdParam = filtroEstabelecimento || undefined
+  const estabelecimentoIdParam = isAdmin ? (adminEstabelecimentoId || undefined) : (filtroEstabelecimento || undefined)
+
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
+  const { data: estabelecimentosAdmin = [] } = useQuery({
+    queryKey: ['estabelecimentos-admin-filter', adminEmpresaId],
+    queryFn: () => getEstabelecimentos(undefined, adminEmpresaId),
+    enabled: isAdmin && !!adminEmpresaId,
+  })
 
   const { data: estabelecimentos = [] } = useQuery({
     queryKey: ['estabelecimentos'],
     queryFn: () => getEstabelecimentos(true),
+    enabled: !isAdmin,
   })
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['localizacoes', filtroEstabelecimento, filtroStatus],
+    queryKey: ['localizacoes', filtroEstabelecimento, filtroStatus, adminEmpresaId, adminEstabelecimentoId],
     queryFn: () => getLocalizacoes(estabelecimentoIdParam, ativoParam),
   })
 
@@ -68,15 +85,17 @@ export default function LocalizacaoListPage() {
           <p className="text-slate-500 text-sm mt-1">Gerencie as localizações dos estabelecimentos</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
-          <select value={filtroEstabelecimento} onChange={e => { setFiltroEstabelecimento(e.target.value); setPage(1) }} className={selectClass}>
-            <option value="">Todos estabelecimentos</option>
-            {estabelecimentoAtual && (
-              <option value={estabelecimentoAtual.id}>{estabelecimentoAtual.nome} (atual)</option>
-            )}
-            {estabelecimentos
-              .filter((e: Estabelecimento) => e.id !== estabelecimentoAtual?.id)
-              .map((e: Estabelecimento) => <option key={e.id} value={e.id}>{e.nome}</option>)}
-          </select>
+          {!isAdmin && (
+            <select value={filtroEstabelecimento} onChange={e => { setFiltroEstabelecimento(e.target.value); setPage(1) }} className={selectClass}>
+              <option value="">Todos estabelecimentos</option>
+              {estabelecimentoAtual && (
+                <option value={estabelecimentoAtual.id}>{estabelecimentoAtual.nome} (atual)</option>
+              )}
+              {estabelecimentos
+                .filter((e: Estabelecimento) => e.id !== estabelecimentoAtual?.id)
+                .map((e: Estabelecimento) => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            </select>
+          )}
           <select value={filtroStatus} onChange={e => { setFiltroStatus(e.target.value); setPage(1) }} className={selectClass}>
             <option value="true">Ativos</option>
             <option value="false">Inativos</option>
@@ -89,6 +108,33 @@ export default function LocalizacaoListPage() {
           )}
         </div>
       </div>
+
+      {/* Admin filters */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+          <select
+            className="input w-48"
+            value={adminEstabelecimentoId}
+            disabled={!adminEmpresaId}
+            onChange={e => setAdminEstabelecimentoId(e.target.value)}
+          >
+            <option value="">Todos os estabelecimentos</option>
+            {estabelecimentosAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nome}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Search + page size */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">

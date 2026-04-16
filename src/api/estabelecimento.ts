@@ -1,8 +1,10 @@
 import client from './client'
 import { Empresa, Estabelecimento, EstabelecimentoRequest } from '../types'
 
-export const getEstabelecimentos = async (ativo?: boolean): Promise<Estabelecimento[]> => {
-  const params = ativo !== undefined ? { ativo } : {}
+export const getEstabelecimentos = async (ativo?: boolean, empresaId?: string): Promise<Estabelecimento[]> => {
+  const params: Record<string, boolean | string> = {}
+  if (ativo !== undefined) params.ativo = ativo
+  if (empresaId) params.empresaId = empresaId
   const res = await client.get<Estabelecimento[]>('/estabelecimentos', { params })
   return res.data
 }

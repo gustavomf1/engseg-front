@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNormas, deleteNorma, reativarNorma } from '../../api/norma'
+import { getEmpresas } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, BookOpen, Search } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
 import { Norma } from '../../types'
@@ -10,18 +12,27 @@ import { Norma } from '../../types'
 const PAGE_SIZES = [15, 25, 50, 100, 200]
 
 export default function NormaListPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.isAdmin === true
   const queryClient = useQueryClient()
   const [confirmando, setConfirmando] = useState<Norma | null>(null)
   const [filtroStatus, setFiltroStatus] = useState<string>('true')
   const [busca, setBusca] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
 
   const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
 
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['normas', filtroStatus],
-    queryFn: () => getNormas(ativoParam),
+    queryKey: ['normas', filtroStatus, adminEmpresaId],
+    queryFn: () => getNormas(ativoParam, isAdmin && adminEmpresaId ? adminEmpresaId : undefined),
   })
 
   const filtradas = items.filter(i => {
@@ -63,6 +74,22 @@ export default function NormaListPage() {
           </Link>
         </div>
       </div>
+
+      {/* Admin filters */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Search + page size */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">

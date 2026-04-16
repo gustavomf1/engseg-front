@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
+import { getEmpresas } from '../api/empresa'
+import { getEstabelecimentos } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
@@ -34,13 +36,31 @@ export default function TrativasListPage() {
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
   const isExterno = user?.perfil === 'EXTERNO'
+  const isAdmin = user?.isAdmin === true
   const { estabelecimento } = useWorkspace()
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
+  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
+
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
+  const { data: estabelecimentosAdmin = [] } = useQuery({
+    queryKey: ['estabelecimentos-admin-filter', adminEmpresaId],
+    queryFn: () => getEstabelecimentos(undefined, adminEmpresaId),
+    enabled: isAdmin && !!adminEmpresaId,
+  })
 
   const estabelecimentoId = isExterno ? undefined : estabelecimento?.id
 
   const { data: ocorrencias = [], isLoading } = useQuery({
-    queryKey: ['ocorrencias', estabelecimentoId],
-    queryFn: () => getOcorrencias(estabelecimentoId),
+    queryKey: ['ocorrencias', estabelecimentoId, adminEmpresaId, adminEstabelecimentoId],
+    queryFn: () => getOcorrencias(
+      isAdmin ? undefined : estabelecimentoId,
+      isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined,
+    ),
   })
 
   // Filtra por visibilidade: NCs só aparecem se o usuário é o eng responsável pela tratativa ou é ENGENHEIRO
@@ -134,6 +154,33 @@ export default function TrativasListPage() {
           <p className="text-sm text-slate-500">{filtradas.length} ocorrências registradas</p>
         </div>
       </div>
+
+      {/* Admin filters */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+          <select
+            className="input w-48"
+            value={adminEstabelecimentoId}
+            disabled={!adminEmpresaId}
+            onChange={e => setAdminEstabelecimentoId(e.target.value)}
+          >
+            <option value="">Todos os estabelecimentos</option>
+            {estabelecimentosAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nome}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Search + tipo filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm">

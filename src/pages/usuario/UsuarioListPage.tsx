@@ -22,17 +22,25 @@ const perfilColors = {
 
 export default function UsuarioListPage() {
   const { user } = useAuth()
+  const isAdmin = user?.isAdmin === true
   const queryClient = useQueryClient()
   const [filtroStatus, setFiltroStatus] = useState<string>('true')
   const [busca, setBusca] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
 
   const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
 
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
   const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ['usuarios', filtroStatus],
-    queryFn: () => getUsuarios(ativoParam),
+    queryKey: ['usuarios', filtroStatus, adminEmpresaId],
+    queryFn: () => getUsuarios(ativoParam, isAdmin && adminEmpresaId ? adminEmpresaId : undefined),
   })
 
   const filtrados = usuarios.filter(u => {
@@ -155,6 +163,22 @@ export default function UsuarioListPage() {
           )}
         </div>
       </div>
+
+      {/* Admin filters */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Search + page size */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">

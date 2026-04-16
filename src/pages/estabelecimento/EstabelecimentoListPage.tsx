@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEstabelecimentos, deleteEstabelecimento, reativarEstabelecimento } from '../../api/estabelecimento'
+import { getEmpresas } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, MapPin, Eye, X, Building2, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -14,6 +15,7 @@ const selectClass = "appearance-none border border-gray-300 rounded-lg pl-3 pr-8
 
 export default function EstabelecimentoListPage() {
   const { user } = useAuth()
+  const isAdmin = user?.isAdmin === true
   const queryClient = useQueryClient()
   const [confirmando, setConfirmando] = useState<Estabelecimento | null>(null)
   const [detalhes, setDetalhes] = useState<Estabelecimento | null>(null)
@@ -21,12 +23,19 @@ export default function EstabelecimentoListPage() {
   const [busca, setBusca] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
 
   const ativoParam = filtroStatus === '' ? undefined : filtroStatus === 'true'
 
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['estabelecimentos', filtroStatus],
-    queryFn: () => getEstabelecimentos(ativoParam),
+    queryKey: ['estabelecimentos', filtroStatus, adminEmpresaId],
+    queryFn: () => getEstabelecimentos(ativoParam, isAdmin && adminEmpresaId ? adminEmpresaId : undefined),
   })
 
   const filtrados = items.filter(i => {
@@ -70,6 +79,22 @@ export default function EstabelecimentoListPage() {
           )}
         </div>
       </div>
+
+      {/* Admin filters */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Search + page size */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">

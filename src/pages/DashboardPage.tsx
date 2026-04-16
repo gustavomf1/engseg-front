@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getDashboardStats } from '../api/dashboard'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
+import { getEmpresas } from '../api/empresa'
+import { getEstabelecimentos } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
 import { TrendingUp, AlertTriangle, ClipboardList, Shield, FilePlus, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { formatDate } from '../utils/date'
@@ -84,8 +87,30 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { data: stats } = useQuery({ queryKey: ['dashboard'], queryFn: getDashboardStats })
-  const { data: ocorrencias = [] } = useQuery({ queryKey: ['ocorrencias'], queryFn: () => getOcorrencias() })
+  const isAdmin = user?.isAdmin === true
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
+  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
+
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-admin-filter'],
+    queryFn: () => getEmpresas(),
+    enabled: isAdmin,
+  })
+
+  const { data: estabelecimentosAdmin = [] } = useQuery({
+    queryKey: ['estabelecimentos-admin-filter', adminEmpresaId],
+    queryFn: () => getEstabelecimentos(undefined, adminEmpresaId),
+    enabled: isAdmin && !!adminEmpresaId,
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard', adminEmpresaId, adminEstabelecimentoId],
+    queryFn: () => getDashboardStats(isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
+  })
+  const { data: ocorrencias = [] } = useQuery({
+    queryKey: ['ocorrencias', adminEmpresaId, adminEstabelecimentoId],
+    queryFn: () => getOcorrencias(undefined, isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
+  })
 
   const recentes = ocorrencias.filter(item => {
     if (user?.perfil === 'ENGENHEIRO') {
@@ -122,6 +147,33 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-full">
+
+      {/* ── Admin filters ── */}
+      {isAdmin && (
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <select
+            className="input w-48"
+            value={adminEmpresaId}
+            onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
+          >
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+          <select
+            className="input w-48"
+            value={adminEstabelecimentoId}
+            disabled={!adminEmpresaId}
+            onChange={e => setAdminEstabelecimentoId(e.target.value)}
+          >
+            <option value="">Todos os estabelecimentos</option>
+            {estabelecimentosAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nome}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

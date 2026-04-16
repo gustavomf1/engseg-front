@@ -1,8 +1,10 @@
 import client from './client'
 import { Norma, NormaRequest } from '../types'
 
-export const getNormas = async (ativo?: boolean): Promise<Norma[]> => {
-  const params = ativo !== undefined ? { ativo } : {}
+export const getNormas = async (ativo?: boolean, empresaId?: string): Promise<Norma[]> => {
+  const params: Record<string, boolean | string> = {}
+  if (ativo !== undefined) params.ativo = ativo
+  if (empresaId) params.empresaId = empresaId
   const res = await client.get<Norma[]>('/normas', { params })
   return res.data
 }
