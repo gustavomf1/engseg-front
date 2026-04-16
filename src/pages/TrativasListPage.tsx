@@ -58,8 +58,9 @@ export default function TrativasListPage() {
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ['ocorrencias', estabelecimentoId, adminEmpresaId, adminEstabelecimentoId],
     queryFn: () => getOcorrencias(
-      isAdmin ? undefined : estabelecimentoId,
-      isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined,
+      isAdmin
+        ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined }
+        : { estabelecimentoId: estabelecimentoId },
     ),
   })
 

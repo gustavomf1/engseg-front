@@ -22,12 +22,12 @@ export interface OcorrenciaItem {
   quantidadeHistorico?: number
 }
 
-export const getOcorrencias = (estabelecimentoId?: string, params?: { empresaId?: string; estabelecimentoId?: string }) => {
-  const queryParams: Record<string, string> = {}
-  if (estabelecimentoId) queryParams.estabelecimentoId = estabelecimentoId
-  if (params?.empresaId) queryParams.empresaId = params.empresaId
-  if (params?.estabelecimentoId) queryParams.estabelecimentoId = params.estabelecimentoId
-  return client.get<OcorrenciaItem[]>('/ocorrencias', { params: queryParams }).then(r => r.data)
+export const getOcorrencias = async (params?: {
+  estabelecimentoId?: string
+  empresaId?: string
+}): Promise<OcorrenciaItem[]> => {
+  const response = await client.get<OcorrenciaItem[]>('/ocorrencias', { params })
+  return response.data
 }
 
 export const getRecentesOcorrencias = () =>

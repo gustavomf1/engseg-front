@@ -109,7 +109,7 @@ export default function DashboardPage() {
   })
   const { data: ocorrencias = [] } = useQuery({
     queryKey: ['ocorrencias', adminEmpresaId, adminEstabelecimentoId],
-    queryFn: () => getOcorrencias(undefined, isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
+    queryFn: () => getOcorrencias(isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
   })
 
   const recentes = ocorrencias.filter(item => {

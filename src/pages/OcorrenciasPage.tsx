@@ -59,8 +59,9 @@ export default function OcorrenciasPage() {
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ['ocorrencias', estabelecimento?.id, adminEmpresaId, adminEstabelecimentoId],
     queryFn: () => getOcorrencias(
-      isAdmin ? undefined : estabelecimento?.id,
-      isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined,
+      isAdmin
+        ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined }
+        : { estabelecimentoId: estabelecimento?.id },
     ),
   })
 
