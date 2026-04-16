@@ -150,9 +150,9 @@ export default function DashboardPage() {
 
       {/* ── Admin filters ── */}
       {isAdmin && (
-        <div className="flex gap-3 mb-4 flex-wrap">
+        <div className="filter-bar">
           <select
-            className="input w-48"
+            className="select-std"
             value={adminEmpresaId}
             onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
           >
@@ -162,7 +162,7 @@ export default function DashboardPage() {
             ))}
           </select>
           <select
-            className="input w-48"
+            className="select-std disabled:opacity-40 disabled:cursor-not-allowed"
             value={adminEstabelecimentoId}
             disabled={!adminEmpresaId}
             onChange={e => setAdminEstabelecimentoId(e.target.value)}

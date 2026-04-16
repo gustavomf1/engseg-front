@@ -40,6 +40,7 @@ export default function OcorrenciaDetailPage() {
   const { empresaFilha } = useWorkspace()
   const isDesvio = tipo === 'DESVIO'
   const isTecnico = user?.perfil === 'TECNICO'
+  const isAdmin = user?.isAdmin ?? false
 
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<Record<string, any>>({})
@@ -214,6 +215,9 @@ export default function OcorrenciaDetailPage() {
             const bloqueado = isTecnico && ncEmTratamento
             if (bloqueado) return null
 
+            const isConcluido = isDesvio ? desvio?.status === 'CONCLUIDO' : nc?.status === 'CONCLUIDO'
+            const podeExcluir = !isConcluido || isAdmin
+
             return editando ? (
               <>
                 <button
@@ -232,18 +236,22 @@ export default function OcorrenciaDetailPage() {
               </>
             ) : (
               <>
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition"
-                >
-                  <Trash2 size={15} /> Excluir
-                </button>
-                <button
-                  onClick={() => setEditando(true)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
-                >
-                  <Pencil size={15} /> Editar
-                </button>
+                {podeExcluir && (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition"
+                  >
+                    <Trash2 size={15} /> Excluir
+                  </button>
+                )}
+                {!isConcluido && (
+                  <button
+                    onClick={() => setEditando(true)}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition"
+                  >
+                    <Pencil size={15} /> Editar
+                  </button>
+                )}
               </>
             )
           })()}

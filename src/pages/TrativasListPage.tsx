@@ -156,37 +156,10 @@ export default function TrativasListPage() {
         </div>
       </div>
 
-      {/* Admin filters */}
-      {isAdmin && (
-        <div className="flex gap-3 mb-4 flex-wrap">
-          <select
-            className="input w-48"
-            value={adminEmpresaId}
-            onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
-          >
-            <option value="">Todas as empresas</option>
-            {empresasAdmin.map(e => (
-              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
-            ))}
-          </select>
-          <select
-            className="input w-48"
-            value={adminEstabelecimentoId}
-            disabled={!adminEmpresaId}
-            onChange={e => setAdminEstabelecimentoId(e.target.value)}
-          >
-            <option value="">Todos os estabelecimentos</option>
-            {estabelecimentosAdmin.map(e => (
-              <option key={e.id} value={e.id}>{e.nome}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Search + tipo filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm">
-        <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <Search size={16} className="text-gray-400" />
+      {/* Search + filters */}
+      <div className="filter-bar">
+        <div className="filter-search flex-1">
+          <Search size={14} className="text-gray-400" />
           <input
             value={busca}
             onChange={e => { setBusca(e.target.value); setPage(1) }}
@@ -194,6 +167,31 @@ export default function TrativasListPage() {
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
+        {isAdmin && (
+          <>
+            <select
+              className="select-std"
+              value={adminEmpresaId}
+              onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId('') }}
+            >
+              <option value="">Todas as empresas</option>
+              {empresasAdmin.map(e => (
+                <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+              ))}
+            </select>
+            <select
+              className="select-std disabled:opacity-40 disabled:cursor-not-allowed"
+              value={adminEstabelecimentoId}
+              disabled={!adminEmpresaId}
+              onChange={e => setAdminEstabelecimentoId(e.target.value)}
+            >
+              <option value="">Todos os estabelecimentos</option>
+              {estabelecimentosAdmin.map(e => (
+                <option key={e.id} value={e.id}>{e.nome}</option>
+              ))}
+            </select>
+          </>
+        )}
         <div className="flex gap-2 flex-wrap">
           {(['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'] as TipoFiltro[]).map(f => (
             <button

@@ -80,26 +80,10 @@ export default function EstabelecimentoListPage() {
         </div>
       </div>
 
-      {/* Admin filters */}
-      {isAdmin && (
-        <div className="flex gap-3 mb-4 flex-wrap">
-          <select
-            className="input w-48"
-            value={adminEmpresaId}
-            onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}
-          >
-            <option value="">Todas as empresas</option>
-            {empresasAdmin.map(e => (
-              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Search + page size */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex-1 flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-          <Search size={15} className="text-gray-400 flex-shrink-0" />
+      {/* Filter bar */}
+      <div className="filter-bar">
+        <div className="filter-search">
+          <Search size={14} className="text-gray-400 flex-shrink-0" />
           <input
             value={busca}
             onChange={e => handleBusca(e.target.value)}
@@ -107,9 +91,17 @@ export default function EstabelecimentoListPage() {
             className="flex-1 bg-transparent text-sm outline-none text-slate-700 placeholder-gray-400"
           />
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <span className="whitespace-nowrap">Por página:</span>
-          <select value={pageSize} onChange={e => handlePageSize(Number(e.target.value))} className={selectClass}>
+        {isAdmin && (
+          <select className="select-std" value={adminEmpresaId} onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}>
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+        )}
+        <div className="flex items-center gap-2 text-sm text-slate-500 ml-auto">
+          <span className="whitespace-nowrap text-xs">Por página:</span>
+          <select value={pageSize} onChange={e => handlePageSize(Number(e.target.value))} className="select-std">
             {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>

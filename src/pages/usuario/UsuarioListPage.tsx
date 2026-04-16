@@ -164,26 +164,10 @@ export default function UsuarioListPage() {
         </div>
       </div>
 
-      {/* Admin filters */}
-      {isAdmin && (
-        <div className="flex gap-3 mb-4 flex-wrap">
-          <select
-            className="input w-48"
-            value={adminEmpresaId}
-            onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}
-          >
-            <option value="">Todas as empresas</option>
-            {empresasAdmin.map(e => (
-              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Search + page size */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex-1 flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-          <Search size={15} className="text-gray-400 flex-shrink-0" />
+      {/* Filter bar */}
+      <div className="filter-bar">
+        <div className="filter-search">
+          <Search size={14} className="text-gray-400 flex-shrink-0" />
           <input
             value={busca}
             onChange={e => handleBusca(e.target.value)}
@@ -191,8 +175,16 @@ export default function UsuarioListPage() {
             className="flex-1 bg-transparent text-sm outline-none text-slate-700 placeholder-gray-400"
           />
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <span className="whitespace-nowrap">Por página:</span>
+        {isAdmin && (
+          <select className="select-std" value={adminEmpresaId} onChange={e => { setAdminEmpresaId(e.target.value); setPage(1) }}>
+            <option value="">Todas as empresas</option>
+            {empresasAdmin.map(e => (
+              <option key={e.id} value={e.id}>{e.nomeFantasia || e.razaoSocial}</option>
+            ))}
+          </select>
+        )}
+        <div className="flex items-center gap-2 text-sm text-slate-500 ml-auto">
+          <span className="whitespace-nowrap text-xs">Por página:</span>
           <select value={pageSize} onChange={e => handlePageSize(Number(e.target.value))} className="select-std">
             {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -465,15 +457,32 @@ export default function UsuarioListPage() {
 
       {showCriarModal && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowCriarModal(false)
             setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
             setCriarErro(null)
           }}
         >
-          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-4">Criar Usuário</h2>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
+                  <UserPlus size={18} className="text-slate-600" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Criar Usuário</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCriarModal(false)
+                  setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+                  setCriarErro(null)
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
             <form
               onSubmit={e => {
                 e.preventDefault()
@@ -482,25 +491,33 @@ export default function UsuarioListPage() {
               className="space-y-3"
             >
               <div>
-                <label className="label">Nome</label>
-                <input className="input" required value={criarForm.nome}
+                <label className="block text-xs font-medium text-slate-700 mb-1">Nome *</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  required value={criarForm.nome}
                   onChange={e => setCriarForm(f => ({ ...f, nome: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Email</label>
-                <input className="input" type="email" required value={criarForm.email}
+                <label className="block text-xs font-medium text-slate-700 mb-1">Email *</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  type="email" required value={criarForm.email}
                   onChange={e => setCriarForm(f => ({ ...f, email: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Senha temporária</label>
-                <input className="input" type="password" required value={criarForm.senha}
+                <label className="block text-xs font-medium text-slate-700 mb-1">Senha temporária *</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  type="password" required value={criarForm.senha}
                   onChange={e => setCriarForm(f => ({ ...f, senha: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Empresa</label>
-                <select className="input" required value={criarForm.empresaId}
+                <label className="block text-xs font-medium text-slate-700 mb-1">Empresa *</label>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  required value={criarForm.empresaId}
                   onChange={e => setCriarForm(f => ({ ...f, empresaId: e.target.value }))}>
-                  <option value="">Selecione...</option>
+                  <option value="">Selecione a empresa</option>
                   {todasEmpresas?.map(emp => (
                     <option key={emp.id} value={emp.id}>
                       {emp.nomeFantasia || emp.razaoSocial}
@@ -509,8 +526,10 @@ export default function UsuarioListPage() {
                 </select>
               </div>
               <div>
-                <label className="label">Perfil</label>
-                <select className="input" value={criarForm.perfil}
+                <label className="block text-xs font-medium text-slate-700 mb-1">Perfil *</label>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  value={criarForm.perfil}
                   onChange={e => {
                     const perfil = e.target.value as PerfilUsuario
                     setCriarForm(f => ({
@@ -524,26 +543,27 @@ export default function UsuarioListPage() {
                   <option value="EXTERNO">Externo</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="isAdmin"
                   checked={criarForm.isAdmin}
                   disabled={criarForm.perfil !== 'ENGENHEIRO'}
                   onChange={e => setCriarForm(f => ({ ...f, isAdmin: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300"
                 />
                 <label
                   htmlFor="isAdmin"
-                  className={`label mb-0 ${criarForm.perfil !== 'ENGENHEIRO' ? 'opacity-40' : ''}`}
+                  className={`text-xs font-medium text-slate-700 ${criarForm.perfil !== 'ENGENHEIRO' ? 'opacity-40' : ''}`}
                 >
                   É administrador
                 </label>
               </div>
-              {criarErro && <p className="text-red-500 text-sm">{criarErro}</p>}
-              <div className="flex gap-2 justify-end pt-2">
+              {criarErro && <p className="text-red-500 text-xs">{criarErro}</p>}
+              <div className="flex gap-3 justify-end pt-3">
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
                   onClick={() => {
                     setShowCriarModal(false)
                     setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
@@ -554,7 +574,7 @@ export default function UsuarioListPage() {
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition"
                   disabled={criarDiretoMutation.isPending}
                 >
                   {criarDiretoMutation.isPending ? 'Criando...' : 'Criar'}
