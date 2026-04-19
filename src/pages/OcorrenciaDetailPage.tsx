@@ -10,13 +10,16 @@ import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
-  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2, Eye
+  FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2, Eye,
+  FileDown, FileSpreadsheet, Download
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import SearchableSelect from '../components/SearchableSelect'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/date'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { exportOcorrenciaBundle, exportOcorrenciaToExcel } from '../utils/exportOcorrencia'
+import { getEvidencias, getEvidenciasDesvio } from '../api/evidencia'
 
 const statusNCMap: Record<string, { label: string; color: string }> = {
   ABERTA:        { label: 'Aberta',           color: 'bg-yellow-100 text-yellow-700' },
@@ -46,6 +49,8 @@ export default function OcorrenciaDetailPage() {
   const [form, setForm] = useState<Record<string, any>>({})
   const [normaModal, setNormaModal] = useState<Norma | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -173,6 +178,23 @@ export default function OcorrenciaDetailPage() {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  async function handleExportPDF() {
+    if (!ocorrencia || !id) return
+    setExporting(true)
+    setExportMenuOpen(false)
+    try {
+      const evidencias = isDesvio
+        ? await getEvidenciasDesvio(id, 'OCORRENCIA')
+        : await getEvidencias(id, 'OCORRENCIA')
+      await exportOcorrenciaBundle({ ocorrencia, trechos, isDesvio }, evidencias)
+    } catch (err) {
+      console.error('[exportPDF]', err)
+      alert('Erro ao exportar o relatório. Tente novamente.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (!ocorrencia) {
     return <div className="text-center py-12 text-slate-400">Carregando...</div>
   }
@@ -200,6 +222,49 @@ export default function OcorrenciaDetailPage() {
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="flex gap-2">
+          {/* Export (apenas quando concluído, para TECNICO/ENGENHEIRO/ADMIN) */}
+          {(() => {
+            const isConcluido = isDesvio ? desvio?.status === 'CONCLUIDO' : nc?.status === 'CONCLUIDO'
+            const perfil = user?.perfil
+            const podeExportar = isConcluido && (isAdmin || perfil === 'ENGENHEIRO' || perfil === 'TECNICO')
+            if (!podeExportar) return null
+
+            return (
+              <div className="relative">
+                <button
+                  onClick={() => setExportMenuOpen(v => !v)}
+                  onBlur={() => setTimeout(() => setExportMenuOpen(false), 150)}
+                  className="flex items-center gap-2 px-4 py-2 border border-emerald-200 rounded-lg text-sm text-emerald-700 hover:bg-emerald-50 transition"
+                >
+                  <Download size={15} /> Exportar
+                </button>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                    <button
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={handleExportPDF}
+                      disabled={exporting}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-700 transition text-left disabled:opacity-60"
+                    >
+                      <FileDown size={15} className="text-red-500" />
+                      {exporting ? 'Exportando...' : 'Exportar PDF'}
+                    </button>
+                    <button
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => {
+                        exportOcorrenciaToExcel({ ocorrencia, trechos, isDesvio })
+                        setExportMenuOpen(false)
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left border-t border-gray-100"
+                    >
+                      <FileSpreadsheet size={15} className="text-emerald-600" /> Exportar Excel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
           {/* Ver tratativa — NC que já saiu do status ABERTA */}
           {!isDesvio && nc && nc.status !== 'ABERTA' && (
             <button
