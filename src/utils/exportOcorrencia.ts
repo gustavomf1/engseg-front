@@ -5,6 +5,12 @@ import { formatDate } from './date'
 import { downloadEvidencia } from '../api/evidencia'
 import type { Evidencia } from '../types'
 
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable: { finalY: number }
+  }
+}
+
 interface NormaTrecho {
   id: string
   normaId: string
@@ -220,7 +226,7 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold', textColor: [71, 85, 105] } },
   })
-  y = (doc as any).lastAutoTable.finalY + 8
+  y = doc.lastAutoTable.finalY + 8
 
   // Descrição
   doc.setFont('helvetica', 'bold')
@@ -268,7 +274,7 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 30 } },
     })
-    y = (doc as any).lastAutoTable.finalY + 8
+    y = doc.lastAutoTable.finalY + 8
   }
 
   // Histórico de Tratativa (NC only)
