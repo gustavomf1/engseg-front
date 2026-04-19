@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { login as loginApi } from '../api/auth'
 import { Shield, Mail, Lock, Eye, EyeOff, CheckCircle2, TrendingUp, ClipboardList, Clock, Sun, Moon } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
+import { ShaderWallpaper } from '../components/ShaderWallpaper'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -32,45 +33,109 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left dark panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 flex-col justify-between p-12 text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
-            <Shield size={22} className="text-white" />
-          </div>
-          <div>
-            <div className="font-bold text-lg">SGS</div>
-            <div className="text-slate-400 text-sm">Sistema de Gestão</div>
-          </div>
-        </div>
+      {/* Left panel with interactive shader wallpaper */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-950">
+        <ShaderWallpaper />
 
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-3">Bem-vindo ao Sistema</h1>
-            <p className="text-slate-400 leading-relaxed">
-              Plataforma completa para gerenciamento de ocorrências e tratativas de segurança do trabalho.
-            </p>
-          </div>
-          <div className="space-y-4">
-            {[
-              { icon: TrendingUp, title: 'Registro de Ocorrências', sub: 'Desvios e não conformidades' },
-              { icon: ClipboardList, title: 'Gestão de Tratativas', sub: 'Planos de ação e evidências' },
-              { icon: Clock, title: 'Controle de Prazos', sub: 'Acompanhamento em tempo real' },
-            ].map(({ icon: Icon, title, sub }) => (
-              <div key={title} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 size={16} className="text-blue-400" />
-                </div>
-                <div>
-                  <div className="font-medium text-sm">{title}</div>
-                  <div className="text-slate-400 text-xs">{sub}</div>
-                </div>
+        {/* Content layer on top */}
+        <div className="relative z-[1] flex flex-col justify-between p-12 text-white w-full pointer-events-none">
+          <div className="flex items-center justify-between pointer-events-auto">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  border: '1px solid rgba(56, 189, 248, 0.30)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.18)',
+                }}
+              >
+                <Shield size={22} className="text-sky-300" />
               </div>
-            ))}
+              <div>
+                <div className="font-bold text-lg tracking-wide" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>SGS</div>
+                <div className="text-sky-200/70 text-sm" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>Sistema de Gestão</div>
+              </div>
+            </div>
+
+            {/* SafeCorp company mark */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full pointer-events-auto"
+              style={{
+                background: 'rgba(8, 14, 28, 0.55)',
+                border: '1px solid rgba(56, 189, 248, 0.22)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+              }}
+            >
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }}
+              />
+              <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-sky-100">SafeCorp</span>
+            </div>
+          </div>
+
+          <div className="space-y-8 pointer-events-auto max-w-lg">
+            <div>
+              <h1
+                className="text-4xl font-bold mb-3 leading-tight"
+                style={{ textShadow: '0 4px 24px rgba(0,0,0,0.65)' }}
+              >
+                Bem-vindo ao <span className="text-sky-300">Sistema</span>
+              </h1>
+              <p
+                className="text-slate-200/85 leading-relaxed"
+                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.75)' }}
+              >
+                Plataforma completa para gerenciamento de ocorrências e tratativas de segurança do trabalho.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { icon: TrendingUp, title: 'Registro de Ocorrências', sub: 'Desvios e não conformidades' },
+                { icon: ClipboardList, title: 'Gestão de Tratativas', sub: 'Planos de ação e evidências' },
+                { icon: Clock, title: 'Controle de Prazos', sub: 'Acompanhamento em tempo real' },
+              ].map(({ icon: Icon, title, sub }) => (
+                <div
+                  key={title}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                  style={{
+                    background: 'rgba(8, 14, 28, 0.35)',
+                    border: '1px solid rgba(56, 189, 248, 0.12)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                    }}
+                  >
+                    <Icon size={15} className="text-sky-300" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm text-white">{title}</div>
+                    <div className="text-slate-300/75 text-xs">{sub}</div>
+                  </div>
+                  <CheckCircle2 size={14} className="text-sky-400/70 ml-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pointer-events-auto flex items-center justify-between text-xs">
+            <div className="text-slate-400" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}>
+              © 2024 <span className="text-sky-300 font-semibold tracking-wider">SafeCorp</span> · Todos os direitos reservados
+            </div>
+            <div className="text-slate-500/80 italic" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}>
+              mova o mouse · clique
+            </div>
           </div>
         </div>
-
-        <div className="text-slate-500 text-sm">© 2024 ERS - Todos os direitos reservados</div>
       </div>
 
       {/* Right white panel */}
