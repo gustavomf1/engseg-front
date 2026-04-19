@@ -35,7 +35,7 @@ Incluir no relatório PDF de uma ocorrência as evidências do tipo `OCORRENCIA`
 3. As evidências são classificadas por extensão:
    - **Imagens:** `jpg`, `jpeg`, `png`, `gif`, `webp` → embutidas no PDF.
    - **Outros:** `pdf`, `docx`, `xlsx`, `txt`, etc. → anexos soltos.
-4. O relatório PDF ganha uma nova seção **"Evidências"** ao final (antes do histórico de tratativa se houver ambos, a decidir na implementação — priorizar legibilidade), contendo as imagens, **2 por página**, com legenda.
+4. O relatório PDF ganha uma nova seção **"Evidências"** ao final do documento, **após** o histórico de tratativa (quando houver), contendo as imagens, **2 por página**, com legenda.
 5. Decisão de entrega:
    - **0 arquivos não-imagem** (tudo foto ou nenhuma evidência) → baixa o PDF direto, como hoje.
    - **≥ 1 arquivo não-imagem** → gera ZIP contendo `{nome}.pdf` + pasta `anexos/` com cada arquivo original; usuário baixa o ZIP.
@@ -79,7 +79,7 @@ Incluir no relatório PDF de uma ocorrência as evidências do tipo `OCORRENCIA`
   - Centralizada horizontalmente no bloco.
   - Legenda logo abaixo, fonte 8pt cinza (`rgb(100,116,139)`): `"{n}. {nomeOriginalDoArquivo}"`.
 - 2 blocos por página, separados por ~5mm. Quebra de página automática após o segundo bloco.
-- Formato passado ao `doc.addImage`: deduzido da extensão (`jpg|jpeg → 'JPEG'`, `png → 'PNG'`, `webp → 'WEBP'`, `gif → 'JPEG'` — converte via canvas pq jsPDF não suporta GIF direto).
+- Formato passado ao `doc.addImage`: deduzido da extensão (`jpg|jpeg → 'JPEG'`, `png → 'PNG'`, `webp → 'WEBP'`). Para `gif`: como jsPDF não suporta, converte o primeiro frame para PNG via canvas (`ctx.drawImage` + `canvas.toDataURL('image/png')`) antes de chamar `addImage`.
 
 ### Montagem do ZIP
 
@@ -119,7 +119,3 @@ Antes de entregar:
 - [ ] Durante export: botão mostra loading e fica desabilitado.
 - [ ] Erro de rede ao buscar evidências → toast de erro, botão volta ao normal.
 
-## Decisões abertas na implementação
-
-- **Ordem da seção "Evidências" no PDF:** após "Histórico da Tratativa" ou antes? Proposta: **depois** do histórico, já que evidências são material probatório anexo. A decisão final fica para o plano de implementação.
-- **Renderização do GIF:** jsPDF não tem suporte nativo. Opção: converter o primeiro frame via canvas para PNG antes de chamar `addImage`. Custo baixo.
