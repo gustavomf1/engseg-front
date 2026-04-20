@@ -24,9 +24,9 @@ interface ExportOptions {
   isDesvio: boolean
 }
 
-const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp'])
+export const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp'])
 
-function getExt(nome: string) {
+export function getExt(nome: string) {
   const dot = nome.lastIndexOf('.')
   return dot >= 0 ? nome.substring(dot + 1).toLowerCase() : ''
 }
@@ -42,7 +42,7 @@ function buildFileName(o: ExportOptions, ext: 'pdf' | 'xlsx' | 'zip') {
   return `${prefix}_${titulo}_${date}.${ext}`
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
+export function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
@@ -51,7 +51,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-function getImageDimensions(dataUrl: string): Promise<{ w: number; h: number }> {
+export function getImageDimensions(dataUrl: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
@@ -60,7 +60,7 @@ function getImageDimensions(dataUrl: string): Promise<{ w: number; h: number }> 
   })
 }
 
-async function gifToDataUrl(blob: Blob): Promise<string> {
+export async function gifToDataUrl(blob: Blob): Promise<string> {
   const dataUrl = await blobToDataUrl(blob)
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -76,7 +76,7 @@ async function gifToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-async function renderEvidenciasSection(doc: jsPDF, imagens: Evidencia[]): Promise<void> {
+export async function renderEvidenciasSection(doc: jsPDF, imagens: Evidencia[]): Promise<void> {
   if (imagens.length === 0) return
 
   const pageW = doc.internal.pageSize.getWidth()
