@@ -87,6 +87,16 @@ async function renderAtividadeImagens(
   return y
 }
 
+function renderSectionHeader(doc: jsPDF, title: string, y: number, pageW: number, marginX: number): number {
+  doc.setFillColor(3, 105, 161)
+  doc.rect(marginX, y, pageW - marginX * 2, 9, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.text(title, marginX + 4, y + 6.2)
+  return y + 14
+}
+
 async function buildTratativaPDFDoc(
   nc: NaoConformidade,
   trechos: NormaTrecho[],
@@ -131,9 +141,14 @@ async function buildTratativaPDFDoc(
   if (nc.regraDeOuro) tags.push('Regra de Ouro')
   if (nc.reincidencia) tags.push('Reincidência')
   doc.text(tags.join('  ·  '), marginX, y)
-  y += 8
+  y += 10
 
-  // ── Informações da Ocorrência ─────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // SEÇÃO: OCORRÊNCIA
+  // ════════════════════════════════════════════════════════════════════════════
+  if (y > 240) { doc.addPage(); y = 20 }
+  y = renderSectionHeader(doc, 'OCORRÊNCIA', y, pageW, marginX)
+
   const rows: [string, string][] = [
     ['Estabelecimento', nc.estabelecimentoNome || '—'],
     ['Localização', nc.localizacaoNome || '—'],
@@ -167,27 +182,27 @@ async function buildTratativaPDFDoc(
   })
   y = doc.lastAutoTable.finalY + 8
 
-  // ── Descrição ──────────────────────────────────────────────────────────────
+  // Descrição
   if (y > 250) { doc.addPage(); y = 20 }
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.setTextColor(15, 23, 42)
+  doc.setFontSize(9)
+  doc.setTextColor(71, 85, 105)
   doc.text('Descrição', marginX, y)
   y += 5
+  const descLines = doc.splitTextToSize(nc.descricao || '—', pageW - marginX * 2)
+  if (y + descLines.length * 5 > 275) { doc.addPage(); y = 20 }
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(30, 41, 59)
-  const descLines = doc.splitTextToSize(nc.descricao || '—', pageW - marginX * 2)
-  if (y + descLines.length * 5 > 275) { doc.addPage(); y = 20 }
   doc.text(descLines, marginX, y)
   y += descLines.length * 5 + 6
 
-  // ── Normas Vinculadas ──────────────────────────────────────────────────────
+  // Normas Vinculadas
   if (nc.normas && nc.normas.length > 0) {
     if (y > 250) { doc.addPage(); y = 20 }
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(15, 23, 42)
+    doc.setFontSize(9)
+    doc.setTextColor(71, 85, 105)
     doc.text('Normas Vinculadas', marginX, y)
     y += 3
 
@@ -217,14 +232,16 @@ async function buildTratativaPDFDoc(
     y = doc.lastAutoTable.finalY + 8
   }
 
-  // ── Evidências da Ocorrência ───────────────────────────────────────────────
+  // Evidências da Ocorrência
   await renderEvidenciasSection(doc, ocorrenciaImagens)
   if (ocorrenciaImagens.length > 0) {
     doc.addPage()
     y = 20
   }
 
-  // ── 5 Porquês ──────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // SEÇÃO: INVESTIGAÇÃO
+  // ════════════════════════════════════════════════════════════════════════════
   const porques = [
     { pergunta: nc.porqueUm, resposta: nc.porqueUmResposta },
     { pergunta: nc.porqueDois, resposta: nc.porqueDoisResposta },
@@ -233,104 +250,141 @@ async function buildTratativaPDFDoc(
     { pergunta: nc.porqueCinco, resposta: nc.porqueCincoResposta },
   ].filter(p => p.pergunta)
 
-  if (porques.length > 0) {
-    if (y > 240) { doc.addPage(); y = 20 }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(15, 23, 42)
-    doc.text('Investigação — 5 Porquês', marginX, y)
-    y += 3
+  const temInvestigacao = porques.length > 0 || !!nc.causaRaiz
+  if (temInvestigacao) {
+    if (y > 230) { doc.addPage(); y = 20 }
+    y = renderSectionHeader(doc, 'INVESTIGAÇÃO — 5 PORQUÊS E CAUSA RAIZ', y, pageW, marginX)
+
+    if (porques.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: marginX, right: marginX },
+        head: [['#', 'Pergunta', 'Resposta']],
+        body: porques.map((p, i) => [`${i + 1}`, p.pergunta || '—', p.resposta || '—']),
+        theme: 'grid',
+        headStyles: { fillColor: [3, 105, 161], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: { 0: { cellWidth: 10, halign: 'center' as const }, 1: { cellWidth: 80 } },
+      })
+      y = doc.lastAutoTable.finalY + 8
+    }
+
+    if (nc.causaRaiz) {
+      if (y > 255) { doc.addPage(); y = 20 }
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(71, 85, 105)
+      doc.text('Causa Raiz', marginX, y)
+      y += 5
+
+      const causaLines = doc.splitTextToSize(nc.causaRaiz, pageW - marginX * 2 - 10)
+      const blockH = Math.max(causaLines.length * 5 + 8, 18)
+      doc.setFillColor(239, 246, 255)
+      doc.rect(marginX, y - 2, pageW - marginX * 2, blockH, 'F')
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(30, 58, 138)
+      doc.text(causaLines, marginX + 5, y + 4)
+      y += blockH + 8
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SEÇÃO: PLANO DE AÇÃO
+  // ════════════════════════════════════════════════════════════════════════════
+  const atividades = nc.atividades ?? []
+  if (atividades.length > 0) {
+    if (y > 230) { doc.addPage(); y = 20 }
+    y = renderSectionHeader(doc, 'PLANO DE AÇÃO', y, pageW, marginX)
+
+    const planoRows: [string, string, string][] = atividades.map(a => {
+      const statusLabel =
+        a.status === 'APROVADA' ? 'Aprovada'
+        : a.status === 'REJEITADA' ? 'Rejeitada'
+        : 'Pendente'
+      return [`${a.ordem}`, a.titulo, statusLabel]
+    })
 
     autoTable(doc, {
-      startY: y + 2,
+      startY: y,
       margin: { left: marginX, right: marginX },
-      head: [['#', 'Pergunta', 'Resposta']],
-      body: porques.map((p, i) => [`${i + 1}`, p.pergunta || '—', p.resposta || '—']),
+      head: [['#', 'Atividade', 'Status']],
+      body: planoRows,
       theme: 'grid',
       headStyles: { fillColor: [3, 105, 161], textColor: 255, fontStyle: 'bold', fontSize: 9 },
       bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 0: { cellWidth: 10, halign: 'center' as const }, 1: { cellWidth: 80 } },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' as const, fontStyle: 'bold' },
+        2: { cellWidth: 28, halign: 'center' as const },
+      },
     })
     y = doc.lastAutoTable.finalY + 8
-  }
 
-  // ── Causa Raiz ─────────────────────────────────────────────────────────────
-  if (nc.causaRaiz) {
-    if (y > 250) { doc.addPage(); y = 20 }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(15, 23, 42)
-    doc.text('Causa Raiz', marginX, y)
-    y += 5
-
-    const causaLines = doc.splitTextToSize(nc.causaRaiz, pageW - marginX * 2 - 10)
-    const blockH = Math.max(causaLines.length * 5 + 8, 18)
-    doc.setFillColor(239, 246, 255)
-    doc.rect(marginX, y - 2, pageW - marginX * 2, blockH, 'F')
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(30, 58, 138)
-    doc.text(causaLines, marginX + 5, y + 4)
-    y += blockH + 6
-  }
-
-  // ── Plano de Ação ──────────────────────────────────────────────────────────
-  if (nc.atividades && nc.atividades.length > 0) {
-    if (y > 240) { doc.addPage(); y = 20 }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(15, 23, 42)
-    doc.text('Plano de Ação', marginX, y)
-    y += 6
-
-    for (const atividade of nc.atividades) {
+    // Descrição de cada atividade
+    for (const a of atividades) {
       if (y > 255) { doc.addPage(); y = 20 }
-
-      const statusLabel =
-        atividade.status === 'APROVADA' ? 'Aprovada'
-        : atividade.status === 'REJEITADA' ? 'Rejeitada'
-        : 'Pendente'
-
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.setTextColor(15, 23, 42)
-      doc.text(`${atividade.ordem}. ${atividade.titulo}`, marginX, y)
-      doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
-      doc.setTextColor(71, 85, 105)
-      doc.text(`Status: ${statusLabel}`, pageW - marginX, y, { align: 'right' })
-      y += 5
-
-      const atDescLines = doc.splitTextToSize(atividade.descricao || '—', pageW - marginX * 2)
-      if (y + atDescLines.length * 4.5 > 270) { doc.addPage(); y = 20 }
+      doc.setTextColor(15, 23, 42)
+      doc.text(`${a.ordem}. ${a.titulo}`, marginX, y)
+      y += 4
+      const lines = doc.splitTextToSize(a.descricao || '—', pageW - marginX * 2 - 4)
+      if (y + lines.length * 4.5 > 272) { doc.addPage(); y = 20 }
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
       doc.setTextColor(30, 41, 59)
-      doc.text(atDescLines, marginX + 4, y)
-      y += atDescLines.length * 4.5 + 4
+      doc.text(lines, marginX + 4, y)
+      y += lines.length * 4.5 + 5
+      doc.setDrawColor(226, 232, 240)
+      doc.line(marginX, y, pageW - marginX, y)
+      y += 5
+    }
+  }
 
-      if (atividade.descricaoExecucao) {
-        if (y > 265) { doc.addPage(); y = 20 }
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(7)
-        doc.setTextColor(71, 85, 105)
-        doc.text('O que foi executado:', marginX + 4, y)
-        y += 4
-        const execLines = doc.splitTextToSize(atividade.descricaoExecucao, pageW - marginX * 2 - 4)
-        if (y + execLines.length * 4 > 270) { doc.addPage(); y = 20 }
+  // ════════════════════════════════════════════════════════════════════════════
+  // SEÇÃO: O QUE FOI EXECUTADO
+  // ════════════════════════════════════════════════════════════════════════════
+  const temExecucao = atividades.some(
+    a => a.descricaoExecucao || (atividadeEvidencias.get(a.id)?.length ?? 0) > 0,
+  )
+  if (temExecucao) {
+    if (y > 220) { doc.addPage(); y = 20 }
+    y = renderSectionHeader(doc, 'O QUE FOI EXECUTADO', y, pageW, marginX)
+
+    for (const a of atividades) {
+      const imagens = atividadeEvidencias.get(a.id) ?? []
+      if (!a.descricaoExecucao && imagens.length === 0) continue
+
+      if (y > 255) { doc.addPage(); y = 20 }
+
+      // Cabeçalho da atividade
+      doc.setFillColor(241, 245, 249)
+      doc.rect(marginX, y - 1, pageW - marginX * 2, 8, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(15, 23, 42)
+      doc.text(`${a.ordem}. ${a.titulo}`, marginX + 3, y + 5)
+      y += 12
+
+      // O que foi executado
+      if (a.descricaoExecucao) {
+        const execLines = doc.splitTextToSize(a.descricaoExecucao, pageW - marginX * 2 - 8)
+        if (y + execLines.length * 4.5 > 272) { doc.addPage(); y = 20 }
         doc.setFont('helvetica', 'italic')
         doc.setFontSize(8)
         doc.setTextColor(30, 41, 59)
         doc.text(execLines, marginX + 4, y)
-        y += execLines.length * 4 + 4
+        y += execLines.length * 4.5 + 4
       }
 
-      const imagens = atividadeEvidencias.get(atividade.id) ?? []
+      // Evidências de execução
       if (imagens.length > 0) {
         y = await renderAtividadeImagens(doc, imagens, y, pageW, marginX)
       }
 
+      y += 4
       doc.setDrawColor(226, 232, 240)
       doc.line(marginX, y, pageW - marginX, y)
       y += 6
