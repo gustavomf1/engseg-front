@@ -310,6 +310,22 @@ async function buildTratativaPDFDoc(
       doc.text(atDescLines, marginX + 4, y)
       y += atDescLines.length * 4.5 + 4
 
+      if (atividade.descricaoExecucao) {
+        if (y > 265) { doc.addPage(); y = 20 }
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7)
+        doc.setTextColor(71, 85, 105)
+        doc.text('O que foi executado:', marginX + 4, y)
+        y += 4
+        const execLines = doc.splitTextToSize(atividade.descricaoExecucao, pageW - marginX * 2 - 4)
+        if (y + execLines.length * 4 > 270) { doc.addPage(); y = 20 }
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(8)
+        doc.setTextColor(30, 41, 59)
+        doc.text(execLines, marginX + 4, y)
+        y += execLines.length * 4 + 4
+      }
+
       const imagens = atividadeEvidencias.get(atividade.id) ?? []
       if (imagens.length > 0) {
         y = await renderAtividadeImagens(doc, imagens, y, pageW, marginX)
