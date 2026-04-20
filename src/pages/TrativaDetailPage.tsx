@@ -17,12 +17,14 @@ import {
   ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText,
   CheckCircle, XCircle, Clock, Eye, Building2, User, BookOpen,
   RefreshCw, Plus, Trash2, History, ChevronDown, ChevronUp,
+  Download, FileDown,
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import { downloadEvidencia } from '../api/evidencia'
 import StatusBadge from '../components/StatusBadge'
 import SeveridadeBadge from '../components/SeveridadeBadge'
 import { formatDate, formatDateTime } from '../utils/date'
+import { exportTratativaBundle } from '../utils/exportTratativa'
 import { TipoAcaoHistorico } from '../types'
 
 const acaoLabels: Record<TipoAcaoHistorico, string> = {
@@ -88,12 +90,28 @@ export default function TrativaDetailPage() {
 
   // State — confirmação
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const initialized = useRef(false)
 
   const toggleNorma = useCallback((nId: string) => {
     setNormaAberta(prev => prev === nId ? null : nId)
   }, [])
+
+  async function handleExportPDF() {
+    if (!nc) return
+    setExporting(true)
+    setExportMenuOpen(false)
+    try {
+      await exportTratativaBundle(nc, trechos)
+    } catch (err) {
+      console.error('[exportTratativa]', err)
+      alert('Erro ao exportar o relatório. Tente novamente.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const handleDownloadEvidencia = async (evidenciaId: string, nomeArquivo: string) => {
     const blob = await downloadEvidencia(evidenciaId)
@@ -231,9 +249,43 @@ export default function TrativaDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      <button onClick={() => navigate('/tratativas')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
-        <ArrowLeft size={16} /> Voltar
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={() => navigate('/tratativas')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
+          <ArrowLeft size={16} /> Voltar
+        </button>
+        <div className="flex gap-2">
+          {/* Export — apenas quando CONCLUIDO */}
+          {(() => {
+            const podeExportar =
+              nc?.status === 'CONCLUIDO' &&
+              (user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO' || user?.isAdmin)
+            if (!podeExportar) return null
+            return (
+              <div className="relative">
+                <button
+                  onClick={() => setExportMenuOpen(v => !v)}
+                  onBlur={() => setTimeout(() => setExportMenuOpen(false), 150)}
+                  className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Download size={15} /> Exportar
+                </button>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                      onClick={handleExportPDF}
+                      disabled={exporting}
+                    >
+                      <FileDown size={15} className="text-sky-600" />
+                      {exporting ? 'Exportando...' : 'Exportar PDF'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </div>
 
       {/* ═══ HEADER ═══ */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
