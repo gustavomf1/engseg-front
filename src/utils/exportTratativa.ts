@@ -12,13 +12,7 @@ import {
 } from './exportOcorrencia'
 import type { NaoConformidade, Evidencia } from '../types'
 
-declare module 'jspdf' {
-  interface jsPDF {
-    lastAutoTable: { finalY: number }
-  }
-}
-
-interface NormaTrecho {
+export interface NormaTrecho {
   id: string
   normaId: string
   clausulaReferencia?: string
@@ -345,15 +339,16 @@ export async function exportTratativaBundle(
   nc: NaoConformidade,
   trechos: NormaTrecho[] = [],
 ): Promise<void> {
+  const atividades = nc.atividades ?? []
   const [ocorrenciaEvidencias, ...atividadesEvs] = await Promise.all([
     getEvidencias(nc.id, 'OCORRENCIA'),
-    ...nc.atividades.map(a => getEvidenciasAtividade(a.id)),
+    ...atividades.map(a => getEvidenciasAtividade(a.id)),
   ])
 
   const ocorrenciaImagens = ocorrenciaEvidencias.filter(e => IMAGE_EXTS.has(getExt(e.nomeArquivo)))
 
   const atividadeEvidencias = new Map<string, Evidencia[]>()
-  nc.atividades.forEach((a, i) => {
+  atividades.forEach((a, i) => {
     const imgs = atividadesEvs[i].filter(e => IMAGE_EXTS.has(getExt(e.nomeArquivo)))
     atividadeEvidencias.set(a.id, imgs)
   })
