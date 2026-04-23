@@ -210,10 +210,10 @@ export default function RegistroOcorrenciaPage() {
   }, [ncData, reset])
 
   useEffect(() => {
-    if (user?.isAdmin) {
+    if (user?.isAdmin && !isEditing) {
       setValue('estabelecimentoId', adminEstabelecimentoId)
     }
-  }, [adminEstabelecimentoId, user?.isAdmin, setValue])
+  }, [adminEstabelecimentoId, user?.isAdmin, isEditing, setValue])
 
   const dataLimite = new Date()
   dataLimite.setDate(dataLimite.getDate() + 30)
