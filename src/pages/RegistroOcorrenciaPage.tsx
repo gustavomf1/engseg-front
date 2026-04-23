@@ -54,13 +54,13 @@ export default function RegistroOcorrenciaPage() {
   const [trechosPendentes, setTrechosPendentes] = useState<TrechoPendente[]>([])
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const [manualModal, setManualModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
+  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
+  const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
   const { user } = useAuth()
-  const [adminEmpresaId, setAdminEmpresaId] = useState('')
-  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
-  const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
 
   const { data: localizacoes = [] } = useQuery({
     queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
