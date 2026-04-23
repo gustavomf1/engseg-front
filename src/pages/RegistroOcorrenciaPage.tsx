@@ -80,17 +80,20 @@ export default function RegistroOcorrenciaPage() {
     enabled: !!user?.isAdmin && !!adminEstabelecimentoId,
   })
 
-  const estabelecimentoEfetivo = user?.isAdmin
-    ? { id: adminEstabelecimentoId }
-    : estabelecimentoSelecionado
+  const estabelecimentoEfetivo = useMemo(
+    () => user?.isAdmin ? { id: adminEstabelecimentoId } : estabelecimentoSelecionado,
+    [user?.isAdmin, adminEstabelecimentoId, estabelecimentoSelecionado]
+  )
 
-  const empresaFilhaEfetiva = user?.isAdmin
-    ? { id: adminEmpresaFilhaId }
-    : empresaFilha
+  const empresaFilhaEfetiva = useMemo(
+    () => user?.isAdmin ? { id: adminEmpresaFilhaId } : empresaFilha,
+    [user?.isAdmin, adminEmpresaFilhaId, empresaFilha]
+  )
 
   const { data: localizacoes = [] } = useQuery({
     queryKey: ['localizacoes', estabelecimentoEfetivo?.id],
     queryFn: () => getLocalizacoes(estabelecimentoEfetivo?.id),
+    enabled: !!estabelecimentoEfetivo?.id,
   })
 
   const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
@@ -103,7 +106,7 @@ export default function RegistroOcorrenciaPage() {
 
   const { data: usuariosFilha = [] } = useQuery({
     queryKey: ['usuarios', 'empresa', empresaFilhaEfetiva?.id],
-    queryFn: () => getUsuarios(true, empresaFilhaEfetiva!.id),
+    queryFn: () => getUsuarios(true, empresaFilhaEfetiva?.id ?? ''),
     enabled: !!empresaFilhaEfetiva?.id,
   })
 
