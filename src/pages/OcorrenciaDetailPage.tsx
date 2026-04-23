@@ -113,6 +113,8 @@ export default function OcorrenciaDetailPage() {
         descricao: desvio.descricao,
         regraDeOuro: desvio.regraDeOuro,
         estabelecimentoId: desvio.estabelecimentoId,
+        responsavelDesvioId: desvio.responsavelDesvioId || '',
+        responsavelTratativaId: desvio.responsavelTratativaId || '',
       })
     }
   }, [desvio, isDesvio])
@@ -143,6 +145,8 @@ export default function OcorrenciaDetailPage() {
           regraDeOuro: form.regraDeOuro,
           estabelecimentoId: form.estabelecimentoId,
           orientacaoRealizada: form.descricao,
+          responsavelDesvioId: form.responsavelDesvioId || desvio?.responsavelDesvioId || '',
+          responsavelTratativaId: form.responsavelTratativaId || desvio?.responsavelTratativaId || '',
         })
       } else {
         return updateNaoConformidade(id!, {

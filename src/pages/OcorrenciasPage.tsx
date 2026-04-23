@@ -14,18 +14,19 @@ import { formatDate } from '../utils/date'
 import PrazoBar from '../components/PrazoBar'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
-type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
+type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARD_DESVIO' | 'EM_ANDAMENTO' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
 
 const PAGE_SIZE = 10
 
 const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[]; activeColor: string }[] = [
-  { key: 'TODOS',                label: 'Todos',             tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
-  { key: 'ABERTAS',              label: 'Abertas',           tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-yellow-500 text-white' },
-  { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento',      tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-blue-600 text-white' },
-  { key: 'REPROVADOS',           label: 'Reprovado',         tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
+  { key: 'TODOS',               label: 'Todos',              tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
+  { key: 'ABERTAS',             label: 'Abertas',            tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-yellow-500 text-white' },
+  { key: 'AGUARD_DESVIO',       label: 'Aguard. Tratativa',  tipos: ['TODOS', 'DESVIO'],                     activeColor: 'bg-orange-500 text-white' },
+  { key: 'EM_ANDAMENTO',        label: 'Em Andamento',       tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-blue-600 text-white' },
+  { key: 'REPROVADOS',          label: 'Reprovado',          tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
   { key: 'AGUARDANDO_VALIDACAO', label: 'Aguard. Validação', tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-indigo-600 text-white' },
-  { key: 'CONCLUIDAS',           label: 'Concluídos',        tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-green-600 text-white' },
-  { key: 'VENCIDAS',             label: 'Vencidas',          tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
+  { key: 'CONCLUIDAS',          label: 'Concluídos',         tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-green-600 text-white' },
+  { key: 'VENCIDAS',            label: 'Vencidas',           tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
 ]
 
 export default function OcorrenciasPage() {
@@ -76,14 +77,18 @@ export default function OcorrenciasPage() {
   })
 
   function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {
-    if (item.tipo === 'DESVIO') return 'CONCLUIDAS'
+    if (item.tipo === 'DESVIO') {
+      if (item.status === 'AGUARDANDO_TRATATIVA') return 'AGUARD_DESVIO'
+      if (item.status === 'AGUARDANDO_APROVACAO') return 'EM_ANDAMENTO'
+      return 'CONCLUIDAS'
+    }
     if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
     if (item.status === 'AGUARDANDO_VALIDACAO_FINAL') return 'AGUARDANDO_VALIDACAO'
     if (item.status === 'ABERTA') return 'ABERTAS'
     if (item.status === 'EM_AJUSTE_PELO_EXTERNO') return 'REPROVADOS'
     if (item.status === 'AGUARDANDO_APROVACAO_PLANO') return 'AGUARDANDO_VALIDACAO'
-    if (['EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'AGUARDANDO_TRATATIVA'
+    if (['EM_EXECUCAO', 'EM_TRATAMENTO'].includes(item.status)) return 'EM_ANDAMENTO'
     return 'TODOS'
   }
 
@@ -113,8 +118,8 @@ export default function OcorrenciasPage() {
   const paginadas = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   function getStatusLabel(item: OcorrenciaItem) {
-    if (item.tipo === 'DESVIO') return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
     const map: Record<string, { label: string; color: string }> = {
+      // NCs
       ABERTA: { label: 'Aberta', color: 'text-yellow-600 bg-yellow-50' },
       AGUARDANDO_APROVACAO_PLANO: { label: 'Aguard. Aprovação', color: 'text-blue-600 bg-blue-50' },
       EM_AJUSTE_PELO_EXTERNO: { label: 'Reprovado', color: 'text-red-600 bg-red-50' },
@@ -123,6 +128,9 @@ export default function OcorrenciasPage() {
       CONCLUIDO: { label: 'Concluído', color: 'text-green-600 bg-green-50' },
       EM_TRATAMENTO: { label: 'Em Tratamento', color: 'text-blue-600 bg-blue-50' },
       NAO_RESOLVIDA: { label: 'Não Resolvida', color: 'text-red-600 bg-red-50' },
+      // Desvios
+      AGUARDANDO_TRATATIVA: { label: 'Aguard. Tratativa', color: 'text-orange-600 bg-orange-50' },
+      AGUARDANDO_APROVACAO: { label: 'Aguard. Aprovação', color: 'text-blue-600 bg-blue-50' },
     }
     return map[item.status] ?? { label: item.status, color: 'text-slate-600 bg-slate-100' }
   }

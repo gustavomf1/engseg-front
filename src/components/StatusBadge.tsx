@@ -23,11 +23,17 @@ const ncLabels: Record<StatusNaoConformidade, string> = {
 }
 
 const desvioColors: Record<StatusDesvio, string> = {
+  AGUARDANDO_TRATATIVA: 'bg-orange-100 text-orange-800',
+  AGUARDANDO_APROVACAO: 'bg-blue-100 text-blue-800',
   CONCLUIDO: 'bg-green-100 text-green-800',
+  REGISTRADO: 'bg-gray-100 text-gray-800',
 }
 
 const desvioLabels: Record<StatusDesvio, string> = {
+  AGUARDANDO_TRATATIVA: 'Aguard. Tratativa',
+  AGUARDANDO_APROVACAO: 'Aguard. Aprovação',
   CONCLUIDO: 'Concluído',
+  REGISTRADO: 'Registrado',
 }
 
 interface NcProps {

@@ -18,7 +18,29 @@ export type TipoAcaoHistorico =
   | 'SUBMISSAO_EVIDENCIAS'
   | 'APROVACAO_EVIDENCIAS'
   | 'REJEICAO_EVIDENCIAS'
-export type StatusDesvio = 'CONCLUIDO'
+export type StatusDesvio =
+  | 'AGUARDANDO_TRATATIVA'
+  | 'AGUARDANDO_APROVACAO'
+  | 'CONCLUIDO'
+  | 'REGISTRADO'  // legado
+
+export type TipoAcaoHistoricoDesvio =
+  | 'CRIACAO'
+  | 'TRATATIVA_SUBMETIDA'
+  | 'APROVADO'
+  | 'REPROVADO'
+
+export interface HistoricoDesvioResponse {
+  id: string
+  tipo: TipoAcaoHistoricoDesvio
+  usuarioNome?: string
+  comentario?: string
+  statusAnterior?: StatusDesvio
+  statusAtual?: StatusDesvio
+  snapshotObservacao?: string
+  snapshotEvidenciaId?: string
+  dataAcao: string
+}
 export type ParecerValidacao = 'APROVADO' | 'REPROVADO'
 
 export interface LoginRequest {
@@ -320,8 +342,8 @@ export interface Desvio {
   estabelecimentoId: string
   estabelecimentoNome: string
   titulo: string
-  localizacaoId: string
-  localizacaoNome: string
+  localizacaoId?: string
+  localizacaoNome?: string
   descricao: string
   dataRegistro: string
   tecnicoNome?: string
@@ -330,6 +352,15 @@ export interface Desvio {
   regraDeOuro: boolean
   orientacaoRealizada: string
   status: StatusDesvio
+  responsavelDesvioId?: string
+  responsavelDesvioNome?: string
+  responsavelTratativaId?: string
+  responsavelTrativaNome?: string
+  observacaoTratativa?: string
+  evidenciaTratativaId?: string
+  evidenciaTrativaNome?: string
+  evidenciaTrativaUrl?: string
+  historico: HistoricoDesvioResponse[]
 }
 
 export interface DesvioRequest {
@@ -339,6 +370,21 @@ export interface DesvioRequest {
   descricao: string
   orientacaoRealizada: string
   regraDeOuro: boolean
+  responsavelDesvioId: string
+  responsavelTratativaId: string
+}
+
+export interface SubmeterTrativaRequest {
+  observacao: string
+  evidenciaId: string
+}
+
+export interface AprovarDesvioRequest {
+  comentario?: string
+}
+
+export interface ReprovarDesvioRequest {
+  motivo: string
 }
 
 export interface DashboardStats {
