@@ -62,13 +62,39 @@ export default function RegistroOcorrenciaPage() {
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
   const { user } = useAuth()
 
+  const { data: empresasAdmin = [] } = useQuery({
+    queryKey: ['empresas-mae-admin'],
+    queryFn: () => getEmpresasMae(true),
+    enabled: !!user?.isAdmin,
+  })
+
+  const { data: estabelecimentosAdmin = [] } = useQuery({
+    queryKey: ['estabelecimentos-admin', adminEmpresaId],
+    queryFn: () => getEstabelecimentos(true, adminEmpresaId),
+    enabled: !!user?.isAdmin && !!adminEmpresaId,
+  })
+
+  const { data: empresasFilhaAdmin = [] } = useQuery({
+    queryKey: ['empresas-filha-admin', adminEstabelecimentoId],
+    queryFn: () => getEmpresasDoEstabelecimento(adminEstabelecimentoId),
+    enabled: !!user?.isAdmin && !!adminEstabelecimentoId,
+  })
+
+  const estabelecimentoEfetivo = user?.isAdmin
+    ? { id: adminEstabelecimentoId }
+    : estabelecimentoSelecionado
+
+  const empresaFilhaEfetiva = user?.isAdmin
+    ? { id: adminEmpresaFilhaId }
+    : empresaFilha
+
   const { data: localizacoes = [] } = useQuery({
-    queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
-    queryFn: () => getLocalizacoes(estabelecimentoSelecionado?.id),
+    queryKey: ['localizacoes', estabelecimentoEfetivo?.id],
+    queryFn: () => getLocalizacoes(estabelecimentoEfetivo?.id),
   })
 
   const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
-    .filter(l => l.ativo && l.estabelecimentoId === estabelecimentoSelecionado?.id)
+    .filter(l => l.ativo && l.estabelecimentoId === estabelecimentoEfetivo?.id)
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
@@ -76,9 +102,9 @@ export default function RegistroOcorrenciaPage() {
   })
 
   const { data: usuariosFilha = [] } = useQuery({
-    queryKey: ['usuarios', 'empresa', empresaFilha?.id],
-    queryFn: () => getUsuarios(true, empresaFilha!.id),
-    enabled: !!empresaFilha,
+    queryKey: ['usuarios', 'empresa', empresaFilhaEfetiva?.id],
+    queryFn: () => getUsuarios(true, empresaFilhaEfetiva!.id),
+    enabled: !!empresaFilhaEfetiva?.id,
   })
 
   const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
@@ -93,9 +119,9 @@ export default function RegistroOcorrenciaPage() {
   })
 
   const { data: ncsEstabelecimento = [] } = useQuery({
-    queryKey: ['nao-conformidades', 'estabelecimento', estabelecimentoSelecionado?.id],
-    queryFn: () => getNaoConformidades({ estabelecimentoId: estabelecimentoSelecionado?.id }),
-    enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoSelecionado?.id,
+    queryKey: ['nao-conformidades', 'estabelecimento', estabelecimentoEfetivo?.id],
+    queryFn: () => getNaoConformidades({ estabelecimentoId: estabelecimentoEfetivo?.id }),
+    enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoEfetivo?.id,
   })
 
   type NcItem = { id: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
