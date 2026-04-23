@@ -11,7 +11,10 @@ import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
 import { getNormas } from '../api/norma'
 import { vincularTrechoNorma } from '../api/ncTrechoNorma'
+import { getEmpresasMae } from '../api/empresa'
+import { getEstabelecimentos, getEmpresasDoEstabelecimento } from '../api/estabelecimento'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { useAuth } from '../contexts/AuthContext'
 import { Camera, AlertCircle, FileText, Calendar, Search, X, PenLine } from 'lucide-react'
 import SearchableSelect from '../components/SearchableSelect'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
@@ -34,6 +37,8 @@ const schema = z.object({
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
   engResponsavelConstrutoraId: z.string().optional(),
   engResponsavelVerificacaoId: z.string().optional(),
+  responsavelDesvioId: z.string().optional(),
+  responsavelTratativaId: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -52,6 +57,10 @@ export default function RegistroOcorrenciaPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
+  const { user } = useAuth()
+  const [adminEmpresaId, setAdminEmpresaId] = useState('')
+  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
+  const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
 
   const { data: localizacoes = [] } = useQuery({
     queryKey: ['localizacoes', estabelecimentoSelecionado?.id],
@@ -146,6 +155,8 @@ export default function RegistroOcorrenciaPage() {
         descricao: desvioData.descricao,
         regraDeOuro: desvioData.regraDeOuro,
         estabelecimentoId: desvioData.estabelecimentoId,
+        responsavelDesvioId: desvioData.responsavelDesvioId || '',
+        responsavelTratativaId: desvioData.responsavelTratativaId || '',
       })
     }
   }, [desvioData, reset])
@@ -184,7 +195,14 @@ export default function RegistroOcorrenciaPage() {
       }
       let result
       if (tipo === 'DESVIO') {
-        const req = { ...base, orientacaoRealizada: data.descricao }
+        if (!data.responsavelDesvioId) throw new Error('Responsável pelo desvio obrigatório')
+        if (!data.responsavelTratativaId) throw new Error('Responsável pela tratativa obrigatório')
+        const req = {
+          ...base,
+          orientacaoRealizada: data.descricao,
+          responsavelDesvioId: data.responsavelDesvioId,
+          responsavelTratativaId: data.responsavelTratativaId,
+        }
         result = isEditing ? await updateDesvio(id!, req) : await createDesvio(req)
       } else {
         const req = {
@@ -346,6 +364,34 @@ export default function RegistroOcorrenciaPage() {
             />
             {errors.descricao && <p className="text-red-500 text-xs mt-1">{errors.descricao.message}</p>}
           </div>
+
+          {/* Desvio-only: responsáveis */}
+          {tipo === 'DESVIO' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Responsável pelo Desvio *</label>
+                <SearchableSelect
+                  options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                  value={watch('responsavelDesvioId') ?? ''}
+                  onChange={id => setValue('responsavelDesvioId', id)}
+                  placeholder="Selecione quem vai aprovar/reprovar a tratativa"
+                  className={inputClass}
+                />
+                <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Responsável pela Tratativa *</label>
+                <SearchableSelect
+                  options={[...engenheiros, ...externos].map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                  value={watch('responsavelTratativaId') ?? ''}
+                  onChange={id => setValue('responsavelTratativaId', id)}
+                  placeholder="Selecione quem irá executar a tratativa"
+                  className={inputClass}
+                />
+                <p className="text-xs text-slate-400 mt-1">Quem irá enviar a observação e evidência da tratativa</p>
+              </div>
+            </>
+          )}
 
           {/* NF-only fields */}
           {tipo === 'NAO_CONFORMIDADE' && (
