@@ -209,6 +209,12 @@ export default function RegistroOcorrenciaPage() {
     }
   }, [ncData, reset])
 
+  useEffect(() => {
+    if (user?.isAdmin) {
+      setValue('estabelecimentoId', adminEstabelecimentoId)
+    }
+  }, [adminEstabelecimentoId, user?.isAdmin, setValue])
+
   const dataLimite = new Date()
   dataLimite.setDate(dataLimite.getDate() + 30)
   const dataLimiteStr = dataLimite.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -321,16 +327,78 @@ export default function RegistroOcorrenciaPage() {
         </div>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
-          {/* Estabelecimento — fixo do workspace */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
-            <input
-              type="text"
-              value={estabelecimentoSelecionado?.nome ?? ''}
-              readOnly
-              className={`${inputClass} bg-gray-100 cursor-not-allowed`}
-            />
-          </div>
+          {/* Estabelecimento */}
+          {user?.isAdmin && !isEditing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Empresa *</label>
+                <select
+                  value={adminEmpresaId}
+                  onChange={e => {
+                    setAdminEmpresaId(e.target.value)
+                    setAdminEstabelecimentoId('')
+                    setAdminEmpresaFilhaId('')
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Selecione a empresa</option>
+                  {(empresasAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
+                    <option key={e.id} value={e.id}>{e.razaoSocial}</option>
+                  ))}
+                </select>
+              </div>
+              {adminEmpresaId && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
+                  <select
+                    value={adminEstabelecimentoId}
+                    onChange={e => {
+                      setAdminEstabelecimentoId(e.target.value)
+                      setAdminEmpresaFilhaId('')
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">Selecione o estabelecimento</option>
+                    {(estabelecimentosAdmin as Array<{ id: string; nome: string }>).map(e => (
+                      <option key={e.id} value={e.id}>{e.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {adminEstabelecimentoId && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Filha (Contratada)</label>
+                  <select
+                    value={adminEmpresaFilhaId}
+                    onChange={e => setAdminEmpresaFilhaId(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Nenhuma</option>
+                    {(empresasFilhaAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
+                      <option key={e.id} value={e.id}>{e.razaoSocial}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {errors.estabelecimentoId && (
+                <p className="text-red-500 text-xs mt-1">{errors.estabelecimentoId.message}</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
+              <input
+                type="text"
+                value={
+                  isEditing
+                    ? (desvioData?.estabelecimentoNome ?? ncData?.estabelecimentoNome ?? '')
+                    : (estabelecimentoSelecionado?.nome ?? '')
+                }
+                readOnly
+                className={`${inputClass} bg-gray-100 cursor-not-allowed`}
+              />
+            </div>
+          )}
 
           {/* Título */}
           <div>
