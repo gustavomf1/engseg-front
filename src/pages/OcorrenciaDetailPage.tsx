@@ -11,21 +11,33 @@ import { getUsuarios } from '../api/usuario'
 import {
   ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
   FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2, Eye,
-  FileDown, FileSpreadsheet, Download
+  FileDown, FileSpreadsheet, Download, ChevronRight
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import SearchableSelect from '../components/SearchableSelect'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { formatDate } from '../utils/date'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { exportOcorrenciaBundle, exportOcorrenciaToExcel } from '../utils/exportOcorrencia'
 import { getEvidencias, getEvidenciasDesvio } from '../api/evidencia'
+import { RiskMatrix, RiskMatrixReincidencia } from '../components/RiskMatrix'
+
+const SEV_LABELS: Record<number, string> = {
+  1: 'Insignificante', 2: 'Menor', 3: 'Moderada', 4: 'Maior', 5: 'Catastrófica',
+}
+const PROB_LABELS: Record<number, string> = {
+  1: 'Rara', 2: 'Improvável', 3: 'Possível', 4: 'Provável',
+}
+const NIVEL_COLORS: Record<string, string> = {
+  BAIXO: 'text-emerald-600', MODERADO: 'text-amber-600', ALTO: 'text-orange-500', CRITICO: 'text-red-600',
+}
 
 const statusNCMap: Record<string, { label: string; color: string }> = {
-  ABERTA:        { label: 'Aberta',           color: 'bg-yellow-100 text-yellow-700' },
-  EM_TRATAMENTO: { label: 'Em Tratamento',    color: 'bg-blue-100 text-blue-700' },
-  CONCLUIDO:     { label: 'Concluído',         color: 'bg-green-100 text-green-700' },
-  NAO_RESOLVIDA: { label: 'Vencida',          color: 'bg-red-100 text-red-700' },
+  ABERTA:        { label: 'Aberta',        color: 'bg-yellow-100 text-yellow-700' },
+  EM_TRATAMENTO: { label: 'Em Tratamento', color: 'bg-blue-100 text-blue-700' },
+  CONCLUIDO:     { label: 'Concluído',     color: 'bg-green-100 text-green-700' },
+  NAO_RESOLVIDA: { label: 'Vencida',       color: 'bg-red-100 text-red-700' },
 }
 
 const nivelMap: Record<string, string> = {
@@ -35,11 +47,22 @@ const nivelMap: Record<string, string> = {
   CRITICO:  'bg-red-100 text-red-700',
 }
 
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('')
+}
+
 export default function OcorrenciaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const dark = theme === 'dark'
   const { empresaFilha } = useWorkspace()
   const isDesvio = tipo === 'DESVIO'
   const isTecnico = user?.perfil === 'TECNICO'
@@ -204,6 +227,27 @@ export default function OcorrenciaDetailPage() {
     return <div className="text-center py-12 text-slate-400">Carregando...</div>
   }
 
+  // Prazo widget calculations
+  const diasRestantes = nc?.dataLimiteResolucao
+    ? Math.ceil((new Date(nc.dataLimiteResolucao).getTime() - Date.now()) / 86400000)
+    : null
+  const prazoColor = diasRestantes === null ? 'text-slate-400'
+    : diasRestantes < 7 ? 'text-red-500'
+    : diasRestantes < 21 ? 'text-amber-500'
+    : 'text-emerald-500'
+  const pct = diasRestantes !== null
+    ? Math.max(0, Math.min(100, ((60 - diasRestantes) / 60) * 100))
+    : 0
+
+  // Risk matrix reincidencias
+  const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({
+    id: r.id,
+    severidade: Math.min(5, Math.max(1, 3)),
+    probabilidade: Math.min(4, Math.max(1, 2)),
+    titulo: r.titulo,
+    data: r.dataRegistro ? new Date(r.dataRegistro).toLocaleDateString('pt-BR') : undefined,
+  }))
+
   const inputClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-700 transition"
   const valueClass = "text-sm text-slate-800"
 
@@ -218,16 +262,36 @@ export default function OcorrenciaDetailPage() {
 
   const estabList = estabelecimentos as Array<{ id: string; nome: string; ativo: boolean }>
 
+  // Timeline chain nodes
+  const chainNodes = [
+    ...(nc?.cadeiaReincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: true })),
+    ...(nc ? [{ id: nc.id, titulo: nc.titulo, dataRegistro: nc.dataRegistro, status: nc.status, isCurrent: true, isPast: false }] : []),
+    ...(nc?.reincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: false })),
+  ]
+
   return (
     <>
+      {/* Shimmer keyframe */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .prazo-shimmer {
+          background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%);
+          background-size: 200% auto;
+          animation: shimmer 2.5s linear infinite;
+        }
+      `}</style>
+
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Back + actions */}
       <div className="flex items-center justify-between">
-        <button onClick={() => navigate('/ocorrencias')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
+        <button onClick={() => navigate('/ocorrencias')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="flex gap-2">
-          {/* Export (apenas quando concluído, para TECNICO/ENGENHEIRO/ADMIN) */}
+          {/* Export */}
           {(() => {
             const isConcluido = isDesvio ? desvio?.status === 'CONCLUIDO' : nc?.status === 'CONCLUIDO'
             const perfil = user?.perfil
@@ -270,7 +334,7 @@ export default function OcorrenciaDetailPage() {
             )
           })()}
 
-          {/* Ver tratativa — NC que já saiu do status ABERTA */}
+          {/* Ver tratativa */}
           {!isDesvio && nc && nc.status !== 'ABERTA' && (
             <button
               onClick={() => navigate(`/tratativas/NC/${id}`)}
@@ -279,7 +343,8 @@ export default function OcorrenciaDetailPage() {
               <Eye size={15} /> Ver tratativa
             </button>
           )}
-          {/* Técnico só pode editar NC com status ABERTA */}
+
+          {/* Edit / Delete */}
           {(() => {
             const ncEmTratamento = !isDesvio && nc && nc.status !== 'ABERTA'
             const bloqueado = isTecnico && ncEmTratamento
@@ -329,19 +394,18 @@ export default function OcorrenciaDetailPage() {
       </div>
 
       {/* Header card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 overflow-hidden">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6 overflow-hidden">
+        {/* Top row: type badge + status + prazo widget */}
+        <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDesvio ? 'bg-yellow-100' : 'bg-red-100'}`}>
               {isDesvio
                 ? <AlertTriangle size={20} className="text-yellow-500" />
                 : <FileText size={20} className="text-red-500" />}
             </div>
-            <div>
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                {isDesvio ? 'Desvio' : 'Não Conformidade'}
-              </span>
-            </div>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+              {isDesvio ? 'Desvio' : 'Não Conformidade'}
+            </span>
             {!isDesvio && (ocorrencia as any).regraDeOuro && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600 flex items-center gap-1">
                 <Shield size={12} /> Regra de Ouro
@@ -354,29 +418,61 @@ export default function OcorrenciaDetailPage() {
             )}
           </div>
 
-          {/* Status badge */}
-          {isDesvio
-            ? <span className="text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-700">
-                Concluído
+          <div className="flex items-center gap-2">
+            {isDesvio
+              ? <span className="text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-700">Concluído</span>
+              : <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusNCMap[nc!.status]?.color}`}>
+                  {statusNCMap[nc!.status]?.label}
+                </span>
+            }
+            {!isDesvio && nc?.vencida && (
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                Vencida
               </span>
-            : <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusNCMap[nc!.status]?.color}`}>
-                {statusNCMap[nc!.status]?.label}
-              </span>
-          }
-          {!isDesvio && nc?.vencida && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-              Vencida
-            </span>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Título */}
-        <div className="mb-6">
+        <div className="mb-5">
           {editando
             ? <input value={form.titulo} onChange={e => set('titulo', e.target.value)} className={`${inputClass} text-lg font-bold`} />
-            : <h2 className="text-xl font-bold text-slate-800 break-words overflow-hidden">{(ocorrencia as any).titulo}</h2>
+            : <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 break-words overflow-hidden">{(ocorrencia as any).titulo}</h2>
           }
         </div>
+
+        {/* Prazo widget (NC only, when dataLimiteResolucao exists) */}
+        {!isDesvio && nc?.dataLimiteResolucao && (
+          <div className="mb-5 relative overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-4">
+            <div className="prazo-shimmer absolute inset-0 pointer-events-none rounded-xl" />
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Clock size={15} className={prazoColor} />
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Prazo</span>
+              </div>
+              <div className={`text-sm font-bold ${prazoColor}`}>
+                {diasRestantes === null ? '—'
+                  : diasRestantes < 0 ? `${Math.abs(diasRestantes)}d vencido`
+                  : diasRestantes === 0 ? 'Vence hoje'
+                  : `${diasRestantes}d restantes`}
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="relative mt-3 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${
+                  diasRestantes !== null && diasRestantes < 7 ? 'bg-red-500'
+                  : diasRestantes !== null && diasRestantes < 21 ? 'bg-amber-400'
+                  : 'bg-emerald-500'
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+              Vence em {formatDate(nc.dataLimiteResolucao)}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Left column */}
@@ -482,39 +578,57 @@ export default function OcorrenciaDetailPage() {
                   </div>
                 </Field>
 
-                <Field label="Nível de Risco">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${nivelMap[nc!.nivelRisco]}`}>
-                    {nc!.nivelRisco}
-                  </span>
-                </Field>
-
-                {nc!.severidade != null && (
-                  <Field label="Severidade">
-                    <div className={valueClass}>
-                      {nc!.severidade} — {{1:'Insignificante',2:'Menor',3:'Moderada',4:'Maior',5:'Catastrófica'}[nc!.severidade] ?? ''}
-                    </div>
-                  </Field>
-                )}
-
-                {nc!.probabilidade != null && (
-                  <Field label="Probabilidade">
-                    <div className={valueClass}>
-                      {nc!.probabilidade} — {{1:'Rara',2:'Improvável',3:'Possível',4:'Provável'}[nc!.probabilidade] ?? ''}
-                    </div>
-                  </Field>
-                )}
-
                 <Field label="Data Limite">
                   <div className={`${valueClass} flex items-center gap-1.5`}><Clock size={13} className="text-slate-400" />{formatDate(nc!.dataLimiteResolucao)}</div>
                 </Field>
+
+                {/* Risk Analysis card (replaces plain Nível/Sev/Prob fields) */}
+                {nc?.severidade != null && nc?.probabilidade != null && (
+                  <div className="rounded-xl border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-4">
+                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Análise de Risco</div>
+                    <div className="flex justify-center mb-3">
+                      <RiskMatrix
+                        severidade={nc.severidade}
+                        probabilidade={nc.probabilidade}
+                        reincidencias={matrizReincidencias}
+                        dark={dark}
+                        size={220}
+                      />
+                    </div>
+                    {/* Summary row */}
+                    <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200 dark:border-slate-600 flex-wrap gap-2">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-slate-400 dark:text-slate-500">Severidade</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">{nc.severidade} — {SEV_LABELS[nc.severidade] ?? ''}</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-slate-400 dark:text-slate-500">Probabilidade</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">{nc.probabilidade} — {PROB_LABELS[nc.probabilidade] ?? ''}</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-slate-400 dark:text-slate-500">Nível</span>
+                        <span className={`font-bold ${NIVEL_COLORS[nc.nivelRisco] ?? ''}`}>{nc.nivelRisco}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback: show plain nivelRisco badge if no sev/prob data */}
+                {(nc?.severidade == null || nc?.probabilidade == null) && (
+                  <Field label="Nível de Risco">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${nivelMap[nc!.nivelRisco]}`}>
+                      {nc!.nivelRisco}
+                    </span>
+                  </Field>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* NC engenheiros */}
+        {/* NC engenheiros — avatar cards when not editing */}
         {!isDesvio && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6 pt-6 border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6 pt-6 border-t border-gray-100 dark:border-slate-700">
             <Field label="Eng. Responsável pela Tratativa">
               {editando
                 ? <SearchableSelect
@@ -524,10 +638,21 @@ export default function OcorrenciaDetailPage() {
                     placeholder="Selecione o responsável pela tratativa"
                     className={inputClass}
                   />
-                : <div className={`${valueClass} flex items-center gap-1.5`}>
-                    <User size={13} className="text-slate-400" />
-                    {nc!.engConstruturaNome ? `${nc!.engConstruturaNome} (${nc!.engConstrutoraEmail})` : nc!.engConstrutoraEmail || '—'}
-                  </div>
+                : nc!.engConstruturaNome || nc!.engConstrutoraEmail
+                  ? (
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                          {getInitials(nc!.engConstruturaNome || nc!.engConstrutoraEmail || '?')}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        {nc!.engConstruturaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engConstruturaNome}</div>}
+                        {nc!.engConstrutoraEmail && <div className="text-xs text-slate-400 truncate">{nc!.engConstrutoraEmail}</div>}
+                      </div>
+                    </div>
+                  )
+                  : <div className={valueClass}>—</div>
               }
             </Field>
 
@@ -540,10 +665,21 @@ export default function OcorrenciaDetailPage() {
                     placeholder="Selecione o responsável pela verificação"
                     className={inputClass}
                   />
-                : <div className={`${valueClass} flex items-center gap-1.5`}>
-                    <User size={13} className="text-slate-400" />
-                    {nc!.engVerificacaoNome ? `${nc!.engVerificacaoNome} (${nc!.engVerificacaoEmail})` : nc!.engVerificacaoEmail || '—'}
-                  </div>
+                : nc!.engVerificacaoNome || nc!.engVerificacaoEmail
+                  ? (
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                          {getInitials(nc!.engVerificacaoNome || nc!.engVerificacaoEmail || '?')}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        {nc!.engVerificacaoNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engVerificacaoNome}</div>}
+                        {nc!.engVerificacaoEmail && <div className="text-xs text-slate-400 truncate">{nc!.engVerificacaoEmail}</div>}
+                      </div>
+                    </div>
+                  )
+                  : <div className={valueClass}>—</div>
               }
             </Field>
           </div>
@@ -552,7 +688,7 @@ export default function OcorrenciaDetailPage() {
 
       {/* Evidências da Ocorrência */}
       {id && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
           <EvidenciaUpload
             {...(isDesvio ? { desvioId: id } : { naoConformidadeId: id })}
             tipoEvidencia="OCORRENCIA"
@@ -562,44 +698,62 @@ export default function OcorrenciaDetailPage() {
         </div>
       )}
 
-      {/* Cadeia de reincidências (NC only) */}
+      {/* Cadeia de reincidências — vertical timeline (NC only) */}
       {!isDesvio && nc && (nc.reincidencia || (nc.reincidencias?.length ?? 0) > 0) && (
-        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/40 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-5">
             <RefreshCw size={15} className="text-red-500" />
-            <h3 className="text-base font-bold text-slate-800">Rastro de Reincidências</h3>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Rastro de Reincidências</h3>
             <span className="text-xs text-slate-400">
               ({(nc.cadeiaReincidencias?.length ?? 0) + 1 + (nc.reincidencias?.length ?? 0)} ocorrência(s))
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {nc.cadeiaReincidencias?.map((item) => (
-              <span key={item.id} className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 transition max-w-[180px] truncate"
-                  title={item.titulo}
-                >
-                  {item.titulo}
-                </button>
-                <span className="text-slate-300 text-sm">→</span>
-              </span>
-            ))}
-            <span className="px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-semibold ring-2 ring-red-300 max-w-[180px] truncate" title={nc.titulo}>
-              {nc.titulo}
-            </span>
-            {nc.reincidencias?.map((item) => (
-              <span key={item.id} className="flex items-center gap-2">
-                <span className="text-slate-300 text-sm">→</span>
-                <button
-                  onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-100 transition max-w-[180px] truncate"
-                  title={item.titulo}
-                >
-                  {item.titulo}
-                </button>
-              </span>
-            ))}
+
+          <div className="relative pl-6">
+            {/* vertical line */}
+            <div className="absolute left-2.5 top-2 bottom-2 w-px bg-red-200 dark:bg-red-800/40" />
+
+            {chainNodes.map((node, idx) => {
+              const isLast = idx === chainNodes.length - 1
+              return (
+                <div key={node.id} className={`relative mb-0 ${!isLast ? 'pb-5' : ''}`}>
+                  {/* dot */}
+                  <div className={`absolute -left-3.5 top-1.5 w-3 h-3 rounded-full border-2 flex-shrink-0 ${
+                    node.isCurrent
+                      ? 'bg-red-600 border-red-600 ring-2 ring-red-200 dark:ring-red-800'
+                      : node.isPast
+                      ? 'bg-white dark:bg-slate-800 border-red-400'
+                      : 'bg-white dark:bg-slate-800 border-orange-400'
+                  }`} />
+
+                  {node.isCurrent ? (
+                    <div className="ml-1 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                      <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-0.5">Esta NC (atual)</div>
+                      <div className="text-sm font-medium text-red-800 dark:text-red-200">{node.titulo}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{formatDate(node.dataRegistro)}</div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${node.id}`)}
+                      className={`ml-1 w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition group ${
+                        node.isPast
+                          ? 'border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-900/20'
+                          : 'border-orange-100 dark:border-orange-900/40 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                      }`}
+                    >
+                      <div>
+                        <div className={`text-xs font-medium mb-0.5 ${node.isPast ? 'text-red-500 dark:text-red-400' : 'text-orange-500 dark:text-orange-400'}`}>
+                          {node.isPast ? 'Anterior' : 'Posterior'}
+                        </div>
+                        <div className="text-sm text-slate-700 dark:text-slate-200 truncate max-w-[260px]">{node.titulo}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{formatDate(node.dataRegistro)}</div>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
           <p className="text-xs text-slate-400 mt-3">Clique em qualquer NC para ver seus detalhes</p>
         </div>
@@ -607,8 +761,8 @@ export default function OcorrenciaDetailPage() {
 
       {/* Histórico de tratativa (NC only, read-only) */}
       {!isDesvio && (nc!.devolutivas?.length > 0 || nc!.execucoes?.length > 0 || nc!.validacoes?.length > 0) && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Histórico da Tratativa</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4">Histórico da Tratativa</h3>
 
           {nc!.devolutivas?.map((d, i) => (
             <div key={d.id} className="flex gap-3 mb-4">
@@ -617,7 +771,7 @@ export default function OcorrenciaDetailPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-blue-600 font-medium">Plano de Ação #{i + 1}</div>
-                <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{d.descricaoPlanoAcao}</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300 mt-0.5 break-words overflow-hidden">{d.descricaoPlanoAcao}</div>
                 <div className="text-xs text-slate-400 mt-1">{d.engenheiroNome ?? '-'} · {formatDate(d.dataDevolutiva)}</div>
               </div>
             </div>
@@ -630,7 +784,7 @@ export default function OcorrenciaDetailPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-orange-600 font-medium">Execução #{i + 1}</div>
-                <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{e.descricaoAcaoExecutada}</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300 mt-0.5 break-words overflow-hidden">{e.descricaoAcaoExecutada}</div>
                 <div className="text-xs text-slate-400 mt-1">{e.engenheiroNome ?? '-'} · {formatDate(e.dataExecucao)}</div>
               </div>
             </div>
@@ -647,7 +801,7 @@ export default function OcorrenciaDetailPage() {
                 <div className={`text-xs font-medium ${v.parecer === 'APROVADO' ? 'text-green-600' : 'text-red-600'}`}>
                   Validação #{i + 1} — {v.parecer === 'APROVADO' ? 'Aprovada' : 'Reprovada'}
                 </div>
-                {v.observacao && <div className="text-sm text-slate-700 mt-0.5 break-words overflow-hidden">{v.observacao}</div>}
+                {v.observacao && <div className="text-sm text-slate-700 dark:text-slate-300 mt-0.5 break-words overflow-hidden">{v.observacao}</div>}
                 <div className="text-xs text-slate-400 mt-1">{v.engenheiroNome ?? '-'} · {formatDate(v.dataValidacao)}</div>
               </div>
             </div>
@@ -656,118 +810,117 @@ export default function OcorrenciaDetailPage() {
       )}
     </div>
 
-      {/* Modal confirmação de exclusão */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDelete(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Trash2 size={20} className="text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">Excluir {isDesvio ? 'Desvio' : 'Não Conformidade'}</h3>
-                  <p className="text-xs text-slate-400">Esta ação não pode ser desfeita</p>
+    {/* Modal confirmação de exclusão */}
+    {confirmDelete && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDelete(false)}>
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Excluir {isDesvio ? 'Desvio' : 'Não Conformidade'}</h3>
+                <p className="text-xs text-slate-400">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-4">
+              Tem certeza que deseja excluir <strong>"{(ocorrencia as any).titulo}"</strong>?
+            </p>
+
+            {!isDesvio && nc && (nc.atividades?.length > 0 || nc.execucoes?.length > 0 || nc.devolutivas?.length > 0 || nc.historico?.length > 0) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium mb-1">Esta NC possui tratativas em andamento ou já executadas:</p>
+                    <ul className="list-disc list-inside text-xs space-y-0.5 text-amber-700">
+                      {nc.atividades?.length > 0 && <li>{nc.atividades.length} atividade(s) do plano de ação</li>}
+                      {nc.devolutivas?.length > 0 && <li>{nc.devolutivas.length} devolutiva(s)</li>}
+                      {nc.execucoes?.length > 0 && <li>{nc.execucoes.length} execução(ões)</li>}
+                      {nc.historico?.length > 0 && <li>{nc.historico.length} registro(s) no histórico</li>}
+                    </ul>
+                    <p className="mt-2 font-medium">Todos esses dados serão apagados permanentemente.</p>
+                  </div>
                 </div>
               </div>
+            )}
 
-              <p className="text-sm text-slate-600 mb-4">
-                Tem certeza que deseja excluir <strong>"{(ocorrencia as any).titulo}"</strong>?
-              </p>
+            {deleteMutation.isError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+                Erro ao excluir: {deleteMutation.error?.message || 'Tente novamente.'}
+              </div>
+            )}
+          </div>
 
-              {!isDesvio && nc && (nc.atividades?.length > 0 || nc.execucoes?.length > 0 || nc.devolutivas?.length > 0 || nc.historico?.length > 0) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-amber-800">
-                      <p className="font-medium mb-1">Esta NC possui tratativas em andamento ou já executadas:</p>
-                      <ul className="list-disc list-inside text-xs space-y-0.5 text-amber-700">
-                        {nc.atividades?.length > 0 && <li>{nc.atividades.length} atividade(s) do plano de ação</li>}
-                        {nc.devolutivas?.length > 0 && <li>{nc.devolutivas.length} devolutiva(s)</li>}
-                        {nc.execucoes?.length > 0 && <li>{nc.execucoes.length} execução(ões)</li>}
-                        {nc.historico?.length > 0 && <li>{nc.historico.length} registro(s) no histórico</li>}
-                      </ul>
-                      <p className="mt-2 font-medium">Todos esses dados serão apagados permanentemente.</p>
+          <div className="flex justify-end gap-2 p-6 pt-0">
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition"
+            >
+              {deleteMutation.isPending ? 'Excluindo...' : 'Sim, excluir'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal detalhes da norma */}
+    {normaModal && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setNormaModal(null)}>
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col" style={{height: '80vh'}} onClick={e => e.stopPropagation()}>
+          <div className="flex items-start justify-between p-6 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <BookOpen size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">{normaModal.titulo}</h3>
+                <p className="text-xs text-slate-400">Norma / Regulamento</p>
+              </div>
+            </div>
+            <button onClick={() => setNormaModal(null)} className="text-slate-400 hover:text-slate-600 transition p-1">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {normaModal.descricao ? (
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{normaModal.descricao}</p>
+            ) : (
+              <p className="text-sm text-slate-400 italic">Nenhuma descrição cadastrada para esta norma.</p>
+            )}
+            {trechos.filter(t => t.normaId === normaModal.id).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Trechos Vinculados à NC</p>
+                <div className="space-y-3">
+                  {trechos.filter(t => t.normaId === normaModal.id).map(t => (
+                    <div key={t.id} className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+                      {t.clausulaReferencia && (
+                        <p className="text-xs font-semibold text-blue-700 mb-1.5">{t.clausulaReferencia}</p>
+                      )}
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">{t.textoEditado}</p>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {deleteMutation.isError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
-                  Erro ao excluir: {deleteMutation.error?.message || 'Tente novamente.'}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2 p-6 pt-0">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition"
-              >
-                {deleteMutation.isPending ? 'Excluindo...' : 'Sim, excluir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal detalhes da norma */}
-
-      {normaModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setNormaModal(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col" style={{height: '80vh'}} onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between p-6 border-b border-gray-100 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <BookOpen size={18} className="text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">{normaModal.titulo}</h3>
-                  <p className="text-xs text-slate-400">Norma / Regulamento</p>
+                  ))}
                 </div>
               </div>
-              <button onClick={() => setNormaModal(null)} className="text-slate-400 hover:text-slate-600 transition p-1">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              {normaModal.descricao ? (
-                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{normaModal.descricao}</p>
-              ) : (
-                <p className="text-sm text-slate-400 italic">Nenhuma descrição cadastrada para esta norma.</p>
-              )}
-              {trechos.filter(t => t.normaId === normaModal.id).length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Trechos Vinculados à NC</p>
-                  <div className="space-y-3">
-                    {trechos.filter(t => t.normaId === normaModal.id).map(t => (
-                      <div key={t.id} className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-                        {t.clausulaReferencia && (
-                          <p className="text-xs font-semibold text-blue-700 mb-1.5">{t.clausulaReferencia}</p>
-                        )}
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">{t.textoEditado}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end p-6 pt-4 border-t border-gray-100 flex-shrink-0">
-              <button onClick={() => setNormaModal(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition">
-                Fechar
-              </button>
-            </div>
+            )}
+          </div>
+          <div className="flex justify-end p-6 pt-4 border-t border-gray-100 flex-shrink-0">
+            <button onClick={() => setNormaModal(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition">
+              Fechar
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    )}
     </>
   )
 }
