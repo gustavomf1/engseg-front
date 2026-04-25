@@ -19,6 +19,8 @@ import { Camera, AlertCircle, FileText, Calendar, Search, X, PenLine } from 'luc
 import SearchableSelect from '../components/SearchableSelect'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
+import { LABELS_SEVERIDADE, LABELS_PROBABILIDADE, calcularNivelRisco } from '../utils/matrizRisco'
+import RiscoBadge from '../components/RiscoBadge'
 
 interface TrechoPendente {
   normaId: string
@@ -57,6 +59,8 @@ export default function RegistroOcorrenciaPage() {
   const [adminEmpresaId, setAdminEmpresaId] = useState('')
   const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
   const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
+  const [severidade, setSeveridade] = useState(0)
+  const [probabilidade, setProbabilidade] = useState(0)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
@@ -242,7 +246,8 @@ export default function RegistroOcorrenciaPage() {
       } else {
         const req = {
           ...base,
-          nivelSeveridade: 'MEDIO' as const,
+          severidade,
+          probabilidade,
           engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
           normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
@@ -493,6 +498,50 @@ export default function RegistroOcorrenciaPage() {
           {/* NF-only fields */}
           {tipo === 'NAO_CONFORMIDADE' && (
             <>
+              {/* Severidade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Severidade <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={severidade || ''}
+                  onChange={e => setSeveridade(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <option key={n} value={n}>{LABELS_SEVERIDADE[n]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Probabilidade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Probabilidade <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={probabilidade || ''}
+                  onChange={e => setProbabilidade(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {[1, 2, 3, 4].map(n => (
+                    <option key={n} value={n}>{LABELS_PROBABILIDADE[n]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Preview do nível de risco */}
+              {severidade > 0 && probabilidade > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Nível de risco:</span>
+                  <RiscoBadge nivel={calcularNivelRisco(severidade, probabilidade)} />
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Normas / Regras Violadas</label>
                 {normas.length === 0 ? (
