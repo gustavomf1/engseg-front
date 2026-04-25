@@ -51,19 +51,19 @@ function groupByEstabelecimento(ocorrencias: OcorrenciaItem[]) {
 function groupBySeveridade(ocorrencias: OcorrenciaItem[]) {
   const counts: Record<string, number> = {}
   ocorrencias
-    .filter(o => o.tipo === 'NAO_CONFORMIDADE' && o.nivelSeveridade)
+    .filter(o => o.tipo === 'NAO_CONFORMIDADE' && o.nivelRisco)
     .forEach(o => {
-      const s = o.nivelSeveridade!
+      const s = o.nivelRisco!
       counts[s] = (counts[s] ?? 0) + 1
     })
   return Object.entries(counts).map(([name, value]) => ({ name, value }))
 }
 
 const SEVERITY_COLOR: Record<string, string> = {
-  BAIXO:  '#3fb950',
-  MEDIO:  '#d29922',
-  ALTO:   '#f85149',
-  CRITICO:'#ff7b72',
+  BAIXO:    '#3fb950',
+  MODERADO: '#d29922',
+  ALTO:     '#f85149',
+  CRITICO:  '#ff7b72',
 }
 
 // ─── custom tooltip ──────────────────────────────────────────────────────────

@@ -192,7 +192,7 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
   tags.push(`Status: ${ocorrencia.status || 'CONCLUÍDO'}`)
   if (ocorrencia.regraDeOuro) tags.push('Regra de Ouro')
   if (ocorrencia.reincidencia) tags.push('Reincidência')
-  if (!isDesvio && ocorrencia.nivelSeveridade) tags.push(`Severidade: ${ocorrencia.nivelSeveridade}`)
+  if (!isDesvio && ocorrencia.nivelRisco) tags.push(`Risco: ${ocorrencia.nivelRisco}`)
   doc.text(tags.join('  ·  '), marginX, y)
   y += 8
 
@@ -434,7 +434,7 @@ export function exportOcorrenciaToExcel({ ocorrencia, trechos = [], isDesvio }: 
   }
   if (!isDesvio) {
     resumo.push(['Reincidência', ocorrencia.reincidencia ? 'Sim' : 'Não'])
-    resumo.push(['Nível de Severidade', ocorrencia.nivelSeveridade || ''])
+    resumo.push(['Nível de Risco', ocorrencia.nivelRisco || ''])
     resumo.push(['Data Limite', formatDate(ocorrencia.dataLimiteResolucao) || ''])
     resumo.push(['Eng. Responsável pela Tratativa',
       ocorrencia.engConstruturaNome
