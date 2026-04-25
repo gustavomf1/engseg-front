@@ -237,10 +237,10 @@ export default function TrativaDetailPage() {
   const prazoVencido = dias !== null && dias < 0 && nc?.status !== 'CONCLUIDO'
 
   // Condições de exibição por status
-  const showInvestigacaoForm = !isDesvio && (nc?.status === 'ABERTA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && (isExterno || isTecnico)
+  const showInvestigacaoForm = !isDesvio && (nc?.status === 'ABERTA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && isExterno
   const showAguardandoAprovacaoPlano = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isExterno
   const showAprovacaoPlanoForm = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isEngenheiro
-  const showExecucaoForm = !isDesvio && nc?.status === 'EM_EXECUCAO' && (isExterno || isTecnico)
+  const showExecucaoForm = !isDesvio && nc?.status === 'EM_EXECUCAO' && isExterno
   const showEngenheiroAguardaExecucao = !isDesvio && nc?.status === 'EM_EXECUCAO' && isEngenheiro
   const showAguardandoValidacaoFinal = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isExterno
   const showAprovacaoEvidenciasForm = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isEngenheiro
@@ -817,7 +817,7 @@ export default function TrativaDetailPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
 
       {/* Desvio — fluxo de tratativas */}
-      {isDesvio && desvio && (
+      {isDesvio && desvio && (!isTecnico || desvio.responsavelTratativaId === user?.id) && (
         <DesvioTrativaSection
           desvio={desvio}
           onUpdated={() => {

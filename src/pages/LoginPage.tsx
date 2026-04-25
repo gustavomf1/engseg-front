@@ -2,220 +2,152 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { login as loginApi } from '../api/auth'
-import { Shield, Mail, Lock, Eye, EyeOff, CheckCircle2, TrendingUp, ClipboardList, Clock, Sun, Moon } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
-import { ShaderWallpaper } from '../components/ShaderWallpaper'
+import Shield3D from '../components/Shield3D'
 
 export default function LoginPage() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [showSenha, setShowSenha] = useState(false)
-  const [error, setError] = useState('')
+  const [focused, setFocused] = useState<'email' | 'senha' | null>(null)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
-  const { theme, toggleTheme } = useTheme()
-  const navigate = useNavigate()
+  const [error, setError] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  const accent = '#6366f1'
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setError(null)
     setLoading(true)
     try {
       const res = await loginApi({ email, senha })
       login(res.id, res.token, res.nome, res.email, res.perfil, res.isAdmin)
       navigate(res.perfil === 'EXTERNO' ? '/tratativas' : res.isAdmin ? '/empresas' : '/selecionar')
-    } catch {
-      setError('Email ou senha inválidos')
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Email ou senha inválidos')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel with interactive shader wallpaper */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-950">
-        <ShaderWallpaper />
-
-        {/* Content layer on top */}
-        <div className="relative z-[1] flex flex-col justify-between p-12 text-white w-full pointer-events-none">
-          <div className="flex items-center justify-between pointer-events-auto">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{
-                  background: 'rgba(15, 23, 42, 0.55)',
-                  border: '1px solid rgba(56, 189, 248, 0.30)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.18)',
-                }}
-              >
-                <Shield size={22} className="text-sky-300" />
-              </div>
-              <div>
-                <div className="font-bold text-lg tracking-wide" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>SGS</div>
-                <div className="text-sky-200/70 text-sm" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>Sistema de Gestão</div>
-              </div>
-            </div>
-
-            {/* SafeCorp company mark */}
+    <div className="w-full min-h-screen flex flex-col lg:flex-row bg-white dark:bg-[#0b0b1a]">
+      {/* LEFT — hero */}
+      <div
+        className="relative flex-1 min-h-[380px] lg:min-h-screen flex items-center justify-center overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)' }}
+      >
+        {/* anéis pulsantes */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {[1, 2, 3, 4].map((i) => (
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full pointer-events-auto"
+              key={i}
+              className="absolute rounded-full border border-white/5 animate-pulse-ring"
               style={{
-                background: 'rgba(8, 14, 28, 0.55)',
-                border: '1px solid rgba(56, 189, 248, 0.22)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
+                width: 280 + i * 90,
+                height: 280 + i * 90,
+                animationDelay: `${i * 0.6}s`,
               }}
-            >
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }}
-              />
-              <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-sky-100">SafeCorp</span>
-            </div>
-          </div>
+            />
+          ))}
+        </div>
 
-          <div className="space-y-8 pointer-events-auto max-w-lg">
-            <div>
-              <h1
-                className="text-4xl font-bold mb-3 leading-tight"
-                style={{ textShadow: '0 4px 24px rgba(0,0,0,0.65)' }}
-              >
-                Bem-vindo ao <span className="text-sky-300">Sistema</span>
-              </h1>
-              <p
-                className="text-slate-200/85 leading-relaxed"
-                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.75)' }}
-              >
-                Plataforma completa para gerenciamento de ocorrências e tratativas de segurança do trabalho.
-              </p>
+        {/* brand canto superior */}
+        <div className="absolute top-6 left-6 text-white/60 text-xs font-semibold tracking-[0.25em] uppercase">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-white/10 grid place-items-center">
+              <div className="w-2 h-2 rounded-sm bg-white/80" />
             </div>
-            <div className="space-y-3">
-              {[
-                { icon: TrendingUp, title: 'Registro de Ocorrências', sub: 'Desvios e não conformidades' },
-                { icon: ClipboardList, title: 'Gestão de Tratativas', sub: 'Planos de ação e evidências' },
-                { icon: Clock, title: 'Controle de Prazos', sub: 'Acompanhamento em tempo real' },
-              ].map(({ icon: Icon, title, sub }) => (
-                <div
-                  key={title}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl"
-                  style={{
-                    background: 'rgba(8, 14, 28, 0.35)',
-                    border: '1px solid rgba(56, 189, 248, 0.12)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                    }}
-                  >
-                    <Icon size={15} className="text-sky-300" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm text-white">{title}</div>
-                    <div className="text-slate-300/75 text-xs">{sub}</div>
-                  </div>
-                  <CheckCircle2 size={14} className="text-sky-400/70 ml-auto" />
-                </div>
-              ))}
-            </div>
+            SGS
           </div>
+        </div>
 
-          <div className="pointer-events-auto flex items-center justify-between text-xs">
-            <div className="text-slate-400" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}>
-              © 2024 <span className="text-sky-300 font-semibold tracking-wider">SafeCorp</span> · Todos os direitos reservados
-            </div>
-            <div className="text-slate-500/80 italic" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}>
-              mova o mouse · clique
-            </div>
-          </div>
+        {/* rodapé esquerdo */}
+        <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-white/40 text-[11px]">
+          <div>© 2026 ERS Engenharia</div>
+          <div className="font-mono">v1.0.0</div>
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center text-center px-8 py-10">
+          <Shield3D size={260} palette="brand" />
+          <h2 className="text-white text-2xl md:text-3xl font-bold mt-8 max-w-sm leading-tight">
+            Proteção começa com visibilidade.
+          </h2>
+          <p className="text-white/50 text-sm mt-3 max-w-xs">
+            Registre, acompanhe e resolva ocorrências de segurança com clareza.
+          </p>
         </div>
       </div>
 
-      {/* Right white panel */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
-        <button
-          onClick={toggleTheme}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-gray-100 transition"
-          title={theme === 'light' ? 'Tema Escuro' : 'Tema Claro'}
-        >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
-        <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <Shield size={28} className="text-slate-800" />
-            <span className="font-bold text-xl text-slate-800">SGS</span>
-          </div>
-
+      {/* RIGHT — formulário */}
+      <div className="lg:w-[480px] flex items-center justify-center p-8 lg:p-12">
+        <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Acessar Sistema</h2>
-            <p className="text-slate-500 mt-1">Digite suas credenciais para continuar</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Bem-vindo de volta
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-white/50">
+              Bom ter você por aqui. Entre pra continuar.
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                <span className="flex items-center gap-2"><Mail size={14} /> Email</span>
+              <label className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-white/60">
+                Email
               </label>
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="seu.email@empresa.com"
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => setFocused('email')}
+                onBlur={() => setFocused(null)}
                 required
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition"
+                autoFocus
+                className="mt-1 w-full rounded-xl border px-4 py-3.5 text-sm outline-none transition bg-slate-50 dark:bg-white/5 border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30"
+                style={focused === 'email' ? { boxShadow: `0 0 0 3px ${accent}33`, borderColor: accent } : undefined}
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                <span className="flex items-center gap-2"><Lock size={14} /> Senha</span>
+              <label className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-white/60">
+                Senha
               </label>
-              <div className="relative">
-                <input
-                  type={showSenha ? 'text' : 'password'}
-                  value={senha}
-                  onChange={e => setSenha(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSenha(!showSenha)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                onFocus={() => setFocused('senha')}
+                onBlur={() => setFocused(null)}
+                placeholder="••••••••"
+                required
+                className="mt-1 w-full rounded-xl border px-4 py-3.5 text-sm outline-none transition bg-slate-50 dark:bg-white/5 border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30"
+                style={focused === 'senha' ? { boxShadow: `0 0 0 3px ${accent}33`, borderColor: accent } : undefined}
+              />
             </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-slate-900 text-white py-3 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-60 transition"
-            >
-              {loading ? 'Entrando...' : 'Entrar no Sistema'}
-            </button>
-          </form>
-
-          <div className="text-center text-sm text-slate-400">
-            Problemas para acessar?{' '}
-            <span className="text-slate-700 font-medium underline cursor-pointer">Entre em contato com o suporte</span>
           </div>
-        </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl py-3.5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
+            style={{
+              background: `linear-gradient(180deg, ${accent} 0%, #4338ca 100%)`,
+              boxShadow: `0 6px 20px -6px ${accent}80, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
+            }}
+          >
+            {loading ? 'Entrando...' : 'Entrar →'}
+          </button>
+
+          <div className="text-center text-xs text-slate-400 dark:text-white/40">
+            Sistema de Gestão de Segurança · v1.0.0
+          </div>
+        </form>
       </div>
     </div>
   )
