@@ -15,6 +15,8 @@ export interface OcorrenciaItem {
   engResponsavelConstrutoraId?: string
   engResponsavelVerificacaoId?: string
   usuarioCriacaoEmail?: string
+  responsavelTratativaId?: string
+  responsavelDesvioId?: string
   vencida?: boolean
   primeiraEvidenciaId?: string
   primeiraEvidenciaNome?: string

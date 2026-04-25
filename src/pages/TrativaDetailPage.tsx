@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDesvio } from '../api/desvio'
+import DesvioTrativaSection from './desvio/DesvioTrativaSection'
 import { getTrechosNorma } from '../api/ncTrechoNorma'
 import {
   getNaoConformidade,
@@ -357,6 +358,18 @@ export default function TrativaDetailPage() {
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Usuário de Registro</p>
               <p className="text-slate-800 break-words">{(ocorrencia as any).tecnicoNome}</p>
+            </div>
+          )}
+          {isDesvio && desvio?.responsavelDesvioNome && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Responsável pelo Desvio</p>
+              <p className="text-slate-800 break-words">{desvio.responsavelDesvioNome}</p>
+            </div>
+          )}
+          {isDesvio && desvio?.responsavelTrativaNome && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Responsável pela Tratativa</p>
+              <p className="text-slate-800 break-words">{desvio.responsavelTrativaNome}</p>
             </div>
           )}
           {!isDesvio && nc?.engConstruturaNome && (
@@ -803,15 +816,15 @@ export default function TrativaDetailPage() {
       {/* ÁREA DE AÇÃO — depende de status + perfil */}
       {/* ═══════════════════════════════════════════════════════════════ */}
 
-      {/* Desvio — sempre concluído */}
-      {isDesvio && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
-          <CheckCircle size={32} className="text-green-500 shrink-0" />
-          <div>
-            <div className="font-bold text-green-800 text-base">Desvio Concluído</div>
-            <div className="text-sm text-green-600 mt-0.5">Este desvio foi registrado e concluído automaticamente.</div>
-          </div>
-        </div>
+      {/* Desvio — fluxo de tratativas */}
+      {isDesvio && desvio && (
+        <DesvioTrativaSection
+          desvio={desvio}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['desvio', id] })
+            queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
+          }}
+        />
       )}
 
       {/* ABERTA + Engenheiro → aguardando investigação do Externo */}

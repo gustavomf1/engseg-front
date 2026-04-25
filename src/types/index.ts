@@ -337,6 +337,26 @@ export interface ValidacaoRequest {
   observacao?: string
 }
 
+export type StatusTratativaDesvio = 'PENDENTE' | 'APROVADO' | 'REPROVADO'
+
+export interface TrativaDesvioEvidencia {
+  id: string
+  nome: string
+  url?: string
+}
+
+export interface TrativaDesvio {
+  id: string
+  titulo: string
+  descricao: string
+  evidencias: TrativaDesvioEvidencia[]
+  status: StatusTratativaDesvio
+  motivoReprovacao?: string
+  numero: number
+  rodada?: number
+  dtCriacao: string
+}
+
 export interface Desvio {
   id: string
   estabelecimentoId: string
@@ -361,6 +381,7 @@ export interface Desvio {
   evidenciaTrativaNome?: string
   evidenciaTrativaUrl?: string
   historico: HistoricoDesvioResponse[]
+  tratativas: TrativaDesvio[]
 }
 
 export interface DesvioRequest {
@@ -374,9 +395,14 @@ export interface DesvioRequest {
   responsavelTratativaId: string
 }
 
-export interface SubmeterTrativaRequest {
-  observacao: string
-  evidenciaId: string
+export interface AdicionarTrativaRequest {
+  titulo: string
+  descricao: string
+  evidenciaIds: string[]
+}
+
+export interface ReprovarTrativasDesvioRequest {
+  itens: { trativaId: string; motivo: string }[]
 }
 
 export interface AprovarDesvioRequest {

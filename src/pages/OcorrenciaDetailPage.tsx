@@ -414,6 +414,16 @@ export default function OcorrenciaDetailPage() {
               </Field>
             )}
 
+            {isDesvio && desvio?.responsavelDesvioNome && (
+              <Field label="Resp. pelo Desvio">
+                <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{desvio.responsavelDesvioNome}</div>
+              </Field>
+            )}
+            {isDesvio && desvio?.responsavelTrativaNome && (
+              <Field label="Resp. pela Tratativa">
+                <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{desvio.responsavelTrativaNome}</div>
+              </Field>
+            )}
             {!isDesvio && (
               <Field label="Regra de Ouro">
                 {editando

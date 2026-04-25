@@ -203,6 +203,10 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
     ['Data de Registro', formatDate(ocorrencia.dataRegistro) || '—'],
     ['Registrado por', ocorrencia.usuarioCriacaoNome || ocorrencia.tecnicoNome || '—'],
   ]
+  if (isDesvio) {
+    rows.push(['Resp. pelo Desvio', ocorrencia.responsavelDesvioNome || '—'])
+    rows.push(['Resp. pela Tratativa', ocorrencia.responsavelTrativaNome || '—'])
+  }
   if (!isDesvio) {
     rows.push(['Data Limite', formatDate(ocorrencia.dataLimiteResolucao) || '—'])
     rows.push(['Eng. Responsável pela Tratativa',
@@ -241,6 +245,23 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
   if (y + descLines.length * 5 > 275) { doc.addPage(); y = 20 }
   doc.text(descLines, marginX, y)
   y += descLines.length * 5 + 6
+
+  // Orientação Realizada (Desvio only)
+  if (isDesvio && ocorrencia.orientacaoRealizada) {
+    if (y > 250) { doc.addPage(); y = 20 }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(15, 23, 42)
+    doc.text('Orientação Realizada', marginX, y)
+    y += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(30, 41, 59)
+    const orientLines = doc.splitTextToSize(ocorrencia.orientacaoRealizada, pageW - marginX * 2)
+    if (y + orientLines.length * 5 > 275) { doc.addPage(); y = 20 }
+    doc.text(orientLines, marginX, y)
+    y += orientLines.length * 5 + 6
+  }
 
   // Normas (NC only)
   if (!isDesvio && ocorrencia.normas && ocorrencia.normas.length > 0) {
@@ -406,6 +427,11 @@ export function exportOcorrenciaToExcel({ ocorrencia, trechos = [], isDesvio }: 
     ['Descrição', ocorrencia.descricao || ''],
     ['Regra de Ouro', ocorrencia.regraDeOuro ? 'Sim' : 'Não'],
   ]
+  if (isDesvio) {
+    resumo.push(['Resp. pelo Desvio', ocorrencia.responsavelDesvioNome || ''])
+    resumo.push(['Resp. pela Tratativa', ocorrencia.responsavelTrativaNome || ''])
+    resumo.push(['Orientação Realizada', ocorrencia.orientacaoRealizada || ''])
+  }
   if (!isDesvio) {
     resumo.push(['Reincidência', ocorrencia.reincidencia ? 'Sim' : 'Não'])
     resumo.push(['Nível de Severidade', ocorrencia.nivelSeveridade || ''])

@@ -2,9 +2,9 @@ import client from './client'
 import {
   Desvio,
   DesvioRequest,
-  SubmeterTrativaRequest,
+  AdicionarTrativaRequest,
+  ReprovarTrativasDesvioRequest,
   AprovarDesvioRequest,
-  ReprovarDesvioRequest,
 } from '../types'
 
 export const getDesvios = async (): Promise<Desvio[]> => {
@@ -31,11 +31,23 @@ export const deleteDesvio = async (id: string): Promise<void> => {
   await client.delete(`/desvios/${id}`)
 }
 
-export const submeterTrativaDesvio = async (
-  id: string,
-  data: SubmeterTrativaRequest
+export const adicionarTratativaDesvio = async (
+  desvioId: string,
+  data: AdicionarTrativaRequest
 ): Promise<Desvio> => {
-  const res = await client.post<Desvio>(`/desvios/${id}/submeter-tratativa`, data)
+  const res = await client.post<Desvio>(`/desvios/${desvioId}/tratativas`, data)
+  return res.data
+}
+
+export const removerTratativaDesvio = async (
+  desvioId: string,
+  trativaId: string
+): Promise<void> => {
+  await client.delete(`/desvios/${desvioId}/tratativas/${trativaId}`)
+}
+
+export const submeterTrativaDesvio = async (desvioId: string): Promise<Desvio> => {
+  const res = await client.post<Desvio>(`/desvios/${desvioId}/submeter-tratativa`)
   return res.data
 }
 
@@ -49,7 +61,7 @@ export const aprovarDesvio = async (
 
 export const reprovarDesvio = async (
   id: string,
-  data: ReprovarDesvioRequest
+  data: ReprovarTrativasDesvioRequest
 ): Promise<Desvio> => {
   const res = await client.post<Desvio>(`/desvios/${id}/reprovar`, data)
   return res.data

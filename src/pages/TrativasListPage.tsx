@@ -18,9 +18,9 @@ type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARDANDO_TRATATIVA' | 'REPROVADOS' 
 const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[]; activeColor: string }[] = [
   { key: 'TODOS',                label: 'Todos',             tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
   { key: 'ABERTAS',              label: 'Abertas',           tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-yellow-500 text-white' },
-  { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento',      tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-blue-600 text-white' },
+  { key: 'AGUARDANDO_TRATATIVA', label: 'Em Andamento',      tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-blue-600 text-white' },
   { key: 'REPROVADOS',           label: 'Reprovado',         tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
-  { key: 'AGUARDANDO_VALIDACAO', label: 'Aguard. Validação', tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-indigo-600 text-white' },
+  { key: 'AGUARDANDO_VALIDACAO', label: 'Aguard. Validação', tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-indigo-600 text-white' },
   { key: 'CONCLUIDAS',           label: 'Concluídos',        tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-green-600 text-white' },
   { key: 'VENCIDAS',             label: 'Vencidas',          tipos: ['TODOS', 'NAO_CONFORMIDADE'],           activeColor: 'bg-red-600 text-white' },
 ]
@@ -36,6 +36,7 @@ export default function TrativasListPage() {
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
   const isExterno = user?.perfil === 'EXTERNO'
+  const isTecnico = user?.perfil === 'TECNICO'
   const isAdmin = user?.isAdmin === true
   const { estabelecimento } = useWorkspace()
   const [adminEmpresaId, setAdminEmpresaId] = useState('')
@@ -64,14 +65,20 @@ export default function TrativasListPage() {
     ),
   })
 
-  // Filtra por visibilidade: NCs só aparecem se o usuário é o eng responsável pela tratativa ou é ENGENHEIRO
+  // Filtra por visibilidade: backend já filtra por papel, frontend apenas exclui NCs para EXTERNO não responsável
   const visiveis = ocorrencias.filter(o => {
     if (o.tipo === 'DESVIO') return true
-    return isEngenheiro || o.engResponsavelConstrutoraId === user?.id
+    if (isEngenheiro || isAdmin || isTecnico) return true
+    return o.engResponsavelConstrutoraId === user?.id
   })
 
   function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {
-    if (item.tipo === 'DESVIO') return 'CONCLUIDAS'
+    if (item.tipo === 'DESVIO') {
+      if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
+      if (item.status === 'AGUARDANDO_APROVACAO') return 'AGUARDANDO_VALIDACAO'
+      if (item.status === 'AGUARDANDO_TRATATIVA') return 'AGUARDANDO_TRATATIVA'
+      return 'TODOS'
+    }
     if (item.status === 'CONCLUIDO') return 'CONCLUIDAS'
     if (item.status === 'NAO_RESOLVIDA') return 'VENCIDAS'
     if (item.status === 'AGUARDANDO_VALIDACAO_FINAL') return 'AGUARDANDO_VALIDACAO'
@@ -119,9 +126,6 @@ export default function TrativasListPage() {
   }
 
   function getStatusInfo(item: OcorrenciaItem) {
-    if (item.tipo === 'DESVIO') {
-      return { label: 'Concluído', color: 'text-green-600 bg-green-50' }
-    }
     const map: Record<string, { label: string; color: string }> = {
       ABERTA:                      { label: 'Aberta',                  color: 'text-yellow-600 bg-yellow-50' },
       AGUARDANDO_APROVACAO_PLANO:  { label: 'Aprovação do Plano',      color: 'text-blue-600 bg-blue-50' },
@@ -131,6 +135,8 @@ export default function TrativasListPage() {
       CONCLUIDO:                   { label: 'Concluído',               color: 'text-green-600 bg-green-50' },
       EM_TRATAMENTO:               { label: 'Em Tratamento',           color: 'text-blue-600 bg-blue-50' },
       NAO_RESOLVIDA:               { label: 'Não Resolvida',           color: 'text-red-600 bg-red-50' },
+      AGUARDANDO_TRATATIVA:        { label: 'Aguard. Tratativa',       color: 'text-orange-600 bg-orange-50' },
+      AGUARDANDO_APROVACAO:        { label: 'Aguard. Aprovação',       color: 'text-indigo-600 bg-indigo-50' },
     }
     if (map[item.status]) return map[item.status]
     const dias = getDiasRestantes(item.dataLimiteResolucao)
@@ -241,7 +247,7 @@ export default function TrativasListPage() {
           const statusInfo = getStatusInfo(item)
           const dias = item.tipo === 'NAO_CONFORMIDADE' ? getDiasRestantes(item.dataLimiteResolucao) : null
 
-          const concluido = item.status === 'CONCLUIDO' || item.tipo === 'DESVIO'
+          const concluido = item.status === 'CONCLUIDO'
           return (
             <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="flex items-start gap-3 sm:gap-5">

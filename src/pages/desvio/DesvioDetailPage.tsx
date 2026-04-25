@@ -27,10 +27,7 @@ export default function DesvioDetailPage() {
 
   const submeterMutation = useMutation({
     mutationFn: async () => {
-      if (!arquivo) throw new Error('Selecione uma evidência')
-      if (!observacao.trim()) throw new Error('Observação obrigatória')
-      const evidencia = await uploadEvidenciaDesvio(desvio!.id, arquivo)
-      return submeterTrativaDesvio(desvio!.id, { observacao, evidenciaId: evidencia.id })
+      return submeterTrativaDesvio(desvio!.id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
@@ -48,7 +45,7 @@ export default function DesvioDetailPage() {
   })
 
   const reprovarMutation = useMutation({
-    mutationFn: () => reprovarDesvio(desvio!.id, { motivo: motivoReprovacao }),
+    mutationFn: () => reprovarDesvio(desvio!.id, { itens: [] }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
       setShowReprovarModal(false)

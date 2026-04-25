@@ -185,7 +185,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
               {show && 'Ocorrências'}
             </NavLink>
           )}
-          {user?.perfil !== 'TECNICO' && <NavLink to="/tratativas" className={navItemClass} onClick={handleNav} title={compact ? 'Tratativas' : undefined}>
+          <NavLink to="/tratativas" className={navItemClass} onClick={handleNav} title={compact ? 'Tratativas' : undefined}>
             {({ isActive }) => (
               <>
                 <ClipboardList size={16} />
@@ -204,7 +204,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
                 )}
               </>
             )}
-          </NavLink>}
+          </NavLink>
 
           {/* Admin section - ADMIN only */}
           {user?.isAdmin && (

@@ -64,8 +64,8 @@ export default function App() {
               <Route path="ocorrencias" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciasPage /></RoleRoute>} />
               <Route path="ocorrencias/nova" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><RegistroOcorrenciaPage /></RoleRoute>} />
               <Route path="ocorrencias/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'TECNICO']}><OcorrenciaDetailPage /></RoleRoute>} />
-              <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativasListPage /></RoleRoute>} />
-              <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO']}><TrativaDetailPage /></RoleRoute>} />
+              <Route path="tratativas" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO', 'TECNICO']}><TrativasListPage /></RoleRoute>} />
+              <Route path="tratativas/:tipo/:id" element={<RoleRoute allowed={['ENGENHEIRO', 'EXTERNO', 'TECNICO']}><TrativaDetailPage /></RoleRoute>} />
               <Route path="empresas" element={<AdminRoute><EmpresaListPage /></AdminRoute>} />
               <Route path="empresas/novo" element={<AdminRoute><EmpresaFormPage /></AdminRoute>} />
               <Route path="empresas/:id/editar" element={<AdminRoute><EmpresaFormPage /></AdminRoute>} />
