@@ -302,11 +302,6 @@ export default function TrativaDetailPage() {
               <>
                 <StatusBadge status={nc.status} type="nc" />
                 <RiscoBadge nivel={nc.nivelRisco} />
-                {nc.severidade != null && nc.probabilidade != null && (
-                  <span className="text-xs text-slate-500">
-                    Sev. {nc.severidade} · Prob. {nc.probabilidade}
-                  </span>
-                )}
                 {nc.vencida && (
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                     Vencida
@@ -357,6 +352,22 @@ export default function TrativaDetailPage() {
                 )}
                 {prazoVencido && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Vencido</span>}
               </div>
+            </div>
+          )}
+          {!isDesvio && nc?.severidade != null && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><AlertTriangle size={11} /> Severidade</p>
+              <p className="text-slate-800 font-medium">
+                {nc.severidade} — {{1:'Insignificante',2:'Menor',3:'Moderada',4:'Maior',5:'Catastrófica'}[nc.severidade] ?? ''}
+              </p>
+            </div>
+          )}
+          {!isDesvio && nc?.probabilidade != null && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><AlertTriangle size={11} /> Probabilidade</p>
+              <p className="text-slate-800 font-medium">
+                {nc.probabilidade} — {{1:'Rara',2:'Improvável',3:'Possível',4:'Provável'}[nc.probabilidade] ?? ''}
+              </p>
             </div>
           )}
           {(ocorrencia as any).tecnicoNome && (
