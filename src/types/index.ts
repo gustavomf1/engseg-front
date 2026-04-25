@@ -1,5 +1,5 @@
 export type PerfilUsuario = 'ENGENHEIRO' | 'TECNICO' | 'EXTERNO'
-export type NivelSeveridade = 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO'
+export type NivelRisco = 'BAIXO' | 'MODERADO' | 'ALTO' | 'CRITICO'
 export type StatusNaoConformidade =
   | 'ABERTA'
   | 'AGUARDANDO_APROVACAO_PLANO'
@@ -240,7 +240,9 @@ export interface NaoConformidade {
   dataRegistro: string
   tecnicoNome?: string
   regraDeOuro: boolean
-  nivelSeveridade: NivelSeveridade
+  severidade: number
+  probabilidade: number
+  nivelRisco: NivelRisco
   engResponsavelConstrutoraId: string
   engConstruturaNome: string
   engConstrutoraEmail: string
@@ -286,7 +288,8 @@ export interface NaoConformidadeRequest {
   titulo: string
   localizacaoId?: string
   descricao: string
-  nivelSeveridade: NivelSeveridade
+  severidade: number
+  probabilidade: number
   engResponsavelConstrutoraId?: string
   engResponsavelVerificacaoId?: string
   regraDeOuro: boolean
