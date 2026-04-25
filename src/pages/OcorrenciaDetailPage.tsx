@@ -29,10 +29,10 @@ const statusNCMap: Record<string, { label: string; color: string }> = {
 }
 
 const nivelMap: Record<string, string> = {
-  BAIXO:   'bg-green-100 text-green-700',
-  MEDIO:   'bg-yellow-100 text-yellow-700',
-  ALTO:    'bg-orange-100 text-orange-700',
-  CRITICO: 'bg-red-100 text-red-700',
+  BAIXO:    'bg-green-100 text-green-700',
+  MODERADO: 'bg-yellow-100 text-yellow-700',
+  ALTO:     'bg-orange-100 text-orange-700',
+  CRITICO:  'bg-red-100 text-red-700',
 }
 
 export default function OcorrenciaDetailPage() {
@@ -154,7 +154,8 @@ export default function OcorrenciaDetailPage() {
           localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
-          nivelSeveridade: 'MEDIO',
+          severidade: nc?.severidade ?? 3,
+          probabilidade: nc?.probabilidade ?? 3,
           estabelecimentoId: form.estabelecimentoId,
           engResponsavelConstrutoraId: form.engResponsavelConstrutoraId || undefined,
           engResponsavelVerificacaoId: form.engResponsavelVerificacaoId || undefined,
@@ -481,9 +482,9 @@ export default function OcorrenciaDetailPage() {
                   </div>
                 </Field>
 
-                <Field label="Nível de Severidade">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${nivelMap[nc!.nivelSeveridade]}`}>
-                    {nc!.nivelSeveridade}
+                <Field label="Nível de Risco">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${nivelMap[nc!.nivelRisco]}`}>
+                    {nc!.nivelRisco}
                   </span>
                 </Field>
 

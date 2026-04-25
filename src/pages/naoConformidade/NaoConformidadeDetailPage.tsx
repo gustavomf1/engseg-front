@@ -5,7 +5,7 @@ import { getNaoConformidade } from '../../api/naoConformidade'
 import { getTrechosNorma } from '../../api/ncTrechoNorma'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
-import SeveridadeBadge from '../../components/SeveridadeBadge'
+import RiscoBadge from '../../components/RiscoBadge'
 import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2, ChevronDown } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import BuscaTrechoModal from '../../components/BuscaTrechoModal'
@@ -72,7 +72,10 @@ export default function NaoConformidadeDetailPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
-            <SeveridadeBadge nivel={nc.nivelSeveridade} />
+            <RiscoBadge nivel={nc.nivelRisco} />
+            <span className="text-sm text-gray-600">
+              Severidade {nc.severidade} · Probabilidade {nc.probabilidade}
+            </span>
             {nc.vencida && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                 Vencida

@@ -23,7 +23,7 @@ import {
 import EvidenciaUpload from '../components/EvidenciaUpload'
 import { downloadEvidencia } from '../api/evidencia'
 import StatusBadge from '../components/StatusBadge'
-import SeveridadeBadge from '../components/SeveridadeBadge'
+import RiscoBadge from '../components/RiscoBadge'
 import { formatDate, formatDateTime } from '../utils/date'
 import { exportTratativaBundle } from '../utils/exportTratativa'
 import { TipoAcaoHistorico } from '../types'
@@ -301,7 +301,7 @@ export default function TrativaDetailPage() {
             {!isDesvio && nc && (
               <>
                 <StatusBadge status={nc.status} type="nc" />
-                <SeveridadeBadge nivel={nc.nivelSeveridade} />
+                <RiscoBadge nivel={nc.nivelRisco} />
                 {nc.vencida && (
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                     Vencida

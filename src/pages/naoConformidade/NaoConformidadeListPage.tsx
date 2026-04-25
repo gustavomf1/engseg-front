@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { Plus, AlertTriangle, Eye } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
-import SeveridadeBadge from '../../components/SeveridadeBadge'
+import RiscoBadge from '../../components/RiscoBadge'
 import { useState } from 'react'
 import { StatusNaoConformidade } from '../../types'
 import { formatDate } from '../../utils/date'
@@ -77,7 +77,7 @@ export default function NaoConformidadeListPage() {
                 <tr key={nc.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-slate-700">{nc.estabelecimentoNome}</td>
                   <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{nc.descricao}</td>
-                  <td className="px-4 py-3"><SeveridadeBadge nivel={nc.nivelSeveridade} /></td>
+                  <td className="px-4 py-3"><RiscoBadge nivel={nc.nivelRisco} /></td>
                   <td className="px-4 py-3"><StatusBadge status={nc.status} type="nc" /></td>
                   <td className="px-4 py-3">
                     <PrazoBar dataLimite={nc.dataLimiteResolucao} vencida={nc.vencida} />

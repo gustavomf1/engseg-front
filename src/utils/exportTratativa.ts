@@ -137,7 +137,7 @@ async function buildTratativaPDFDoc(
   doc.setFontSize(9)
   doc.setTextColor(71, 85, 105)
   const tags: string[] = [`Status: ${nc.status}`]
-  if (nc.nivelSeveridade) tags.push(`Severidade: ${nc.nivelSeveridade}`)
+  if (nc.nivelRisco) tags.push(`Risco: ${nc.nivelRisco}`)
   if (nc.regraDeOuro) tags.push('Regra de Ouro')
   if (nc.reincidencia) tags.push('Reincidência')
   doc.text(tags.join('  ·  '), marginX, y)
