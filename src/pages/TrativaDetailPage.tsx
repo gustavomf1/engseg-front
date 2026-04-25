@@ -302,6 +302,11 @@ export default function TrativaDetailPage() {
               <>
                 <StatusBadge status={nc.status} type="nc" />
                 <RiscoBadge nivel={nc.nivelRisco} />
+                {nc.severidade != null && nc.probabilidade != null && (
+                  <span className="text-xs text-slate-500">
+                    Sev. {nc.severidade} · Prob. {nc.probabilidade}
+                  </span>
+                )}
                 {nc.vencida && (
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                     Vencida

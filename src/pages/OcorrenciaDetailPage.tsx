@@ -488,6 +488,22 @@ export default function OcorrenciaDetailPage() {
                   </span>
                 </Field>
 
+                {nc!.severidade != null && (
+                  <Field label="Severidade">
+                    <div className={valueClass}>
+                      {nc!.severidade} — {{1:'Insignificante',2:'Menor',3:'Moderada',4:'Maior',5:'Catastrófica'}[nc!.severidade] ?? ''}
+                    </div>
+                  </Field>
+                )}
+
+                {nc!.probabilidade != null && (
+                  <Field label="Probabilidade">
+                    <div className={valueClass}>
+                      {nc!.probabilidade} — {{1:'Rara',2:'Improvável',3:'Possível',4:'Provável'}[nc!.probabilidade] ?? ''}
+                    </div>
+                  </Field>
+                )}
+
                 <Field label="Data Limite">
                   <div className={`${valueClass} flex items-center gap-1.5`}><Clock size={13} className="text-slate-400" />{formatDate(nc!.dataLimiteResolucao)}</div>
                 </Field>

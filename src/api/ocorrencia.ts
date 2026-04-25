@@ -11,6 +11,8 @@ export interface OcorrenciaItem {
   status: string
   dataLimiteResolucao?: string
   nivelRisco?: string
+  severidade?: number
+  probabilidade?: number
   estabelecimentoNome: string
   engResponsavelConstrutoraId?: string
   engResponsavelVerificacaoId?: string
