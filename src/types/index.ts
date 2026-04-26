@@ -246,9 +246,11 @@ export interface NaoConformidade {
   engResponsavelConstrutoraId: string
   engConstruturaNome: string
   engConstrutoraEmail: string
+  engConstruturaPerfil?: string
   engResponsavelVerificacaoId: string
   engVerificacaoNome: string
   engVerificacaoEmail: string
+  engVerificacaoPerfil?: string
   dataLimiteResolucao: string
   usuarioCriacaoNome?: string
   usuarioCriacaoEmail?: string
