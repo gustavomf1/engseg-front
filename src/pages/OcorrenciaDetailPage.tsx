@@ -398,8 +398,8 @@ export default function OcorrenciaDetailPage() {
           </p>
         </div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 items-start">
+        {/* Two-column layout — single column for desvios */}
+        <div className={`grid grid-cols-1 ${!isDesvio ? 'lg:grid-cols-[3fr_2fr]' : ''} gap-4 items-start`}>
 
           {/* ── LEFT COLUMN ── */}
           <div className="space-y-4">
@@ -447,16 +447,6 @@ export default function OcorrenciaDetailPage() {
                 <Field label="ID">
                   <div className="text-xs font-mono text-slate-500 dark:text-slate-400">{id?.substring(0, 8)}…</div>
                 </Field>
-                {isDesvio && desvio?.responsavelDesvioNome && (
-                  <Field label="Resp. pelo Desvio">
-                    <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{desvio.responsavelDesvioNome}</div>
-                  </Field>
-                )}
-                {isDesvio && desvio?.responsavelTrativaNome && (
-                  <Field label="Resp. pela Tratativa">
-                    <div className={`${valueClass} flex items-center gap-1.5`}><User size={13} className="text-slate-400" />{desvio.responsavelTrativaNome}</div>
-                  </Field>
-                )}
                 {!isDesvio && (
                   <Field label="Regra de Ouro">
                     {editando
@@ -500,6 +490,47 @@ export default function OcorrenciaDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* RESPONSÁVEIS (Desvio) */}
+            {isDesvio && (desvio?.responsavelDesvioNome || desvio?.responsavelTrativaNome) && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Responsáveis</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    {desvio?.responsavelDesvioNome
+                      ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{getInitials(desvio.responsavelDesvioNome)}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Resp. pelo Desvio</div>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{desvio.responsavelDesvioNome}</div>
+                          </div>
+                        </div>
+                      )
+                      : <div className={valueClass}>—</div>
+                    }
+                  </div>
+                  <div>
+                    {desvio?.responsavelTrativaNome
+                      ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{getInitials(desvio.responsavelTrativaNome)}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Resp. pela Tratativa</div>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{desvio.responsavelTrativaNome}</div>
+                          </div>
+                        </div>
+                      )
+                      : <div className={valueClass}>—</div>
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* RESPONSÁVEIS (NC only) */}
             {!isDesvio && (
@@ -581,8 +612,8 @@ export default function OcorrenciaDetailPage() {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN ── */}
-          <div className="space-y-4">
+          {/* ── RIGHT COLUMN (NC only) ── */}
+          {!isDesvio && (<div className="space-y-4">
 
             {/* PRAZO (NC only) */}
             {!isDesvio && nc?.dataLimiteResolucao && (
@@ -744,7 +775,7 @@ export default function OcorrenciaDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </div>)}
         </div>
       </div>
 
