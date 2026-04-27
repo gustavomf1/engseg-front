@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   ArrowLeft, MapPin, Calendar, Shield, AlertTriangle, FileText,
   CheckCircle, XCircle, Clock, Eye, Building2, User, BookOpen,
-  RefreshCw, Plus, Trash2, History, ChevronDown, ChevronUp,
+  RefreshCw, Plus, Trash2, History, ChevronDown, ChevronUp, ChevronRight,
   Download, FileDown,
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
@@ -27,6 +27,8 @@ import RiscoBadge from '../components/RiscoBadge'
 import { formatDate, formatDateTime } from '../utils/date'
 import { exportTratativaBundle } from '../utils/exportTratativa'
 import { TipoAcaoHistorico } from '../types'
+import { useTheme } from '../contexts/ThemeContext'
+import { RiskMatrix, RiskMatrixReincidencia } from '../components/RiskMatrix'
 
 const acaoLabels: Record<TipoAcaoHistorico, string> = {
   CRIACAO: 'NC Criada',
@@ -48,48 +50,43 @@ const acaoColors: Record<TipoAcaoHistorico, string> = {
   REJEICAO_EVIDENCIAS: 'bg-red-50 text-red-700 border-red-200',
 }
 
+function getInitials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+}
+
 export default function TrativaDetailPage() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const dark = theme === 'dark'
 
   const isDesvio = tipo === 'DESVIO'
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
   const isExterno = user?.perfil === 'EXTERNO'
   const isTecnico = user?.perfil === 'TECNICO'
 
-  // State — investigação (pergunta + resposta por porquê)
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const [porques, setPorques] = useState<{ pergunta: string; resposta: string }[]>([
     { pergunta: '', resposta: '' },
   ])
   const [causaRaiz, setCausaRaiz] = useState('')
   const [atividades, setAtividades] = useState<{ titulo: string; descricao: string }[]>([{ titulo: '', descricao: '' }])
-
-  // State — revisão por atividade (Engenheiro): APROVADA | REJEITADA | undefined (sem decisão ainda)
   const [decisoes, setDecisoes] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
   const [comentarioRevisao, setComentarioRevisao] = useState('')
   const [normaAberta, setNormaAberta] = useState<string | null>(null)
-
-  // State — execução por atividade
   const [execucaoDescricoes, setExecucaoDescricoes] = useState<Record<string, string>>({})
   const [decisoesExecucao, setDecisoesExecucao] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
   const [comentarioRevisaoExecucao, setComentarioRevisaoExecucao] = useState('')
-
-  // State — snapshots expandidos
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set())
   const toggleSnapshot = (id: string) => setExpandedSnapshotIds(prev => {
     const next = new Set(prev)
     next.has(id) ? next.delete(id) : next.add(id)
     return next
   })
-
-  // State — aprovação/rejeição
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [comentarioAprovacao, setComentarioAprovacao] = useState('')
-
-  // State — confirmação
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -142,7 +139,6 @@ export default function TrativaDetailPage() {
     enabled: !isDesvio && !!id,
   })
 
-  // Pré-popula formulário de investigação ao carregar dados
   useEffect(() => {
     if (nc && !initialized.current) {
       initialized.current = true
@@ -156,7 +152,6 @@ export default function TrativaDetailPage() {
         ])
       }
       if (nc.causaRaiz) setCausaRaiz(nc.causaRaiz)
-      // Pre-fill execution descriptions from rejected activities
       const descricoes: Record<string, string> = {}
       nc.atividades?.forEach(a => {
         if (a.descricaoExecucao) descricoes[a.id] = a.descricaoExecucao
@@ -235,8 +230,24 @@ export default function TrativaDetailPage() {
 
   const dias = !isDesvio ? getDiasRestantes(nc?.dataLimiteResolucao) : null
   const prazoVencido = dias !== null && dias < 0 && nc?.status !== 'CONCLUIDO'
+  const prazoColor = dias === null ? 'text-slate-400'
+    : dias < 7 ? 'text-red-500'
+    : dias < 21 ? 'text-amber-500'
+    : 'text-emerald-500'
+  const prazoPct = dias !== null ? Math.max(0, Math.min(100, ((60 - dias) / 60) * 100)) : 0
+  const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({
+    id: r.id,
+    severidade: Math.min(5, Math.max(1, 3)),
+    probabilidade: Math.min(4, Math.max(1, 2)),
+    titulo: r.titulo,
+    data: r.dataRegistro ? new Date(r.dataRegistro).toLocaleDateString('pt-BR') : undefined,
+  }))
+  const chainNodes = [
+    ...(nc?.cadeiaReincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: true })),
+    ...(nc ? [{ id: nc.id, titulo: nc.titulo, dataRegistro: nc.dataRegistro, status: nc.status, isCurrent: true, isPast: false }] : []),
+    ...(nc?.reincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: false })),
+  ]
 
-  // Condições de exibição por status
   const showInvestigacaoForm = !isDesvio && (nc?.status === 'ABERTA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && isExterno
   const showAguardandoAprovacaoPlano = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isExterno
   const showAprovacaoPlanoForm = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isEngenheiro
@@ -249,34 +260,39 @@ export default function TrativaDetailPage() {
   const investigacaoValida = porques.every(p => p.pergunta.trim() && p.resposta.trim()) && causaRaiz.trim() && atividades.some(a => a.titulo.trim() && a.descricao.trim())
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    <>
+    <style>{`
+      @keyframes shimmer {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+      .prazo-shimmer {
+        background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%);
+        background-size: 200% auto;
+        animation: shimmer 2.5s linear infinite;
+      }
+    `}</style>
+    <div className="space-y-5">
+
+      {/* Back + Export */}
       <div className="flex items-center justify-between">
-        <button onClick={() => navigate('/tratativas')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
+        <button onClick={() => navigate('/tratativas')} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="flex gap-2">
-          {/* Export — apenas quando CONCLUIDO */}
           {(() => {
-            const podeExportar =
-              nc?.status === 'CONCLUIDO' &&
-              (user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO' || user?.isAdmin)
+            const podeExportar = nc?.status === 'CONCLUIDO' && (user?.perfil === 'ENGENHEIRO' || user?.perfil === 'TECNICO' || user?.isAdmin)
             if (!podeExportar) return null
             return (
               <div className="relative">
-                <button
-                  onClick={() => setExportMenuOpen(v => !v)}
-                  onBlur={() => setTimeout(() => setExportMenuOpen(false), 150)}
-                  className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
+                <button onClick={() => setExportMenuOpen(v => !v)} onBlur={() => setTimeout(() => setExportMenuOpen(false), 150)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   <Download size={15} /> Exportar
                 </button>
                 {exportMenuOpen && (
                   <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
-                      onClick={handleExportPDF}
-                      disabled={exporting}
-                    >
+                    <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                      onClick={handleExportPDF} disabled={exporting}>
                       <FileDown size={15} className="text-sky-600" />
                       {exporting ? 'Exportando...' : 'Exportar PDF'}
                     </button>
@@ -288,230 +304,339 @@ export default function TrativaDetailPage() {
         </div>
       </div>
 
-      {/* ═══ HEADER ═══ */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDesvio ? 'bg-yellow-100' : 'bg-red-100'}`}>
-              {isDesvio ? <AlertTriangle size={20} className="text-yellow-500" /> : <FileText size={20} className="text-red-500" />}
-            </div>
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-              {isDesvio ? 'Desvio' : 'Não Conformidade'}
+      {/* Page header: tags + title + subtitle */}
+      <div>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+            {isDesvio ? 'Desvio' : 'Não Conformidade'}
+          </span>
+          {!isDesvio && nc && (
+            <>
+              <StatusBadge status={nc.status} type="nc" />
+              <RiscoBadge nivel={nc.nivelRisco} />
+              {nc.vencida && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Vencida</span>
+              )}
+            </>
+          )}
+          {isDesvio && desvio && <StatusBadge status={desvio.status} type="desvio" />}
+          {(ocorrencia as any).regraDeOuro && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+              <Shield size={12} /> Regra de Ouro
             </span>
-            {!isDesvio && nc && (
-              <>
-                <StatusBadge status={nc.status} type="nc" />
-                <RiscoBadge nivel={nc.nivelRisco} />
-                {nc.vencida && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-                    Vencida
-                  </span>
-                )}
-              </>
-            )}
-            {isDesvio && desvio && <StatusBadge status={desvio.status} type="desvio" />}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {(ocorrencia as any).regraDeOuro && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
-                <Shield size={12} /> Regra de Ouro
-              </span>
-            )}
-            {!isDesvio && nc?.reincidencia && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
-                <RefreshCw size={12} /> Reincidência
-              </span>
-            )}
-          </div>
-        </div>
-
-        <h2 className="text-xl font-bold text-slate-800 mb-5 break-words">{(ocorrencia as any).titulo}</h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><Building2 size={11} /> Estabelecimento</p>
-            <p className="text-slate-800 font-medium">{(ocorrencia as any).estabelecimentoNome}</p>
-          </div>
-          {(ocorrencia as any).localizacaoNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><MapPin size={11} /> Localização</p>
-              <p className="text-slate-800 font-medium">{(ocorrencia as any).localizacaoNome}</p>
-            </div>
           )}
-          <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><Calendar size={11} /> Data de Registro</p>
-            <p className="text-slate-800">{formatDateTime((ocorrencia as any).dataRegistro)}</p>
-          </div>
-          {!isDesvio && nc?.dataLimiteResolucao && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><Calendar size={11} /> Prazo para Resolução</p>
-              <div className="flex items-center gap-2">
-                <p className={`font-medium ${prazoVencido ? 'text-red-600' : 'text-slate-800'}`}>{formatDate(nc.dataLimiteResolucao)}</p>
-                {dias !== null && dias >= 0 && nc.status !== 'CONCLUIDO' && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{dias} dias restantes</span>
-                )}
-                {prazoVencido && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Vencido</span>}
+          {!isDesvio && nc?.reincidencia && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
+              <RefreshCw size={12} /> Reincidência
+            </span>
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1 break-words overflow-hidden">{(ocorrencia as any).titulo}</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-500">
+          {(ocorrencia as any).estabelecimentoNome}
+          {(ocorrencia as any).localizacaoNome ? ` · ${(ocorrencia as any).localizacaoNome}` : ''}
+          {' · registrada em '}{formatDateTime((ocorrencia as any).dataRegistro)}
+        </p>
+      </div>
+
+      {/* Two-column layout */}
+      <div className={`grid grid-cols-1 ${!isDesvio ? 'lg:grid-cols-[3fr_2fr]' : ''} gap-4 items-start`}>
+
+        {/* ── LEFT COLUMN ── */}
+        <div className="space-y-4">
+
+          {/* IDENTIFICAÇÃO */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Identificação</div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Building2 size={11} /> Estabelecimento</p>
+                <p className="text-slate-800 dark:text-slate-200 font-medium">{(ocorrencia as any).estabelecimentoNome}</p>
               </div>
-            </div>
-          )}
-          {!isDesvio && nc?.severidade != null && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><AlertTriangle size={11} /> Severidade</p>
-              <p className="text-slate-800 font-medium">
-                {nc.severidade} — {{1:'Insignificante',2:'Menor',3:'Moderada',4:'Maior',5:'Catastrófica'}[nc.severidade] ?? ''}
-              </p>
-            </div>
-          )}
-          {!isDesvio && nc?.probabilidade != null && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><AlertTriangle size={11} /> Probabilidade</p>
-              <p className="text-slate-800 font-medium">
-                {nc.probabilidade} — {{1:'Rara',2:'Improvável',3:'Possível',4:'Provável'}[nc.probabilidade] ?? ''}
-              </p>
-            </div>
-          )}
-          {(ocorrencia as any).tecnicoNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Usuário de Registro</p>
-              <p className="text-slate-800 break-words">{(ocorrencia as any).tecnicoNome}</p>
-            </div>
-          )}
-          {isDesvio && desvio?.responsavelDesvioNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Responsável pelo Desvio</p>
-              <p className="text-slate-800 break-words">{desvio.responsavelDesvioNome}</p>
-            </div>
-          )}
-          {isDesvio && desvio?.responsavelTrativaNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Responsável pela Tratativa</p>
-              <p className="text-slate-800 break-words">{desvio.responsavelTrativaNome}</p>
-            </div>
-          )}
-          {!isDesvio && nc?.engConstruturaNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável pela Tratativa</p>
-              <p className="text-slate-800 break-words">{nc.engConstruturaNome}{nc.engConstrutoraEmail ? ` (${nc.engConstrutoraEmail})` : ''}</p>
-            </div>
-          )}
-          {!isDesvio && nc?.engVerificacaoNome && (
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5 flex items-center gap-1"><User size={11} /> Eng. Responsável</p>
-              <p className="text-slate-800 break-words">{nc.engVerificacaoNome}{nc.engVerificacaoEmail ? ` (${nc.engVerificacaoEmail})` : ''}</p>
-            </div>
-          )}
-          <div className="sm:col-span-2">
-            <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição</p>
-            <p className="text-slate-800 whitespace-pre-wrap break-words overflow-hidden">{(ocorrencia as any).descricao}</p>
-          </div>
-          {isDesvio && desvio?.orientacaoRealizada && (
-            <div className="sm:col-span-2">
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Orientação Realizada</p>
-              <p className="text-slate-800 whitespace-pre-wrap break-words">{desvio.orientacaoRealizada}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Normas */}
-        {!isDesvio && nc && nc.normas.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen size={16} className="text-indigo-500" />
-              <h3 className="font-semibold text-slate-700">Normas Vinculadas</h3>
-            </div>
-            <div className="space-y-2">
-              {nc.normas.map(n => {
-                const trechosNorma = trechos.filter(t => t.normaId === n.id)
-                return (
-                  <div key={n.id} className="border border-indigo-100 rounded-lg bg-indigo-50 overflow-hidden">
-                    <button type="button" onClick={() => toggleNorma(n.id)}
-                      className="w-full flex items-center justify-between p-3 text-left hover:bg-indigo-100/50 transition">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-800">{n.titulo}</span>
-                        {trechosNorma.length > 0 && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
-                            {trechosNorma.length} trecho{trechosNorma.length > 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </div>
-                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${normaAberta === n.id ? 'rotate-180' : ''}`} />
-                    </button>
-                    {normaAberta === n.id && (
-                      <div className="border-t border-indigo-100">
-                        {n.descricao && (
-                          <p className="text-xs text-slate-600 px-3 pt-2 pb-2 break-words whitespace-pre-wrap">{n.descricao}</p>
-                        )}
+              {(ocorrencia as any).localizacaoNome && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><MapPin size={11} /> Localização</p>
+                  <p className="text-slate-800 dark:text-slate-200 font-medium">{(ocorrencia as any).localizacaoNome}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Calendar size={11} /> Data de Registro</p>
+                <p className="text-slate-800 dark:text-slate-200">{formatDateTime((ocorrencia as any).dataRegistro)}</p>
+              </div>
+              {!isDesvio && nc?.dataLimiteResolucao && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Calendar size={11} /> Prazo</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`font-medium ${prazoVencido ? 'text-red-600' : 'text-slate-800 dark:text-slate-200'}`}>{formatDate(nc.dataLimiteResolucao)}</p>
+                    {dias !== null && dias >= 0 && nc.status !== 'CONCLUIDO' && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{dias}d restantes</span>
+                    )}
+                    {prazoVencido && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Vencido</span>}
+                  </div>
+                </div>
+              )}
+              {((ocorrencia as any).tecnicoNome || (ocorrencia as any).usuarioCriacaoNome) && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><User size={11} /> Registrado por</p>
+                  <p className="text-slate-800 dark:text-slate-200 break-words">
+                    {(ocorrencia as any).usuarioCriacaoNome
+                      ? `${(ocorrencia as any).usuarioCriacaoNome}${(ocorrencia as any).usuarioCriacaoEmail ? ` (${(ocorrencia as any).usuarioCriacaoEmail})` : ''}`
+                      : (ocorrencia as any).tecnicoNome}
+                  </p>
+                </div>
+              )}
+              {isDesvio && desvio?.orientacaoRealizada && (
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-400 mb-1">Orientação Realizada</p>
+                  <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words">{desvio.orientacaoRealizada}</p>
+                </div>
+              )}
+              <div className="col-span-2">
+                <p className="text-xs text-slate-400 mb-1">Descrição</p>
+                <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words overflow-hidden">{(ocorrencia as any).descricao}</p>
+              </div>
+              {!isDesvio && nc && nc.normas.length > 0 && (
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><BookOpen size={11} /> Normas Vinculadas</p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {nc.normas.map(n => {
+                      const count = trechos.filter(t => t.normaId === n.id).length
+                      return (
+                        <button key={n.id} type="button" onClick={() => toggleNorma(n.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition">
+                          <BookOpen size={11} />{n.titulo}
+                          {count > 0 && (
+                            <span className="ml-0.5 bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full text-xs font-semibold">{count}</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {normaAberta && nc.normas.find(n => n.id === normaAberta) && (() => {
+                    const n = nc.normas.find(n => n.id === normaAberta)!
+                    const trechosNorma = trechos.filter(t => t.normaId === n.id)
+                    return (
+                      <div className="mt-2 border border-indigo-100 dark:border-indigo-900/30 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 overflow-hidden">
+                        {n.descricao && <p className="text-xs text-slate-600 px-3 pt-2 pb-2 break-words whitespace-pre-wrap">{n.descricao}</p>}
                         {trechosNorma.length > 0 && (
                           <div className={`divide-y divide-blue-100 ${n.descricao ? 'border-t border-indigo-100' : ''}`}>
                             {trechosNorma.map(t => (
                               <div key={t.id} className="px-3 py-2.5 bg-blue-50/50">
-                                {t.clausulaReferencia && (
-                                  <p className="text-xs font-semibold text-blue-700 mb-1">{t.clausulaReferencia}</p>
-                                )}
+                                {t.clausulaReferencia && <p className="text-xs font-semibold text-blue-700 mb-1">{t.clausulaReferencia}</p>}
                                 <p className="text-xs text-slate-700 whitespace-pre-wrap break-words">{t.textoEditado}</p>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })()}
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Evidências da ocorrência */}
-        {!isDesvio && id && (
-          <div className="mt-5 pt-5 border-t border-gray-100">
-            <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" readOnly titulo="Evidências da Ocorrência" />
+          {/* RESPONSÁVEIS — Desvio */}
+          {isDesvio && (desvio?.responsavelDesvioNome || desvio?.responsavelTrativaNome) && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Responsáveis</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  {desvio?.responsavelDesvioNome ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{getInitials(desvio.responsavelDesvioNome)}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Resp. pelo Desvio</div>
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{desvio.responsavelDesvioNome}</div>
+                      </div>
+                    </div>
+                  ) : <div className="text-sm text-slate-400">—</div>}
+                </div>
+                <div>
+                  {desvio?.responsavelTrativaNome ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{getInitials(desvio.responsavelTrativaNome)}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Resp. pela Tratativa</div>
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{desvio.responsavelTrativaNome}</div>
+                      </div>
+                    </div>
+                  ) : <div className="text-sm text-slate-400">—</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RESPONSÁVEIS — NC */}
+          {!isDesvio && (nc?.engConstruturaNome || nc?.engVerificacaoNome) && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Responsáveis</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  {nc?.engConstruturaNome || nc?.engConstrutoraEmail ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{getInitials(nc!.engConstruturaNome || nc!.engConstrutoraEmail || '?')}</span>
+                      </div>
+                      <div className="min-w-0">
+                        {nc!.engConstruturaPerfil && <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{nc!.engConstruturaPerfil}</div>}
+                        {nc!.engConstruturaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engConstruturaNome}</div>}
+                        {nc!.engConstrutoraEmail && <div className="text-xs text-slate-400 truncate">{nc!.engConstrutoraEmail}</div>}
+                      </div>
+                    </div>
+                  ) : <div className="text-sm text-slate-400">—</div>}
+                </div>
+                <div>
+                  {nc?.engVerificacaoNome || nc?.engVerificacaoEmail ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{getInitials(nc!.engVerificacaoNome || nc!.engVerificacaoEmail || '?')}</span>
+                      </div>
+                      <div className="min-w-0">
+                        {nc!.engVerificacaoPerfil && <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{nc!.engVerificacaoPerfil}</div>}
+                        {nc!.engVerificacaoNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engVerificacaoNome}</div>}
+                        {nc!.engVerificacaoEmail && <div className="text-xs text-slate-400 truncate">{nc!.engVerificacaoEmail}</div>}
+                      </div>
+                    </div>
+                  ) : <div className="text-sm text-slate-400">—</div>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT COLUMN (NC only) ── */}
+        {!isDesvio && (
+          <div className="space-y-4">
+
+            {/* PRAZO widget */}
+            {nc?.dataLimiteResolucao && nc.status !== 'CONCLUIDO' && (
+              <div className="relative overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-4">
+                <div className="prazo-shimmer absolute inset-0 pointer-events-none rounded-xl" />
+                <div className="relative flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Clock size={15} className={prazoColor} />
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Prazo</span>
+                  </div>
+                  <div className={`text-sm font-bold ${prazoColor}`}>
+                    {dias === null ? '—'
+                      : dias < 0 ? `${Math.abs(dias)}d vencido`
+                      : dias === 0 ? 'Vence hoje'
+                      : `${dias}d restantes`}
+                  </div>
+                </div>
+                <div className="relative mt-3 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-700 ${
+                    dias !== null && dias < 7 ? 'bg-red-500'
+                    : dias !== null && dias < 21 ? 'bg-amber-400'
+                    : 'bg-emerald-500'
+                  }`} style={{ width: `${prazoPct}%` }} />
+                </div>
+                <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                  Vence em {formatDate(nc.dataLimiteResolucao)}
+                </div>
+              </div>
+            )}
+
+            {/* Risco */}
+            {nc?.severidade != null && nc?.probabilidade != null && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Análise de Risco</div>
+                <div className="flex justify-center mb-3">
+                  <RiskMatrix severidade={nc.severidade} probabilidade={nc.probabilidade} reincidencias={matrizReincidencias} dark={dark} size={200} />
+                </div>
+                <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200 dark:border-slate-600 flex-wrap gap-2">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-slate-400 dark:text-slate-500">SEV.</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{nc.severidade}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{{1:'Insignificante',2:'Menor',3:'Moderada',4:'Maior',5:'Catastrófica'}[nc.severidade] ?? ''}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-slate-400 dark:text-slate-500">PROB.</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{nc.probabilidade}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{{1:'Rara',2:'Improvável',3:'Possível',4:'Provável'}[nc.probabilidade] ?? ''}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-slate-400 dark:text-slate-500">NÍVEL</span>
+                    <span className={`font-bold ${{BAIXO:'text-emerald-600',MODERADO:'text-amber-600',ALTO:'text-orange-500',CRITICO:'text-red-600'}[nc.nivelRisco] ?? ''}`}>{nc.nivelRisco}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
       </div>
 
-      {/* ═══ RASTRO DE REINCIDÊNCIAS ═══ */}
-      {!isDesvio && nc && (nc.reincidencia || (nc.reincidencias?.length ?? 0) > 0) && (
-        <div className="bg-white rounded-xl border border-orange-200 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <RefreshCw size={15} className="text-orange-500" />
-            <h3 className="font-semibold text-slate-700">Rastro de Reincidências</h3>
-            <span className="text-xs text-slate-400">
-              ({(nc.cadeiaReincidencias?.length ?? 0) + 1 + (nc.reincidencias?.length ?? 0)} ocorrência(s) no total)
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {nc.cadeiaReincidencias?.map(item => (
-              <span key={item.id} className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/tratativas/NC/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-medium max-w-[180px] truncate hover:bg-red-100 transition"
-                  title={item.titulo}
-                >{item.titulo}</button>
-                <span className="text-slate-300 text-sm">→</span>
-              </span>
-            ))}
-            <span className="px-2.5 py-1 rounded-md bg-orange-600 text-white text-xs font-semibold ring-2 ring-orange-300 max-w-[180px] truncate" title={nc.titulo}>{nc.titulo}</span>
-            {nc.reincidencias?.map(item => (
-              <span key={item.id} className="flex items-center gap-2">
-                <span className="text-slate-300 text-sm">→</span>
-                <button
-                  onClick={() => navigate(`/tratativas/NC/${item.id}`)}
-                  className="px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium max-w-[180px] truncate hover:bg-orange-100 transition"
-                  title={item.titulo}
-                >{item.titulo}</button>
-              </span>
-            ))}
-          </div>
+      {/* EVIDÊNCIAS — full width */}
+      {!isDesvio && id && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+          <EvidenciaUpload naoConformidadeId={id} tipoEvidencia="OCORRENCIA" readOnly titulo="Evidências da Ocorrência" />
         </div>
       )}
 
-      {/* ═══ INVESTIGAÇÃO — histórico de submissões ═══ */}
+      {/* RASTRO DE REINCIDÊNCIAS — vertical timeline */}
+      {!isDesvio && nc && (nc.reincidencia || (nc.reincidencias?.length ?? 0) > 0) && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/40 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <RefreshCw size={15} className="text-red-500" />
+            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Rastro de Reincidências</h3>
+            <span className="text-xs text-slate-400">({(nc.cadeiaReincidencias?.length ?? 0) + 1 + (nc.reincidencias?.length ?? 0)} ocorrência(s))</span>
+          </div>
+          <div className="relative pl-6">
+            <div className="absolute left-2.5 top-2 bottom-2 w-px bg-red-200 dark:bg-red-800/40" />
+            {chainNodes.map((node, idx) => {
+              const isLast = idx === chainNodes.length - 1
+              return (
+                <div key={node.id} className={`relative mb-0 ${!isLast ? 'pb-5' : ''}`}>
+                  <div className={`absolute -left-3.5 top-1.5 w-3 h-3 rounded-full border-2 flex-shrink-0 ${
+                    node.isCurrent
+                      ? 'bg-red-600 border-red-600 ring-2 ring-red-200 dark:ring-red-800'
+                      : node.isPast
+                      ? 'bg-white dark:bg-slate-800 border-red-400'
+                      : 'bg-white dark:bg-slate-800 border-orange-400'
+                  }`} />
+                  {node.isCurrent ? (
+                    <div className="ml-1 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                      <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-0.5">Esta NC (atual)</div>
+                      <div className="text-sm font-medium text-red-800 dark:text-red-200">{node.titulo}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{formatDate(node.dataRegistro)}</div>
+                    </div>
+                  ) : (
+                    <button onClick={() => navigate(`/tratativas/NAO_CONFORMIDADE/${node.id}`)}
+                      className={`ml-1 w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition group ${
+                        node.isPast
+                          ? 'border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-900/20'
+                          : 'border-orange-100 dark:border-orange-900/40 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                      }`}>
+                      <div>
+                        <div className={`text-xs font-medium mb-0.5 ${node.isPast ? 'text-red-500 dark:text-red-400' : 'text-orange-500 dark:text-orange-400'}`}>
+                          {node.isPast ? 'Anterior' : 'Posterior'}
+                        </div>
+                        <div className="text-sm text-slate-700 dark:text-slate-200 truncate max-w-[260px]">{node.titulo}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{formatDate(node.dataRegistro)}</div>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">Clique em qualquer NC para ver seus detalhes</p>
+        </div>
+      )}
+
+      {/* INVESTIGAÇÃO — histórico de submissões */}
       {!isDesvio && nc && nc.investigacaoSnapshots?.length > 0 && (
-        <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-900/40 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <FileText size={16} className="text-blue-500" />
-            <h3 className="font-semibold text-slate-700">Análise de Causa Raiz — 5 Porquês</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200">Análise de Causa Raiz — 5 Porquês</h3>
             {nc.investigacaoSnapshots.length > 1 && (
               <span className="text-xs text-slate-400 ml-1">({nc.investigacaoSnapshots.length} submissões)</span>
             )}
@@ -537,9 +662,7 @@ export default function TrativaDetailPage() {
                       <span className="text-xs text-slate-400">{formatDateTime(snap.dataSubmissao)}</span>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
                     </div>
-                    {!isLatest && (
-                      isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />
-                    )}
+                    {!isLatest && (isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />)}
                   </button>
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3">
@@ -585,26 +708,15 @@ export default function TrativaDetailPage() {
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="text-sm font-medium text-slate-800 break-words min-w-0">{a.titulo}</p>
-                                      {a.status === 'APROVADA' && (
-                                        <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0">
-                                          <CheckCircle size={11} /> Aprovada
-                                        </span>
-                                      )}
-                                      {a.status === 'REJEITADA' && (
-                                        <span className="flex items-center gap-0.5 text-xs text-red-700 font-medium shrink-0">
-                                          <XCircle size={11} /> Rejeitada
-                                        </span>
-                                      )}
+                                      {a.status === 'APROVADA' && <span className="flex items-center gap-0.5 text-xs text-green-700 font-medium shrink-0"><CheckCircle size={11} /> Aprovada</span>}
+                                      {a.status === 'REJEITADA' && <span className="flex items-center gap-0.5 text-xs text-red-700 font-medium shrink-0"><XCircle size={11} /> Rejeitada</span>}
                                     </div>
                                     <p className="text-xs text-slate-600 break-words mt-0.5">{a.descricao}</p>
-                                    {a.motivoRejeicao && (
-                                      <p className="text-xs text-red-600 break-words mt-1">Motivo: {a.motivoRejeicao}</p>
-                                    )}
+                                    {a.motivoRejeicao && <p className="text-xs text-red-600 break-words mt-1">Motivo: {a.motivoRejeicao}</p>}
                                   </div>
                                 </div>
                               ))
                               : snap.atividades.map((a, i) => {
-                                // Format: "titulo — descricao || APROVADA" or "titulo — descricao || REJEITADA: motivo"
                                 const splitStatus = a.split(' || ')
                                 const body = splitStatus[0]
                                 const statusRaw = splitStatus[1] ?? ''
@@ -646,12 +758,12 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* ═══ EXECUÇÃO — histórico de submissões ═══ */}
+      {/* EXECUÇÃO — histórico de submissões */}
       {!isDesvio && nc && nc.execucaoSnapshots?.length > 0 && (
-        <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-purple-200 dark:border-purple-900/40 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle size={16} className="text-purple-500" />
-            <h3 className="font-semibold text-slate-700">O que foi executado</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200">O que foi executado</h3>
             {nc.execucaoSnapshots.length > 1 && (
               <span className="text-xs text-slate-400 ml-1">({nc.execucaoSnapshots.length} submissões)</span>
             )}
@@ -677,9 +789,7 @@ export default function TrativaDetailPage() {
                       <span className="text-xs text-slate-400">{formatDateTime(snap.dataSubmissao)}</span>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
                     </div>
-                    {!isLatest && (
-                      isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />
-                    )}
+                    {!isLatest && (isExpanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />)}
                   </button>
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3">
@@ -689,7 +799,6 @@ export default function TrativaDetailPage() {
                           {snap.comentarioRevisao}
                         </div>
                       )}
-                      {/* Per-activity execution details — only for latest (current state is reliable) */}
                       {isLatest ? (
                         <div className="space-y-2">
                           {nc.atividades?.map(a => (
@@ -704,20 +813,13 @@ export default function TrativaDetailPage() {
                                 {!a.statusExecucao && <Clock size={13} className="text-slate-400 shrink-0" />}
                                 <p className="text-xs font-semibold text-slate-800 break-words min-w-0">{a.titulo}</p>
                               </div>
-                              {a.descricaoExecucao && (
-                                <p className="text-xs text-slate-600 break-words italic ml-5">"{a.descricaoExecucao}"</p>
-                              )}
-                              {a.motivoRejeicaoExecucao && (
-                                <p className="text-xs text-red-600 break-words ml-5 mt-1">Motivo: {a.motivoRejeicaoExecucao}</p>
-                              )}
+                              {a.descricaoExecucao && <p className="text-xs text-slate-600 break-words italic ml-5">"{a.descricaoExecucao}"</p>}
+                              {a.motivoRejeicaoExecucao && <p className="text-xs text-red-600 break-words ml-5 mt-1">Motivo: {a.motivoRejeicaoExecucao}</p>}
                               {a.evidencias?.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
                                   {a.evidencias.map(ev => (
-                                    <button
-                                      key={ev.id}
-                                      onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]"
-                                    >
+                                    <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]">
                                       <FileText size={11} className="shrink-0" />
                                       <span className="truncate">{ev.nomeArquivo}</span>
                                     </button>
@@ -730,11 +832,9 @@ export default function TrativaDetailPage() {
                       ) : snap.atividades?.length > 0 ? (
                         <div className="space-y-2">
                           {snap.atividades.map((a, i) => {
-                            // Split evidence IDs (after §§)
                             const evSplit = a.split(' §§ ')
                             const mainPart = evSplit[0]
                             const evIds = evSplit[1]?.split(',').filter(Boolean) ?? []
-                            // Parse status (after ||)
                             const splitStatus = mainPart.split(' || ')
                             const body = splitStatus[0]
                             const statusRaw = splitStatus[1] ?? ''
@@ -744,17 +844,10 @@ export default function TrativaDetailPage() {
                             const sepIdx = body.indexOf(' — ')
                             const titulo = sepIdx >= 0 ? body.slice(0, sepIdx) : body
                             const descExec = sepIdx >= 0 ? body.slice(sepIdx + 3) : ''
-                            // Resolve evidence IDs to objects from nc.atividades
                             const allEvs = nc.atividades?.flatMap(at => at.evidencias ?? []) ?? []
-                            const evs = evIds.length > 0
-                              ? evIds.map(id => allEvs.find(e => e.id === id)).filter(Boolean) as typeof allEvs
-                              : []
+                            const evs = evIds.length > 0 ? evIds.map(id => allEvs.find(e => e.id === id)).filter(Boolean) as typeof allEvs : []
                             return (
-                              <div key={i} className={`rounded-lg border p-3 ${
-                                isAprovada ? 'border-green-200 bg-green-50'
-                                : isRejeitada ? 'border-red-200 bg-red-50'
-                                : 'border-gray-200 bg-gray-50'
-                              }`}>
+                              <div key={i} className={`rounded-lg border p-3 ${isAprovada ? 'border-green-200 bg-green-50' : isRejeitada ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                   {isAprovada && <CheckCircle size={13} className="text-green-500 shrink-0" />}
                                   {isRejeitada && <XCircle size={13} className="text-red-500 shrink-0" />}
@@ -768,11 +861,8 @@ export default function TrativaDetailPage() {
                                 {evs.length > 0 && (
                                   <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
                                     {evs.map(ev => (
-                                      <button
-                                        key={ev.id}
-                                        onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]"
-                                      >
+                                      <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]">
                                         <FileText size={11} className="shrink-0" />
                                         <span className="truncate">{ev.nomeArquivo}</span>
                                       </button>
@@ -795,22 +885,17 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* ═══ HISTÓRICO DE DECISÕES ═══ */}
+      {/* HISTÓRICO DE DECISÕES */}
       {!isDesvio && nc && nc.historico?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setHistoricoAberto(v => !v)}
-            className="w-full flex items-center justify-between gap-2 px-6 py-4 hover:bg-gray-50 transition-colors"
-          >
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+          <button onClick={() => setHistoricoAberto(v => !v)}
+            className="w-full flex items-center justify-between gap-2 px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-2">
               <History size={16} className="text-slate-500" />
-              <h3 className="font-semibold text-slate-700">Histórico</h3>
+              <h3 className="font-semibold text-slate-700 dark:text-slate-200">Histórico</h3>
               <span className="text-xs text-slate-400">({nc.historico.length})</span>
             </div>
-            <ChevronDown
-              size={16}
-              className={`text-slate-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`}
-            />
+            <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`} />
           </button>
           {historicoAberto && (
             <div className="px-6 pb-6 space-y-2">
@@ -828,11 +913,8 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* ÁREA DE AÇÃO — depende de status + perfil */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══ ÁREA DE AÇÃO ═══ */}
 
-      {/* Desvio — fluxo de tratativas */}
       {isDesvio && desvio && (!isTecnico || desvio.responsavelTratativaId === user?.id) && (
         <DesvioTrativaSection
           desvio={desvio}
@@ -843,7 +925,6 @@ export default function TrativaDetailPage() {
         />
       )}
 
-      {/* ABERTA + Engenheiro → aguardando investigação do Externo */}
       {showAbertaEngenheiro && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-center gap-4">
           <Clock size={32} className="text-amber-500 shrink-0" />
@@ -854,7 +935,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* ABERTA ou EM_AJUSTE + Externo/Tecnico → Formulário de investigação */}
       {showInvestigacaoForm && (
         <div className="bg-white rounded-xl border-2 border-blue-400 shadow-md p-6 ring-2 ring-blue-100">
           <div className="flex items-center gap-3 mb-1">
@@ -884,8 +964,6 @@ export default function TrativaDetailPage() {
               )}
             </div>
           )}
-
-          {/* Alerta de reincidência */}
           {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
             <div className="mb-5 bg-orange-50 border border-orange-300 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-1">
@@ -895,18 +973,13 @@ export default function TrativaDetailPage() {
               <p className="text-xs text-orange-600">Proponha uma solução diferente que ataque a causa raiz.</p>
             </div>
           )}
-
           <div className="space-y-5">
-            {/* Porquês dinâmicos */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-semibold text-slate-700">Análise dos Porquês * <span className="text-xs font-normal text-slate-400">(mín. 1, máx. 5)</span></p>
                 {porques.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={() => setPorques([...porques, { pergunta: '', resposta: '' }])}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
+                  <button type="button" onClick={() => setPorques([...porques, { pergunta: '', resposta: '' }])}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
                     <Plus size={13} /> Adicionar porquê
                   </button>
                 )}
@@ -918,39 +991,22 @@ export default function TrativaDetailPage() {
                     <div className="flex-1 space-y-2">
                       <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">Pergunta *</label>
-                        <input
-                          type="text"
-                          value={p.pergunta}
-                          onChange={e => {
-                            const novo = [...porques]
-                            novo[i] = { ...novo[i], pergunta: e.target.value }
-                            setPorques(novo)
-                          }}
-                          placeholder={`Por que ${i + 1}? (ex: Por que o funcionário estava sem capacete?)`}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
-                        />
+                        <input type="text" value={p.pergunta}
+                          onChange={e => { const novo = [...porques]; novo[i] = { ...novo[i], pergunta: e.target.value }; setPorques(novo) }}
+                          placeholder={`Por que ${i + 1}?`}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition" />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Resposta *</label>
-                        <input
-                          type="text"
-                          value={p.resposta}
-                          onChange={e => {
-                            const novo = [...porques]
-                            novo[i] = { ...novo[i], resposta: e.target.value }
-                            setPorques(novo)
-                          }}
+                        <input type="text" value={p.resposta}
+                          onChange={e => { const novo = [...porques]; novo[i] = { ...novo[i], resposta: e.target.value }; setPorques(novo) }}
                           placeholder="Resposta..."
-                          className="w-full border border-gray-100 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:bg-white transition"
-                        />
+                          className="w-full border border-gray-100 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:bg-white transition" />
                       </div>
                     </div>
                     {porques.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setPorques(porques.filter((_, j) => j !== i))}
-                        className="mt-2 text-slate-400 hover:text-red-500 transition shrink-0"
-                      >
+                      <button type="button" onClick={() => setPorques(porques.filter((_, j) => j !== i))}
+                        className="mt-2 text-slate-400 hover:text-red-500 transition shrink-0">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -958,34 +1014,22 @@ export default function TrativaDetailPage() {
                 ))}
               </div>
             </div>
-
-            {/* Causa raiz */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Causa Raiz Identificada *</label>
-              <textarea
-                value={causaRaiz}
-                onChange={e => setCausaRaiz(e.target.value)}
-                rows={3}
+              <textarea value={causaRaiz} onChange={e => setCausaRaiz(e.target.value)} rows={3}
                 placeholder="Descreva a causa raiz identificada pela análise dos 5 Porquês..."
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
-              />
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition" />
             </div>
-
-            {/* Atividades */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-slate-700">Plano de Atividades *</p>
-                <button
-                  type="button"
-                  onClick={() => setAtividades([...atividades, { titulo: '', descricao: '' }])}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
+                <button type="button" onClick={() => setAtividades([...atividades, { titulo: '', descricao: '' }])}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
                   <Plus size={13} /> Adicionar atividade
                 </button>
               </div>
               <div className="space-y-3">
                 {atividades.map((a, i) => {
-                  // Quando em EM_AJUSTE, os itens do estado são as atividades rejeitadas
                   const ncRejeitadas = nc?.atividades?.filter(at => at.status === 'REJEITADA') ?? []
                   const motivoRejeicao = ncRejeitadas[i]?.motivoRejeicao
                   return (
@@ -996,55 +1040,30 @@ export default function TrativaDetailPage() {
                           <span className="text-xs text-red-600 font-medium flex items-center gap-1 min-w-0"><XCircle size={11} className="shrink-0" /><span className="break-words">{motivoRejeicao}</span></span>
                         )}
                         {atividades.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setAtividades(atividades.filter((_, j) => j !== i))}
-                            className="ml-auto text-slate-400 hover:text-red-500 transition"
-                          >
+                          <button type="button" onClick={() => setAtividades(atividades.filter((_, j) => j !== i))} className="ml-auto text-slate-400 hover:text-red-500 transition">
                             <Trash2 size={14} />
                           </button>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={a.titulo}
-                          onChange={e => {
-                            const novas = [...atividades]
-                            novas[i] = { ...novas[i], titulo: e.target.value }
-                            setAtividades(novas)
-                          }}
+                        <input type="text" value={a.titulo}
+                          onChange={e => { const novas = [...atividades]; novas[i] = { ...novas[i], titulo: e.target.value }; setAtividades(novas) }}
                           placeholder={`Título da atividade ${i + 1}...`}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition font-medium"
-                        />
-                        <textarea
-                          value={a.descricao}
-                          onChange={e => {
-                            const novas = [...atividades]
-                            novas[i] = { ...novas[i], descricao: e.target.value }
-                            setAtividades(novas)
-                          }}
-                          placeholder="Descrição detalhada da atividade..."
-                          rows={2}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-                        />
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition font-medium" />
+                        <textarea value={a.descricao}
+                          onChange={e => { const novas = [...atividades]; novas[i] = { ...novas[i], descricao: e.target.value }; setAtividades(novas) }}
+                          placeholder="Descrição detalhada da atividade..." rows={2}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition" />
                       </div>
                     </div>
                   )
                 })}
               </div>
             </div>
-
             <div className="flex gap-3 pt-2">
-              <button onClick={() => navigate('/tratativas')}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                Cancelar
-              </button>
-              <button
-                onClick={() => setConfirmarEnvio(true)}
-                disabled={!investigacaoValida}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
+              <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={() => setConfirmarEnvio(true)} disabled={!investigacaoValida}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 <Eye size={16} /> Revisar e Enviar
               </button>
             </div>
@@ -1052,7 +1071,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* AGUARDANDO_APROVACAO_PLANO + Externo → aguardando */}
       {showAguardandoAprovacaoPlano && (
         <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -1065,7 +1083,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* AGUARDANDO_APROVACAO_PLANO + Engenheiro → aprovar/rejeitar plano */}
       {showAprovacaoPlanoForm && (
         <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
           <div className="flex items-center gap-3 mb-1">
@@ -1075,9 +1092,7 @@ export default function TrativaDetailPage() {
             <h3 className="text-base font-bold text-slate-800">Aprovação do Plano de Ação</h3>
           </div>
           <p className="text-sm text-green-600 mb-5 ml-11">Revise a investigação e o plano de atividades acima e aprove ou rejeite.</p>
-
           <div className="space-y-3">
-            {/* Atividades previamente aprovadas (rodadas anteriores) */}
             {nc?.atividades?.some(a => a.status === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
@@ -1092,8 +1107,6 @@ export default function TrativaDetailPage() {
                 ))}
               </div>
             )}
-
-            {/* Atividades PENDENTE — engenheiro decide uma a uma */}
             {nc?.atividades?.filter(a => a.status === 'PENDENTE').map(a => {
               const decisao = decisoes[a.id]
               return (
@@ -1105,70 +1118,39 @@ export default function TrativaDetailPage() {
                   <p className="text-sm font-semibold text-slate-800 break-words mb-0.5">{a.titulo}</p>
                   <p className="text-xs text-slate-600 break-words mb-3">{a.descricao}</p>
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                        decisao?.status === 'APROVADA'
-                          ? 'bg-green-600 text-white border-green-600'
-                          : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
-                      }`}
-                    >
+                    <button type="button" onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${decisao?.status === 'APROVADA' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
                       <CheckCircle size={13} /> Aprovar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                        decisao?.status === 'REJEITADA'
-                          ? 'bg-red-600 text-white border-red-600'
-                          : 'bg-white text-red-700 border-red-300 hover:bg-red-50'
-                      }`}
-                    >
+                    <button type="button" onClick={() => setDecisoes(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${decisao?.status === 'REJEITADA' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
                       <XCircle size={13} /> Rejeitar
                     </button>
                   </div>
                   {decisao?.status === 'REJEITADA' && (
-                    <textarea
-                      value={decisao.motivo}
+                    <textarea value={decisao.motivo}
                       onChange={e => setDecisoes(prev => ({ ...prev, [a.id]: { ...prev[a.id], motivo: e.target.value } }))}
-                      placeholder="Motivo da rejeição *"
-                      rows={2}
-                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition"
-                    />
+                      placeholder="Motivo da rejeição *" rows={2}
+                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition" />
                   )}
                 </div>
               )
             })}
-
-            {/* Comentário geral opcional */}
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
-              <textarea
-                value={comentarioRevisao}
-                onChange={e => setComentarioRevisao(e.target.value)}
-                rows={2}
+              <textarea value={comentarioRevisao} onChange={e => setComentarioRevisao(e.target.value)} rows={2}
                 placeholder="Comentário sobre esta revisão..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
-              />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition" />
             </div>
-
             <div className="flex gap-3 pt-1">
-              <button onClick={() => navigate('/tratativas')}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                Cancelar
-              </button>
-              <button
-                onClick={() => mutRevisarAtividades.mutate()}
+              <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={() => mutRevisarAtividades.mutate()}
                 disabled={
-                  // Todas as atividades PENDENTE precisam ter decisão
                   (nc?.atividades?.filter(a => a.status === 'PENDENTE') ?? []).some(a => !decisoes[a.id]) ||
-                  // Atividades rejeitadas precisam ter motivo
                   Object.values(decisoes).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
                   mutRevisarAtividades.isPending
                 }
-                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
+                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 <CheckCircle size={16} /> {mutRevisarAtividades.isPending ? 'Enviando...' : 'Confirmar Revisão'}
               </button>
             </div>
@@ -1176,7 +1158,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* EM_EXECUCAO + Externo/Tecnico → execução por atividade */}
       {showExecucaoForm && (
         <div className="bg-white rounded-xl border-2 border-purple-400 shadow-md p-6 ring-2 ring-purple-100">
           <div className="flex items-center gap-3 mb-1">
@@ -1185,10 +1166,8 @@ export default function TrativaDetailPage() {
             </div>
             <h3 className="text-base font-bold text-slate-800">Execução das Atividades</h3>
           </div>
-          <p className="text-sm text-purple-600 mb-5 ml-11">Para cada atividade, descreva o que foi feito e anexe as evidências (imagens/documentos).</p>
-
+          <p className="text-sm text-purple-600 mb-5 ml-11">Para cada atividade, descreva o que foi feito e anexe as evidências.</p>
           <div className="space-y-4">
-            {/* Atividades já aprovadas em execução */}
             {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já validadas pelo engenheiro</p>
@@ -1201,15 +1180,11 @@ export default function TrativaDetailPage() {
                         <p className="text-xs text-green-700 break-words">{a.descricao}</p>
                       </div>
                     </div>
-                    {a.descricaoExecucao && (
-                      <p className="text-xs text-green-700 ml-5 break-words italic">"{a.descricaoExecucao}"</p>
-                    )}
+                    {a.descricaoExecucao && <p className="text-xs text-green-700 ml-5 break-words italic">"{a.descricaoExecucao}"</p>}
                   </div>
                 ))}
               </div>
             )}
-
-            {/* Atividades pendentes de execução */}
             {nc?.atividades?.filter(a => a.statusExecucao !== 'APROVADA').map(a => (
               <div key={a.id} className={`rounded-lg border p-4 space-y-3 ${a.statusExecucao === 'REJEITADA' ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50/30'}`}>
                 <div className="flex gap-2 items-start">
@@ -1226,31 +1201,22 @@ export default function TrativaDetailPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">O que foi feito *</label>
-                  <textarea
-                    value={execucaoDescricoes[a.id] ?? ''}
+                  <textarea value={execucaoDescricoes[a.id] ?? ''}
                     onChange={e => setExecucaoDescricoes(prev => ({ ...prev, [a.id]: e.target.value }))}
-                    rows={3}
-                    placeholder="Descreva as ações realizadas para esta atividade..."
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
-                  />
+                    rows={3} placeholder="Descreva as ações realizadas para esta atividade..."
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
                 </div>
                 <EvidenciaUpload atividadeId={a.id} tipoEvidencia="TRATATIVA" titulo="Evidências desta atividade" />
               </div>
             ))}
-
             <div className="flex gap-3 pt-2">
-              <button onClick={() => navigate('/tratativas')}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                Cancelar
-              </button>
-              <button
-                onClick={() => mutSubmeterExecucao.mutate()}
+              <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={() => mutSubmeterExecucao.mutate()}
                 disabled={
                   (nc?.atividades ?? []).filter(a => a.statusExecucao !== 'APROVADA').some(a => !execucaoDescricoes[a.id]?.trim()) ||
                   mutSubmeterExecucao.isPending
                 }
-                className="flex-1 bg-purple-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
+                className="flex-1 bg-purple-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 <CheckCircle size={16} /> {mutSubmeterExecucao.isPending ? 'Enviando...' : 'Enviar para Validação'}
               </button>
             </div>
@@ -1258,7 +1224,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* EM_EXECUCAO + Engenheiro → aguardando */}
       {showEngenheiroAguardaExecucao && (
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 flex items-center gap-4">
           <Clock size={32} className="text-purple-500 shrink-0" />
@@ -1269,7 +1234,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* AGUARDANDO_VALIDACAO_FINAL + Externo → aguardando */}
       {showAguardandoValidacaoFinal && (
         <div className="bg-indigo-50 border-2 border-indigo-300 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -1282,7 +1246,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* AGUARDANDO_VALIDACAO_FINAL + Engenheiro → revisão por atividade */}
       {showAprovacaoEvidenciasForm && (
         <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
           <div className="flex items-center gap-3 mb-1">
@@ -1292,9 +1255,7 @@ export default function TrativaDetailPage() {
             <h3 className="text-base font-bold text-slate-800">Validação da Execução</h3>
           </div>
           <p className="text-sm text-green-600 mb-5 ml-11">Revise a execução de cada atividade. Aprove ou rejeite individualmente.</p>
-
           <div className="space-y-3">
-            {/* Já aprovadas */}
             {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
@@ -1309,8 +1270,6 @@ export default function TrativaDetailPage() {
                 ))}
               </div>
             )}
-
-            {/* PENDENTE — engenheiro decide uma a uma */}
             {nc?.atividades?.filter(a => a.statusExecucao === 'PENDENTE').map(a => {
               const decisao = decisoesExecucao[a.id]
               return (
@@ -1320,17 +1279,12 @@ export default function TrativaDetailPage() {
                   : 'border-gray-200 bg-gray-50'
                 }`}>
                   <p className="text-sm font-semibold text-slate-800 break-words mb-0.5">{a.titulo}</p>
-                  {a.descricaoExecucao && (
-                    <p className="text-xs text-slate-600 break-words mb-2 italic">"{a.descricaoExecucao}"</p>
-                  )}
+                  {a.descricaoExecucao && <p className="text-xs text-slate-600 break-words mb-2 italic">"{a.descricaoExecucao}"</p>}
                   {a.evidencias?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {a.evidencias.map(ev => (
-                        <button
-                          key={ev.id}
-                          onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[180px]"
-                        >
+                        <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[180px]">
                           <FileText size={11} className="shrink-0" />
                           <span className="truncate">{ev.nomeArquivo}</span>
                         </button>
@@ -1338,68 +1292,39 @@ export default function TrativaDetailPage() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                        decisao?.status === 'APROVADA'
-                          ? 'bg-green-600 text-white border-green-600'
-                          : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
-                      }`}
-                    >
+                    <button type="button" onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${decisao?.status === 'APROVADA' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
                       <CheckCircle size={13} /> Aprovar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                        decisao?.status === 'REJEITADA'
-                          ? 'bg-red-600 text-white border-red-600'
-                          : 'bg-white text-red-700 border-red-300 hover:bg-red-50'
-                      }`}
-                    >
+                    <button type="button" onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${decisao?.status === 'REJEITADA' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
                       <XCircle size={13} /> Rejeitar
                     </button>
                   </div>
                   {decisao?.status === 'REJEITADA' && (
-                    <textarea
-                      value={decisao.motivo}
+                    <textarea value={decisao.motivo}
                       onChange={e => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { ...prev[a.id], motivo: e.target.value } }))}
-                      placeholder="Motivo da rejeição *"
-                      rows={2}
-                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition"
-                    />
+                      placeholder="Motivo da rejeição *" rows={2}
+                      className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition" />
                   )}
                 </div>
               )
             })}
-
-            {/* Comentário geral */}
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
-              <textarea
-                value={comentarioRevisaoExecucao}
-                onChange={e => setComentarioRevisaoExecucao(e.target.value)}
-                rows={2}
+              <textarea value={comentarioRevisaoExecucao} onChange={e => setComentarioRevisaoExecucao(e.target.value)} rows={2}
                 placeholder="Comentário sobre esta revisão..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition"
-              />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition" />
             </div>
-
             <div className="flex gap-3 pt-1">
-              <button onClick={() => navigate('/tratativas')}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                Cancelar
-              </button>
-              <button
-                onClick={() => mutRevisarExecucao.mutate()}
+              <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={() => mutRevisarExecucao.mutate()}
                 disabled={
                   (nc?.atividades?.filter(a => a.statusExecucao === 'PENDENTE') ?? []).some(a => !decisoesExecucao[a.id]) ||
                   Object.values(decisoesExecucao).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
                   mutRevisarExecucao.isPending
                 }
-                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
+                className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 <CheckCircle size={16} /> {mutRevisarExecucao.isPending ? 'Enviando...' : 'Confirmar Revisão'}
               </button>
             </div>
@@ -1407,7 +1332,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* CONCLUIDO */}
       {!isDesvio && nc?.status === 'CONCLUIDO' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
           <CheckCircle size={32} className="text-green-500 shrink-0" />
@@ -1418,7 +1342,7 @@ export default function TrativaDetailPage() {
         </div>
       )}
 
-      {/* Modal de confirmação de envio da investigação */}
+      {/* Modal de confirmação de envio */}
       {confirmarEnvio && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setConfirmarEnvio(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -1433,7 +1357,6 @@ export default function TrativaDetailPage() {
                 </div>
               </div>
             </div>
-
             <div className="p-6 space-y-4">
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">5 Porquês</p>
@@ -1468,17 +1391,10 @@ export default function TrativaDetailPage() {
                 </div>
               </div>
             </div>
-
             <div className="p-6 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setConfirmarEnvio(false)}
-                className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                Voltar e Revisar
-              </button>
-              <button
-                onClick={() => mutSubmeterInvestigacao.mutate()}
-                disabled={mutSubmeterInvestigacao.isPending}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2"
-              >
+              <button onClick={() => setConfirmarEnvio(false)} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Voltar e Revisar</button>
+              <button onClick={() => mutSubmeterInvestigacao.mutate()} disabled={mutSubmeterInvestigacao.isPending}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 <CheckCircle size={16} />
                 {mutSubmeterInvestigacao.isPending ? 'Enviando...' : 'Confirmar Envio'}
               </button>
@@ -1487,5 +1403,6 @@ export default function TrativaDetailPage() {
         </div>
       )}
     </div>
+    </>
   )
 }
