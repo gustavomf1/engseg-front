@@ -27,6 +27,7 @@ import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
 import NormaListPage from './pages/norma/NormaListPage'
 import NormaFormPage from './pages/norma/NormaFormPage'
 import ConvitePage from './pages/ConvitePage'
+import EmailPadraoNcPage from './pages/emailPadraoNc/EmailPadraoNcPage'
 
 function DefaultRedirect() {
   const { user } = useAuth()
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="normas" element={<AdminRoute><NormaListPage /></AdminRoute>} />
               <Route path="normas/novo" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
               <Route path="normas/:id/editar" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
+              <Route path="emails-padrao-nc" element={<AdminRoute><EmailPadraoNcPage /></AdminRoute>} />
             </Route>
             <Route path="*" element={<DefaultRedirect />} />
           </Routes>

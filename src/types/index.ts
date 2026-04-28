@@ -298,6 +298,8 @@ export interface NaoConformidadeRequest {
   normaIds?: string[]
   reincidencia: boolean
   ncAnteriorId?: string
+  emailsManuais?: string[]
+  emailsPadraoExcluidos?: string[]
 }
 
 export interface InvestigacaoRequest {
@@ -309,23 +311,28 @@ export interface InvestigacaoRequest {
 export interface RevisarAtividadesRequest {
   decisoes: { atividadeId: string; status: 'APROVADA' | 'REJEITADA'; motivo?: string }[]
   comentario?: string
+  emailsManuais?: string[]
 }
 
 export interface AprovarRejeitarRequest {
   comentario?: string
+  emailsManuais?: string[]
 }
 
 export interface SubmeterEvidenciasRequest {
   descricaoExecucao: string
+  emailsManuais?: string[]
 }
 
 export interface SubmeterExecucaoRequest {
   atividades: { atividadeId: string; descricaoExecucao?: string }[]
+  emailsManuais?: string[]
 }
 
 export interface RevisarExecucaoRequest {
   decisoes: { atividadeId: string; status: 'APROVADA' | 'REJEITADA'; motivo?: string }[]
   comentario?: string
+  emailsManuais?: string[]
 }
 
 // Legado
@@ -469,4 +476,26 @@ export interface Evidencia {
   urlArquivo: string
   dataUpload: string
   tipoEvidencia?: TipoEvidencia
+}
+
+export interface RejeitarRequest {
+  motivo: string
+  emailsManuais?: string[]
+}
+
+export interface EmailPadraoNc {
+  id: string
+  estabelecimentoId: string
+  estabelecimentoNome: string
+  empresaId: string
+  empresaNome: string
+  email: string
+  descricao?: string
+}
+
+export interface EmailPadraoNcRequest {
+  estabelecimentoId: string
+  empresaId: string
+  email: string
+  descricao?: string
 }
