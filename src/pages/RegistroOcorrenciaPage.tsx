@@ -21,6 +21,8 @@ import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
 import { LABELS_SEVERIDADE, LABELS_PROBABILIDADE, calcularNivelRisco } from '../utils/matrizRisco'
 import RiscoBadge from '../components/RiscoBadge'
+import { getEmailsPadraoNc } from '../api/emailPadraoNc'
+import { EmailPadraoNc } from '../types'
 
 interface TrechoPendente {
   normaId: string
@@ -59,6 +61,9 @@ export default function RegistroOcorrenciaPage() {
   const [adminEmpresaId, setAdminEmpresaId] = useState('')
   const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
   const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
+  const [emailsManuais, setEmailsManuais] = useState<string[]>([])
+  const [emailsPadraoExcluidos, setEmailsPadraoExcluidos] = useState<string[]>([])
+  const [novoEmailManual, setNovoEmailManual] = useState('')
   const [severidade, setSeveridade] = useState(0)
   const [probabilidade, setProbabilidade] = useState(0)
   const navigate = useNavigate()
@@ -129,6 +134,17 @@ export default function RegistroOcorrenciaPage() {
     queryKey: ['nao-conformidades', 'estabelecimento', estabelecimentoEfetivo?.id],
     queryFn: () => getNaoConformidades({ estabelecimentoId: estabelecimentoEfetivo?.id }),
     enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoEfetivo?.id,
+  })
+
+  const { data: emailsPadraoNc = [] } = useQuery({
+    queryKey: ['emails-padrao-nc', estabelecimentoEfetivo?.id, empresaFilhaEfetiva?.id],
+    queryFn: () =>
+      getEmailsPadraoNc(estabelecimentoEfetivo!.id, empresaFilhaEfetiva!.id),
+    enabled:
+      tipo === 'NAO_CONFORMIDADE' &&
+      !isEditing &&
+      !!estabelecimentoEfetivo?.id &&
+      !!empresaFilhaEfetiva?.id,
   })
 
   type NcItem = { id: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
@@ -253,6 +269,8 @@ export default function RegistroOcorrenciaPage() {
           normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
           reincidencia: isReincidencia,
           ncAnteriorId: isReincidencia && ncAnteriorId ? ncAnteriorId : undefined,
+          emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
+          emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
         }
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
@@ -772,6 +790,137 @@ export default function RegistroOcorrenciaPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {tipo === 'NAO_CONFORMIDADE' && !isEditing && (
+            <div className="border border-blue-100 bg-blue-50 rounded-xl p-5 mt-4">
+              <h3 className="text-sm font-semibold text-blue-800 mb-4">
+                Destinatários do email de abertura
+              </h3>
+
+              {/* Emails dinâmicos — somente leitura */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
+                  Dinâmicos (automáticos)
+                </p>
+                <ul className="space-y-1">
+                  {user?.email && (
+                    <li className="text-xs text-slate-700 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                      {user.email}
+                      <span className="text-slate-400 ml-1">(você)</span>
+                    </li>
+                  )}
+                  {watch('engResponsavelConstrutoraId') &&
+                    externos.find(u => u.id === watch('engResponsavelConstrutoraId')) && (
+                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                        {externos.find(u => u.id === watch('engResponsavelConstrutoraId'))?.nome}
+                        <span className="text-slate-400 ml-1">(Eng. Construtora)</span>
+                      </li>
+                    )}
+                  {watch('engResponsavelVerificacaoId') &&
+                    engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId')) && (
+                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                        {engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId'))?.nome}
+                        <span className="text-slate-400 ml-1">(Eng. Verificação)</span>
+                      </li>
+                    )}
+                </ul>
+              </div>
+
+              {/* Emails padrão — desmarcáveis */}
+              {(emailsPadraoNc as EmailPadraoNc[]).length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
+                    Padrão (desmarcáveis)
+                  </p>
+                  <ul className="space-y-1.5">
+                    {(emailsPadraoNc as EmailPadraoNc[]).map(ep => {
+                      const excluido = emailsPadraoExcluidos.includes(ep.email)
+                      return (
+                        <li key={ep.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={!excluido}
+                            onChange={() =>
+                              setEmailsPadraoExcluidos(prev =>
+                                excluido
+                                  ? prev.filter(e => e !== ep.email)
+                                  : [...prev, ep.email]
+                              )
+                            }
+                            className="rounded"
+                          />
+                          <span className={`text-xs ${excluido ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                            {ep.email}
+                            {ep.descricao && (
+                              <span className="text-slate-400 ml-1">— {ep.descricao}</span>
+                            )}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Email manual */}
+              <div>
+                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
+                  Adicionar email manual
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="email@empresa.com"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={novoEmailManual}
+                    onChange={e => setNovoEmailManual(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const em = novoEmailManual.trim()
+                        if (em && !emailsManuais.includes(em)) {
+                          setEmailsManuais(prev => [...prev, em])
+                          setNovoEmailManual('')
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const em = novoEmailManual.trim()
+                      if (em && !emailsManuais.includes(em)) {
+                        setEmailsManuais(prev => [...prev, em])
+                        setNovoEmailManual('')
+                      }
+                    }}
+                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+                {emailsManuais.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {emailsManuais.map(e => (
+                      <li key={e} className="flex items-center justify-between text-xs text-slate-700">
+                        <span>{e}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailsManuais(prev => prev.filter(x => x !== e))}
+                          className="text-slate-400 hover:text-red-500 ml-2"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
 
