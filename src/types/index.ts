@@ -306,6 +306,7 @@ export interface InvestigacaoRequest {
   porques: { pergunta: string; resposta: string }[]
   causaRaiz: string
   atividades: { titulo: string; descricao: string }[]
+  emailsManuais?: string[]
 }
 
 export interface RevisarAtividadesRequest {

@@ -197,7 +197,7 @@ export default function TrativaDetailPage() {
   })
 
   const mutRejeitarPlano = useMutation({
-    mutationFn: () => rejeitarPlano(id!, { comentario: motivoRejeicao }),
+    mutationFn: () => rejeitarPlano(id!, { motivo: motivoRejeicao }),
     onSuccess: () => { invalidate(); setMotivoRejeicao('') },
   })
 
