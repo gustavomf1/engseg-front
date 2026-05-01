@@ -119,10 +119,10 @@ export default function RegistroOcorrenciaPage() {
     enabled: !!empresaFilhaEfetiva?.id,
   })
 
-  const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+  const engenheiros = (usuarios as Array<{ id: string; nome: string; email: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
 
-  const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
+  const externos = (usuariosFilha as Array<{ id: string; nome: string; email: string; perfil: string; ativo: boolean }>)
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
   const { data: normas = [] } = useQuery({
@@ -808,7 +808,7 @@ export default function RegistroOcorrenciaPage() {
                   {user?.email && (
                     <li className="text-xs text-slate-700 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                      {user.email}
+                      {user.nome} &lt;{user.email}&gt;
                       <span className="text-slate-400 ml-1">(você)</span>
                     </li>
                   )}
@@ -816,18 +816,32 @@ export default function RegistroOcorrenciaPage() {
                     externos.find(u => u.id === watch('engResponsavelConstrutoraId')) && (
                       <li className="text-xs text-slate-700 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {externos.find(u => u.id === watch('engResponsavelConstrutoraId'))?.nome}
-                        <span className="text-slate-400 ml-1">(Eng. Construtora)</span>
+                        {(() => { const u = externos.find(x => x.id === watch('engResponsavelConstrutoraId')); return u ? `${u.nome} <${u.email}>` : '' })()}
+                        <span className="text-slate-400 ml-1">(Responsável pela tratativa)</span>
                       </li>
                     )}
                   {watch('engResponsavelVerificacaoId') &&
                     engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId')) && (
                       <li className="text-xs text-slate-700 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId'))?.nome}
-                        <span className="text-slate-400 ml-1">(Eng. Verificação)</span>
+                        {(() => { const u = engenheiros.find(x => x.id === watch('engResponsavelVerificacaoId')); return u ? `${u.nome} <${u.email}>` : '' })()}
+                        <span className="text-slate-400 ml-1">(Responsável pela NC)</span>
                       </li>
                     )}
+                  {emailsManuais.map(e => (
+                    <li key={e} className="text-xs text-slate-700 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                      Manual &lt;{e}&gt;
+                      <span className="text-slate-400 ml-1">(Outros)</span>
+                      <button
+                        type="button"
+                        onClick={() => setEmailsManuais(prev => prev.filter(x => x !== e))}
+                        className="text-slate-400 hover:text-red-500 ml-1 leading-none"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
 
@@ -904,22 +918,6 @@ export default function RegistroOcorrenciaPage() {
                     Adicionar
                   </button>
                 </div>
-                {emailsManuais.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {emailsManuais.map(e => (
-                      <li key={e} className="flex items-center justify-between text-xs text-slate-700">
-                        <span>{e}</span>
-                        <button
-                          type="button"
-                          onClick={() => setEmailsManuais(prev => prev.filter(x => x !== e))}
-                          className="text-slate-400 hover:text-red-500 ml-2"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             </div>
           )}

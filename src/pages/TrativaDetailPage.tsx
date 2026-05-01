@@ -234,7 +234,7 @@ export default function TrativaDetailPage() {
     : dias < 7 ? 'text-red-500'
     : dias < 21 ? 'text-amber-500'
     : 'text-emerald-500'
-  const prazoPct = dias !== null ? Math.max(0, Math.min(100, ((60 - dias) / 60) * 100)) : 0
+  const prazoPct = dias !== null ? Math.max(0, Math.min(100, ((30 - dias) / 30) * 100)) : 0
   const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({
     id: r.id,
     severidade: Math.min(5, Math.max(1, 3)),
