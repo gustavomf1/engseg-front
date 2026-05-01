@@ -29,6 +29,7 @@ export interface OcorrenciaItem {
 export const getOcorrencias = async (params?: {
   estabelecimentoId?: string
   empresaId?: string
+  meuPapel?: string
 }): Promise<OcorrenciaItem[]> => {
   const response = await client.get<OcorrenciaItem[]>('/ocorrencias', { params })
   return response.data

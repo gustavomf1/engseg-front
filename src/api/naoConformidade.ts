@@ -50,7 +50,7 @@ export const aprovarPlano = async (id: string, data?: AprovarRejeitarRequest): P
   return res.data
 }
 
-export const rejeitarPlano = async (id: string, data: AprovarRejeitarRequest): Promise<NaoConformidade> => {
+export const rejeitarPlano = async (id: string, data: { motivo: string; emailsManuais?: string[] }): Promise<NaoConformidade> => {
   const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/rejeitar-plano`, data)
   return res.data
 }
@@ -80,7 +80,7 @@ export const aprovarEvidencias = async (id: string, data?: AprovarRejeitarReques
   return res.data
 }
 
-export const rejeitarEvidencias = async (id: string, data: AprovarRejeitarRequest): Promise<NaoConformidade> => {
+export const rejeitarEvidencias = async (id: string, data: { motivo: string; emailsManuais?: string[] }): Promise<NaoConformidade> => {
   const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/rejeitar-evidencias`, data)
   return res.data
 }

@@ -235,7 +235,7 @@ export default function OcorrenciaDetailPage() {
     : diasRestantes < 21 ? 'text-amber-500'
     : 'text-emerald-500'
   const pct = diasRestantes !== null
-    ? Math.max(0, Math.min(100, ((60 - diasRestantes) / 60) * 100))
+    ? Math.max(0, Math.min(100, ((30 - diasRestantes) / 30) * 100))
     : 0
 
   const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({

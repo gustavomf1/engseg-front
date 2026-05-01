@@ -1,7 +1,25 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getNaoConformidade } from '../../api/naoConformidade'
+import {
+  getNaoConformidade,
+  aprovarPlano,
+  rejeitarPlano,
+  revisarAtividades,
+  submeterExecucao,
+  revisarExecucao,
+  submeterEvidencias,
+  aprovarEvidencias,
+  rejeitarEvidencias,
+  submeterInvestigacao,
+} from '../../api/naoConformidade'
+import type {
+  InvestigacaoRequest,
+  RevisarAtividadesRequest,
+  SubmeterExecucaoRequest,
+  RevisarExecucaoRequest,
+  SubmeterEvidenciasRequest,
+} from '../../types'
 import { getTrechosNorma } from '../../api/ncTrechoNorma'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
@@ -41,6 +59,13 @@ export default function NaoConformidadeDetailPage() {
   const queryClient = useQueryClient()
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const [historicoAberto, setHistoricoAberto] = useState(false)
+  const [emailManualInput, setEmailManualInput] = useState('')
+  const [emailsManuaisAcao, setEmailsManuaisAcao] = useState<string[]>([])
+
+  function resetEmailManual() {
+    setEmailManualInput('')
+    setEmailsManuaisAcao([])
+  }
 
   const { data: nc, isLoading } = useQuery({
     queryKey: ['nao-conformidade', id],
@@ -59,8 +84,141 @@ export default function NaoConformidadeDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trechos-norma', id] }),
   })
 
+  const submeterInvestigacaoMutation = useMutation({
+    mutationFn: (data: InvestigacaoRequest) =>
+      submeterInvestigacao(id!, { ...data, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const aprovarPlanoMutation = useMutation({
+    mutationFn: () => aprovarPlano(id!, { emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const rejeitarPlanoMutation = useMutation({
+    mutationFn: (motivo: string) => rejeitarPlano(id!, { motivo, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const revisarAtividadesMutation = useMutation({
+    mutationFn: (data: RevisarAtividadesRequest) =>
+      revisarAtividades(id!, { ...data, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const submeterExecucaoMutation = useMutation({
+    mutationFn: (data: SubmeterExecucaoRequest) =>
+      submeterExecucao(id!, { ...data, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const revisarExecucaoMutation = useMutation({
+    mutationFn: (data: RevisarExecucaoRequest) =>
+      revisarExecucao(id!, { ...data, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const submeterEvidenciasMutation = useMutation({
+    mutationFn: (data: SubmeterEvidenciasRequest) =>
+      submeterEvidencias(id!, { ...data, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const aprovarEvidenciasMutation = useMutation({
+    mutationFn: () => aprovarEvidencias(id!, { emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
+  const rejeitarEvidenciasMutation = useMutation({
+    mutationFn: (motivo: string) => rejeitarEvidencias(id!, { motivo, emailsManuais: emailsManuaisAcao }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      resetEmailManual()
+    },
+  })
+
   if (isLoading) return <div className="text-slate-400 py-8 text-center">Carregando...</div>
   if (!nc) return <div className="text-red-500 py-8 text-center">NC não encontrada</div>
+
+  const EmailManualSection = (
+    <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+      <p className="text-xs font-medium text-slate-600 mb-2">
+        Notificar email adicional (opcional)
+      </p>
+      <div className="flex gap-2 mb-2">
+        <input
+          type="email"
+          placeholder="email@empresa.com"
+          className="flex-1 border border-gray-200 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          value={emailManualInput}
+          onChange={e => setEmailManualInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              const em = emailManualInput.trim()
+              if (em && !emailsManuaisAcao.includes(em)) {
+                setEmailsManuaisAcao(prev => [...prev, em])
+                setEmailManualInput('')
+              }
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const em = emailManualInput.trim()
+            if (em && !emailsManuaisAcao.includes(em)) {
+              setEmailsManuaisAcao(prev => [...prev, em])
+              setEmailManualInput('')
+            }
+          }}
+          className="px-2 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+        >
+          +
+        </button>
+      </div>
+      {emailsManuaisAcao.length > 0 && (
+        <ul className="space-y-0.5">
+          {emailsManuaisAcao.map(e => (
+            <li key={e} className="flex items-center justify-between text-xs text-slate-700">
+              <span>{e}</span>
+              <button
+                type="button"
+                onClick={() => setEmailsManuaisAcao(prev => prev.filter(x => x !== e))}
+                className="text-slate-400 hover:text-red-400 ml-2"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 
   return (
     <div className="max-w-4xl">
@@ -340,6 +498,104 @@ export default function NaoConformidadeDetailPage() {
           )}
         </div>
       )}
+
+      {/* Ações — submeter investigação */}
+      {nc.status === 'ABERTA' && user?.perfil === 'ENGENHEIRO' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h3 className="font-semibold text-slate-700 mb-3">Submeter Investigação</h3>
+          {EmailManualSection}
+          <button
+            type="button"
+            disabled={submeterInvestigacaoMutation.isPending}
+            onClick={() => submeterInvestigacaoMutation.mutate({
+              porques: [],
+              causaRaiz: '',
+              atividades: [],
+            })}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {submeterInvestigacaoMutation.isPending ? 'Enviando...' : 'Submeter Investigação'}
+          </button>
+        </div>
+      )}
+
+      {/* Ações — aprovar / rejeitar plano */}
+      {nc.status === 'AGUARDANDO_APROVACAO_PLANO' && user?.perfil === 'ENGENHEIRO' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h3 className="font-semibold text-slate-700 mb-3">Aprovar / Rejeitar Plano</h3>
+          {EmailManualSection}
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              disabled={aprovarPlanoMutation.isPending}
+              onClick={() => aprovarPlanoMutation.mutate()}
+              className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+            >
+              {aprovarPlanoMutation.isPending ? 'Aprovando...' : 'Aprovar Plano'}
+            </button>
+            <button
+              type="button"
+              disabled={rejeitarPlanoMutation.isPending}
+              onClick={() => {
+                const motivo = window.prompt('Motivo da rejeição:')
+                if (motivo) rejeitarPlanoMutation.mutate(motivo)
+              }}
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {rejeitarPlanoMutation.isPending ? 'Rejeitando...' : 'Rejeitar Plano'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ações — revisar atividades */}
+      {nc.status === 'EM_AJUSTE_PELO_EXTERNO' && user?.perfil === 'ENGENHEIRO' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h3 className="font-semibold text-slate-700 mb-3">Revisar Atividades</h3>
+          {EmailManualSection}
+          <button
+            type="button"
+            disabled={revisarAtividadesMutation.isPending}
+            onClick={() => revisarAtividadesMutation.mutate({ decisoes: [] })}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {revisarAtividadesMutation.isPending ? 'Enviando...' : 'Revisar Atividades'}
+          </button>
+        </div>
+      )}
+
+      {/* Ações — submeter execução */}
+      {nc.status === 'EM_EXECUCAO' && user?.perfil === 'ENGENHEIRO' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h3 className="font-semibold text-slate-700 mb-3">Submeter Execução</h3>
+          {EmailManualSection}
+          <button
+            type="button"
+            disabled={submeterExecucaoMutation.isPending}
+            onClick={() => submeterExecucaoMutation.mutate({ atividades: [] })}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {submeterExecucaoMutation.isPending ? 'Enviando...' : 'Submeter Execução'}
+          </button>
+        </div>
+      )}
+
+      {/* Ações — revisar execução */}
+      {nc.status === 'AGUARDANDO_VALIDACAO_FINAL' && user?.perfil === 'ENGENHEIRO' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h3 className="font-semibold text-slate-700 mb-3">Revisar Execução</h3>
+          {EmailManualSection}
+          <button
+            type="button"
+            disabled={revisarExecucaoMutation.isPending}
+            onClick={() => revisarExecucaoMutation.mutate({ decisoes: [] })}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {revisarExecucaoMutation.isPending ? 'Enviando...' : 'Revisar Execução'}
+          </button>
+        </div>
+      )}
+
 
       {/* Concluída */}
       {nc.status === 'CONCLUIDO' && (
