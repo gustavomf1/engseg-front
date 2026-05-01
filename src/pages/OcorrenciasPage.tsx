@@ -36,6 +36,7 @@ export default function OcorrenciasPage() {
   const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<TipoFiltro>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('TODOS')
+  const [meuPapel, setMeuPapel] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [excluindo, setExcluindo] = useState<OcorrenciaItem | null>(null)
 
@@ -58,11 +59,11 @@ export default function OcorrenciasPage() {
   })
 
   const { data: ocorrencias = [], isLoading } = useQuery({
-    queryKey: ['ocorrencias', estabelecimento?.id, adminEmpresaId, adminEstabelecimentoId],
+    queryKey: ['ocorrencias', estabelecimento?.id, adminEmpresaId, adminEstabelecimentoId, meuPapel],
     queryFn: () => getOcorrencias(
       isAdmin
-        ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined }
-        : { estabelecimentoId: estabelecimento?.id },
+        ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined, meuPapel: meuPapel ?? undefined }
+        : { estabelecimentoId: estabelecimento?.id, meuPapel: meuPapel ?? undefined },
     ),
   })
 
@@ -92,11 +93,21 @@ export default function OcorrenciasPage() {
     return 'TODOS'
   }
 
+  const PAPEL_OPTIONS: { value: string; label: string; tipos: TipoFiltro[] }[] = [
+    { value: 'REGISTRANTE',              label: 'Sou o registrante',                   tipos: ['TODOS', 'NAO_CONFORMIDADE', 'DESVIO'] },
+    { value: 'RESPONSAVEL_NC',           label: 'Responsável pela NC',                 tipos: ['TODOS', 'NAO_CONFORMIDADE'] },
+    { value: 'RESPONSAVEL_TRATATIVA_NC', label: 'Responsável pela tratativa (NC)',     tipos: ['TODOS', 'NAO_CONFORMIDADE'] },
+    { value: 'RESPONSAVEL_DESVIO',       label: 'Responsável pelo desvio',             tipos: ['TODOS', 'DESVIO'] },
+    { value: 'RESPONSAVEL_TRATATIVA_DESVIO', label: 'Responsável pela tratativa (desvio)', tipos: ['TODOS', 'DESVIO'] },
+  ]
+
   function handleTipoChange(tipo: TipoFiltro) {
     const available = STATUS_TABS_CONFIG.filter(t => t.tipos.includes(tipo)).map(t => t.key)
     setFiltroTipo(tipo)
     setPage(1)
     if (!available.includes(filtroStatus)) setFiltroStatus('TODOS')
+    const papelCompativel = meuPapel === null || PAPEL_OPTIONS.find(o => o.value === meuPapel)?.tipos.includes(tipo)
+    if (!papelCompativel) setMeuPapel(null)
   }
 
   const filtradas = ocorrencias.filter(o => {
@@ -225,6 +236,33 @@ export default function OcorrenciasPage() {
               </span>
             )}
           </button>
+        ))}
+      </div>
+
+      {/* Filtro Meu Papel */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Meu papel:</span>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="meuPapel"
+            checked={meuPapel === null}
+            onChange={() => { setMeuPapel(null); setPage(1) }}
+            className="accent-slate-700"
+          />
+          <span className="text-xs text-slate-600">Todos</span>
+        </label>
+        {PAPEL_OPTIONS.filter(o => o.tipos.includes(filtroTipo)).map(o => (
+          <label key={o.value} className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="meuPapel"
+              checked={meuPapel === o.value}
+              onChange={() => { setMeuPapel(o.value); setPage(1) }}
+              className="accent-slate-700"
+            />
+            <span className="text-xs text-slate-600">{o.label}</span>
+          </label>
         ))}
       </div>
 
