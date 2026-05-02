@@ -235,9 +235,9 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
                 <BookOpen size={15} />
                 {show && 'Normas'}
               </NavLink>
-              <NavLink to="/emails-padrao-nc" className={navItemClass} onClick={handleNav} title={compact ? 'Emails NC' : undefined}>
+              <NavLink to="/emails-padrao" className={navItemClass} onClick={handleNav} title={compact ? 'Emails Padrão' : undefined}>
                 <Mail size={15} />
-                {show && 'Emails NC'}
+                {show && 'Emails Padrão'}
               </NavLink>
             </>
           )}

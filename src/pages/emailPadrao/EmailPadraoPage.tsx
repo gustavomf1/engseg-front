@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEstabelecimentos, getEmpresasDoEstabelecimento } from '../../api/estabelecimento'
-import { getEmailsPadraoNc, createEmailPadraoNc, deleteEmailPadraoNc } from '../../api/emailPadraoNc'
+import { getEmailsPadrao, createEmailPadrao, deleteEmailPadrao, TipoEmailPadrao } from '../../api/emailPadrao'
 import { Mail, Plus, Trash2 } from 'lucide-react'
 import SearchableSelect from '../../components/SearchableSelect'
-import { Estabelecimento, Empresa, EmailPadraoNc } from '../../types'
+import { Estabelecimento, Empresa, EmailPadrao } from '../../types'
 
-export default function EmailPadraoNcPage() {
+const TIPOS: { value: TipoEmailPadrao; label: string }[] = [
+  { value: 'NC', label: 'Não Conformidade' },
+  { value: 'DESVIO', label: 'Desvio' },
+]
+
+export default function EmailPadraoPage() {
+  const [tipo, setTipo] = useState<TipoEmailPadrao>('NC')
   const [estabelecimentoId, setEstabelecimentoId] = useState('')
   const [empresaId, setEmpresaId] = useState('')
   const [novoEmail, setNovoEmail] = useState('')
@@ -25,36 +31,34 @@ export default function EmailPadraoNcPage() {
   })
 
   const { data: emails = [], isLoading } = useQuery({
-    queryKey: ['emails-padrao-nc', estabelecimentoId, empresaId],
-    queryFn: () => getEmailsPadraoNc(estabelecimentoId, empresaId),
+    queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId],
+    queryFn: () => getEmailsPadrao(estabelecimentoId, empresaId, tipo),
     enabled: !!estabelecimentoId && !!empresaId,
   })
 
   const criarMutation = useMutation({
     mutationFn: () =>
-      createEmailPadraoNc({
+      createEmailPadrao({
         estabelecimentoId,
         empresaId,
         email: novoEmail.trim(),
         descricao: novaDescricao.trim() || undefined,
+        tipo,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['emails-padrao-nc', estabelecimentoId, empresaId] })
+      queryClient.invalidateQueries({ queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId] })
       setNovoEmail('')
       setNovaDescricao('')
     },
   })
 
   const removerMutation = useMutation({
-    mutationFn: (id: string) => deleteEmailPadraoNc(id),
+    mutationFn: (id: string) => deleteEmailPadrao(id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['emails-padrao-nc', estabelecimentoId, empresaId] }),
+      queryClient.invalidateQueries({ queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId] }),
   })
 
-  const estOptions = (estabelecimentos as Estabelecimento[]).map(e => ({
-    id: e.id,
-    label: e.nome,
-  }))
+  const estOptions = (estabelecimentos as Estabelecimento[]).map(e => ({ id: e.id, label: e.nome }))
   const empOptions = (empresas as Empresa[]).map(e => ({
     id: e.id,
     label: e.nomeFantasia || e.razaoSocial,
@@ -67,11 +71,28 @@ export default function EmailPadraoNcPage() {
     <div className="max-w-3xl">
       <div className="flex items-center gap-3 mb-2">
         <Mail size={22} className="text-slate-600" />
-        <h2 className="text-2xl font-bold text-slate-800">Emails Padrão — NC</h2>
+        <h2 className="text-2xl font-bold text-slate-800">Emails Padrão</h2>
       </div>
       <p className="text-sm text-slate-500 mb-6">
         Destinatários padrão de notificação por email por (estabelecimento + empresa contratada).
       </p>
+
+      {/* Tabs NC / Desvio */}
+      <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+        {TIPOS.map(t => (
+          <button
+            key={t.value}
+            onClick={() => setTipo(t.value)}
+            className={`px-4 py-2 text-sm rounded-md font-medium transition ${
+              tipo === t.value
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-4">Selecionar escopo</h3>
@@ -81,10 +102,7 @@ export default function EmailPadraoNcPage() {
             <SearchableSelect
               options={estOptions}
               value={estabelecimentoId}
-              onChange={v => {
-                setEstabelecimentoId(v)
-                setEmpresaId('')
-              }}
+              onChange={v => { setEstabelecimentoId(v); setEmpresaId('') }}
               placeholder="Selecione..."
             />
           </div>
@@ -133,16 +151,16 @@ export default function EmailPadraoNcPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="text-sm font-semibold text-slate-700">
-                Emails cadastrados {isLoading ? '...' : `(${(emails as EmailPadraoNc[]).length})`}
+                Emails cadastrados {isLoading ? '...' : `(${(emails as EmailPadrao[]).length})`}
               </h3>
             </div>
-            {!isLoading && (emails as EmailPadraoNc[]).length === 0 ? (
+            {!isLoading && (emails as EmailPadrao[]).length === 0 ? (
               <div className="px-6 py-8 text-center text-slate-400 text-sm">
                 Nenhum email padrão cadastrado para este par.
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {(emails as EmailPadraoNc[]).map(e => (
+                {(emails as EmailPadrao[]).map(e => (
                   <li key={e.id} className="flex items-center justify-between px-6 py-3">
                     <div>
                       <span className="text-sm text-slate-800">{e.email}</span>
