@@ -38,6 +38,8 @@ export default function DesvioDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
       setObservacao('')
       setArquivo(null)
+      setEmailsManuaisSubmeter([])
+      setNovoEmailSubmeter('')
     },
     onError: (err) => {
       console.error('Erro ao submeter tratativa:', err)
@@ -48,7 +50,11 @@ export default function DesvioDetailPage() {
     mutationFn: () => aprovarDesvio(desvio!.id, {
       emailsManuais: emailsManuaisAprovar.length > 0 ? emailsManuaisAprovar : undefined,
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['desvio', id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['desvio', id] })
+      setEmailsManuaisAprovar([])
+      setNovoEmailAprovar('')
+    },
   })
 
   const reprovarMutation = useMutation({
@@ -60,6 +66,8 @@ export default function DesvioDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
       setShowReprovarModal(false)
       setMotivoReprovacao('')
+      setEmailsManuaisReprovar([])
+      setNovoEmailReprovar('')
     },
   })
 
