@@ -248,14 +248,16 @@ export default function TrativaDetailPage() {
     ...(nc?.reincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: false })),
   ]
 
-  const showInvestigacaoForm = !isDesvio && (nc?.status === 'ABERTA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && isExterno
+  const showInvestigacaoForm = !isDesvio && nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && isExterno
   const showAguardandoAprovacaoPlano = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isExterno
   const showAprovacaoPlanoForm = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isEngenheiro
   const showExecucaoForm = !isDesvio && nc?.status === 'EM_EXECUCAO' && isExterno
   const showEngenheiroAguardaExecucao = !isDesvio && nc?.status === 'EM_EXECUCAO' && isEngenheiro
   const showAguardandoValidacaoFinal = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isExterno
   const showAprovacaoEvidenciasForm = !isDesvio && nc?.status === 'AGUARDANDO_VALIDACAO_FINAL' && isEngenheiro
-  const showAbertaEngenheiro = !isDesvio && nc?.status === 'ABERTA' && isEngenheiro
+  const showAbertaEngenheiro = false
+  const showNcAguardandoAtivacao = !isDesvio && nc?.status === 'ABERTA'
+  const showDesvioAberto = isDesvio && desvio?.status === 'ABERTO'
 
   const investigacaoValida = porques.every(p => p.pergunta.trim() && p.resposta.trim()) && causaRaiz.trim() && atividades.some(a => a.titulo.trim() && a.descricao.trim())
 
@@ -385,12 +387,10 @@ export default function TrativaDetailPage() {
                   </p>
                 </div>
               )}
-              {isDesvio && desvio?.orientacaoRealizada && (
-                <div className="col-span-2">
-                  <p className="text-xs text-slate-400 mb-1">Orientação Realizada</p>
-                  <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words">{desvio.orientacaoRealizada}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-xs text-slate-400 mb-1">ID</p>
+                <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{id?.substring(0, 8)}…</p>
+              </div>
               <div className="col-span-2">
                 <p className="text-xs text-slate-400 mb-1">Descrição</p>
                 <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words overflow-hidden">{(ocorrencia as any).descricao}</p>
@@ -915,7 +915,17 @@ export default function TrativaDetailPage() {
 
       {/* ═══ ÁREA DE AÇÃO ═══ */}
 
-      {isDesvio && desvio && (!isTecnico || desvio.responsavelTratativaId === user?.id) && (
+      {showDesvioAberto && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex items-center gap-4">
+          <Clock size={32} className="text-blue-400 shrink-0" />
+          <div>
+            <div className="font-bold text-blue-800 text-base">Desvio ainda não enviado para tratativa</div>
+            <div className="text-sm text-blue-600 mt-0.5">O criador do desvio precisa confirmar o envio para tratativa antes que ações possam ser realizadas aqui.</div>
+          </div>
+        </div>
+      )}
+
+      {isDesvio && desvio && desvio.status !== 'ABERTO' && (!isTecnico || desvio.responsavelTratativaId === user?.id) && (
         <DesvioTrativaSection
           desvio={desvio}
           onUpdated={() => {
@@ -925,12 +935,12 @@ export default function TrativaDetailPage() {
         />
       )}
 
-      {showAbertaEngenheiro && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-center gap-4">
-          <Clock size={32} className="text-amber-500 shrink-0" />
+      {showNcAguardandoAtivacao && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex items-center gap-4">
+          <Clock size={32} className="text-blue-400 shrink-0" />
           <div>
-            <div className="font-bold text-amber-800 text-base">Aguardando Investigação</div>
-            <div className="text-sm text-amber-600 mt-0.5">O responsável da empresa contratada deve preencher os 5 Porquês e o plano de atividades.</div>
+            <div className="font-bold text-blue-800 text-base">NC aguardando envio para plano de ação</div>
+            <div className="text-sm text-blue-600 mt-0.5">O criador da NC precisa confirmar o envio para plano de ação antes que o formulário de investigação fique disponível.</div>
           </div>
         </div>
       )}

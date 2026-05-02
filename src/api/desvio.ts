@@ -69,3 +69,8 @@ export const reprovarDesvio = async (
   const res = await client.post<Desvio>(`/desvios/${id}/reprovar`, data)
   return res.data
 }
+
+export const abrirTratativaDesvio = async (id: string): Promise<Desvio> => {
+  const res = await client.post<Desvio>(`/desvios/${id}/abrir-tratativa`)
+  return res.data
+}

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getDesvio, submeterTrativaDesvio, aprovarDesvio, reprovarDesvio } from '../../api/desvio'
+import { getDesvio, submeterTrativaDesvio, aprovarDesvio, reprovarDesvio, abrirTratativaDesvio, deleteDesvio } from '../../api/desvio'
 import { uploadEvidenciaDesvio } from '../../api/evidencia'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
-import { ArrowLeft, Shield, CheckCircle, XCircle, Clock, Upload } from 'lucide-react'
+import { ArrowLeft, Shield, CheckCircle, XCircle, Clock, Upload, Pencil, Trash2 } from 'lucide-react'
 import { formatDateTime } from '../../utils/date'
 
 export default function DesvioDetailPage() {
@@ -18,6 +18,7 @@ export default function DesvioDetailPage() {
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [motivoReprovacao, setMotivoReprovacao] = useState('')
   const [showReprovarModal, setShowReprovarModal] = useState(false)
+  const [showAbrirTratativaModal, setShowAbrirTratativaModal] = useState(false)
   const [emailsManuaisSubmeter, setEmailsManuaisSubmeter] = useState<string[]>([])
   const [emailsManuaisAprovar, setEmailsManuaisAprovar] = useState<string[]>([])
   const [emailsManuaisReprovar, setEmailsManuaisReprovar] = useState<string[]>([])
@@ -57,6 +58,19 @@ export default function DesvioDetailPage() {
     },
   })
 
+  const abrirTrativaMutation = useMutation({
+    mutationFn: () => abrirTratativaDesvio(desvio!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['desvio', id] })
+      setShowAbrirTratativaModal(false)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteDesvio(desvio!.id),
+    onSuccess: () => navigate('/ocorrencias'),
+  })
+
   const reprovarMutation = useMutation({
     mutationFn: () => reprovarDesvio(desvio!.id, {
       itens: [],
@@ -82,6 +96,8 @@ export default function DesvioDetailPage() {
   const isResponsavelTratativa = user?.id === desvio.responsavelTratativaId
   const isResponsavelDesvio = user?.id === desvio.responsavelDesvioId
   const isAdmin = user?.isAdmin
+  const isCriador = user?.id === desvio.usuarioCriacaoId && user?.perfil !== 'EXTERNO'
+  const podeEditarExcluir = desvio.status === 'ABERTO' && (isCriador || !!isAdmin)
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -90,7 +106,7 @@ export default function DesvioDetailPage() {
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1 flex items-center gap-3">
+        <div className="flex-1 flex items-center gap-3 flex-wrap">
           <h2 className="text-2xl font-bold text-slate-800">Desvio</h2>
           <StatusBadge status={desvio.status} type="desvio" />
           {desvio.regraDeOuro && (
@@ -100,6 +116,22 @@ export default function DesvioDetailPage() {
             </span>
           )}
         </div>
+        {podeEditarExcluir && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/ocorrencias/DESVIO/${desvio.id}/editar`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <Pencil size={14} /> Editar
+            </button>
+            <button
+              onClick={() => { if (window.confirm('Tem certeza que deseja excluir este desvio?')) deleteMutation.mutate() }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition"
+            >
+              <Trash2 size={14} /> Excluir
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Dados gerais */}
@@ -145,6 +177,23 @@ export default function DesvioDetailPage() {
       {/* Seção de Tratativa */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-base font-semibold text-slate-800 mb-4">Tratativa</h3>
+
+        {desvio.status === 'ABERTO' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-blue-700 bg-blue-50 rounded-lg p-4 text-sm">
+              <Clock size={16} className="shrink-0" />
+              <span>Desvio registrado e aguardando envio para tratativa.</span>
+            </div>
+            {(isCriador || isAdmin) && (
+              <button
+                onClick={() => setShowAbrirTratativaModal(true)}
+                className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-700 transition"
+              >
+                Enviar para Tratativa →
+              </button>
+            )}
+          </div>
+        )}
 
         {desvio.status === 'AGUARDANDO_TRATATIVA' && (
           <>
@@ -376,6 +425,38 @@ export default function DesvioDetailPage() {
                   )}
                 </div>
               ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Enviar para Tratativa */}
+      {showAbrirTratativaModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-semibold text-slate-800">Enviar para Tratativa</h3>
+            <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1">
+              <p><span className="text-slate-500">Título:</span> <strong>{desvio.titulo}</strong></p>
+              <p><span className="text-slate-500">Responsável pelo Desvio:</span> {desvio.responsavelDesvioNome}</p>
+              <p><span className="text-slate-500">Responsável pela Tratativa:</span> {desvio.responsavelTrativaNome}</p>
+            </div>
+            <p className="text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
+              Após confirmar, <strong>não será possível editar</strong> os dados do desvio.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowAbrirTratativaModal(false)}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => abrirTrativaMutation.mutate()}
+                disabled={abrirTrativaMutation.isPending}
+                className="bg-slate-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 transition"
+              >
+                {abrirTrativaMutation.isPending ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

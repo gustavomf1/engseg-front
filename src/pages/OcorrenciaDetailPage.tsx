@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDesvio, updateDesvio, deleteDesvio } from '../api/desvio'
-import { getNaoConformidade, updateNaoConformidade, deleteNaoConformidade } from '../api/naoConformidade'
+import { getDesvio, updateDesvio, deleteDesvio, abrirTratativaDesvio } from '../api/desvio'
+import { getNaoConformidade, updateNaoConformidade, deleteNaoConformidade, ativarNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade, Norma } from '../types'
+import StatusBadge from '../components/StatusBadge'
 import { getTrechosNorma } from '../api/ncTrechoNorma'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
@@ -74,6 +75,7 @@ export default function OcorrenciaDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showAvancarModal, setShowAvancarModal] = useState(false)
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -127,6 +129,12 @@ export default function OcorrenciaDetailPage() {
     .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
   const ocorrencia = isDesvio ? desvio : nc
+  const statusAtual = isDesvio ? desvio?.status : nc?.status
+  const isAberto = isDesvio ? statusAtual === 'ABERTO' : statusAtual === 'ABERTA'
+  const usuarioCriacaoId = (ocorrencia as any)?.usuarioCriacaoId
+  const isCriador = user?.id === usuarioCriacaoId && user?.perfil !== 'EXTERNO'
+  const podeAvancar = isAberto && (isCriador || isAdmin)
+  const podeEditarExcluir = isAberto ? (isCriador || isAdmin) : isAdmin
 
   useEffect(() => {
     if (desvio && isDesvio) {
@@ -199,6 +207,15 @@ export default function OcorrenciaDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
       navigate('/ocorrencias')
+    },
+  })
+
+  const avancarMutation = useMutation<void, Error, void>({
+    mutationFn: () => isDesvio ? abrirTratativaDesvio(id!) as any : ativarNaoConformidade(id!) as any,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [isDesvio ? 'desvio' : 'nc', id] })
+      queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
+      setShowAvancarModal(false)
     },
   })
 
@@ -324,12 +341,16 @@ export default function OcorrenciaDetailPage() {
               </button>
             )}
 
+            {podeAvancar && !editando && (
+              <button onClick={() => setShowAvancarModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition">
+                <ChevronRight size={15} /> {isDesvio ? 'Enviar para Tratativa' : 'Enviar para Plano de Ação'}
+              </button>
+            )}
+
             {(() => {
-              const ncEmTratamento = !isDesvio && nc && nc.status !== 'ABERTA'
-              const bloqueado = isTecnico && ncEmTratamento
-              if (bloqueado) return null
-              const isConcluido = isDesvio ? desvio?.status === 'CONCLUIDO' : nc?.status === 'CONCLUIDO'
-              const podeExcluir = !isConcluido || isAdmin
+              if (!podeEditarExcluir) return null
+              const isConcluido = statusAtual === 'CONCLUIDO'
               return editando ? (
                 <>
                   <button onClick={() => setEditando(false)}
@@ -343,7 +364,7 @@ export default function OcorrenciaDetailPage() {
                 </>
               ) : (
                 <>
-                  {podeExcluir && (
+                  {!isConcluido && (
                     <button onClick={() => setConfirmDelete(true)}
                       className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition">
                       <Trash2 size={15} /> Excluir
@@ -377,11 +398,13 @@ export default function OcorrenciaDetailPage() {
                 <RefreshCw size={12} /> Reincidência
               </span>
             )}
-            {isDesvio
-              ? <span className="text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-700">Concluído</span>
-              : <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusNCMap[nc!.status]?.color}`}>
-                  {statusNCMap[nc!.status]?.label}
-                </span>
+            {isDesvio && desvio
+              ? <StatusBadge status={desvio.status} type="desvio" />
+              : !isDesvio && nc && (
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusNCMap[nc.status]?.color}`}>
+                    {statusNCMap[nc.status]?.label}
+                  </span>
+                )
             }
             {!isDesvio && nc?.vencida && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Vencida</span>
@@ -778,6 +801,38 @@ export default function OcorrenciaDetailPage() {
           </div>)}
         </div>
       </div>
+
+      {/* Modal — Avançar status */}
+      {showAvancarModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAvancarModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">
+                {isDesvio ? 'Enviar para Tratativa' : 'Enviar para Plano de Ação'}
+              </h3>
+              <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1">
+                <p><span className="text-slate-500">Título:</span> <strong>{(ocorrencia as any)?.titulo}</strong></p>
+                <p><span className="text-slate-500">Estabelecimento:</span> {(ocorrencia as any)?.estabelecimentoNome}</p>
+              </div>
+              <p className="text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
+                Após confirmar, <strong>não será possível editar</strong> os dados desta {isDesvio ? 'ocorrência' : 'NC'}.
+              </p>
+              {avancarMutation.isError && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
+                  Erro: {avancarMutation.error?.message || 'Tente novamente.'}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <button onClick={() => setShowAvancarModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+              <button onClick={() => avancarMutation.mutate()} disabled={avancarMutation.isPending}
+                className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-60 transition">
+                {avancarMutation.isPending ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal confirmação de exclusão */}
       {confirmDelete && (

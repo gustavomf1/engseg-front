@@ -89,3 +89,8 @@ export const getHistorico = async (id: string): Promise<HistoricoNcResponse[]> =
   const res = await client.get<HistoricoNcResponse[]>(`/nao-conformidades/${id}/historico`)
   return res.data
 }
+
+export const ativarNaoConformidade = async (id: string): Promise<NaoConformidade> => {
+  const res = await client.post<NaoConformidade>(`/nao-conformidades/${id}/ativar`)
+  return res.data
+}

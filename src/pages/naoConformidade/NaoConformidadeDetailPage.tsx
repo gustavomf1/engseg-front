@@ -12,6 +12,8 @@ import {
   aprovarEvidencias,
   rejeitarEvidencias,
   submeterInvestigacao,
+  ativarNaoConformidade,
+  deleteNaoConformidade,
 } from '../../api/naoConformidade'
 import type {
   InvestigacaoRequest,
@@ -24,7 +26,7 @@ import { getTrechosNorma } from '../../api/ncTrechoNorma'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusBadge from '../../components/StatusBadge'
 import RiscoBadge from '../../components/RiscoBadge'
-import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Clock, FileText, Shield, RefreshCw, History, Search, BookOpen, Trash2, ChevronDown, Pencil } from 'lucide-react'
 import EvidenciaUpload from '../../components/EvidenciaUpload'
 import BuscaTrechoModal from '../../components/BuscaTrechoModal'
 import { formatDate, formatDateTime } from '../../utils/date'
@@ -59,6 +61,7 @@ export default function NaoConformidadeDetailPage() {
   const queryClient = useQueryClient()
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const [historicoAberto, setHistoricoAberto] = useState(false)
+  const [showAtivarModal, setShowAtivarModal] = useState(false)
   const [emailManualInput, setEmailManualInput] = useState('')
   const [emailsManuaisAcao, setEmailsManuaisAcao] = useState<string[]>([])
 
@@ -161,8 +164,24 @@ export default function NaoConformidadeDetailPage() {
     },
   })
 
+  const ativarMutation = useMutation({
+    mutationFn: () => ativarNaoConformidade(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nao-conformidade', id] })
+      setShowAtivarModal(false)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteNaoConformidade(id!),
+    onSuccess: () => navigate('/ocorrencias'),
+  })
+
   if (isLoading) return <div className="text-slate-400 py-8 text-center">Carregando...</div>
   if (!nc) return <div className="text-red-500 py-8 text-center">NC não encontrada</div>
+
+  const isCriadorNc = user?.id === nc.usuarioCriacaoId && user?.perfil !== 'EXTERNO'
+  const podeEditarExcluirNc = nc.status === 'ABERTA' && (isCriadorNc || !!user?.isAdmin)
 
   const EmailManualSection = (
     <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
@@ -226,7 +245,7 @@ export default function NaoConformidadeDetailPage() {
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
@@ -251,6 +270,22 @@ export default function NaoConformidadeDetailPage() {
             )}
           </div>
         </div>
+        {podeEditarExcluirNc && (
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => navigate(`/ocorrencias/NAO_CONFORMIDADE/${nc.id}/editar`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <Pencil size={14} /> Editar
+            </button>
+            <button
+              onClick={() => { if (window.confirm('Tem certeza que deseja excluir esta NC?')) deleteMutation.mutate() }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition"
+            >
+              <Trash2 size={14} /> Excluir
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Informações gerais */}
@@ -499,23 +534,51 @@ export default function NaoConformidadeDetailPage() {
         </div>
       )}
 
-      {/* Ações — submeter investigação */}
-      {nc.status === 'ABERTA' && user?.perfil === 'ENGENHEIRO' && (
+      {/* Ações — ativar NC (ABERTA → AGUARDANDO_APROVACAO_PLANO) */}
+      {nc.status === 'ABERTA' && (isCriadorNc || user?.isAdmin) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-          <h3 className="font-semibold text-slate-700 mb-3">Submeter Investigação</h3>
-          {EmailManualSection}
+          <h3 className="font-semibold text-slate-700 mb-3">Enviar para Plano de Ação</h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Após confirmar, a NC avança para o fluxo de investigação e plano de ação. Não será possível editar os dados cadastrais.
+          </p>
           <button
             type="button"
-            disabled={submeterInvestigacaoMutation.isPending}
-            onClick={() => submeterInvestigacaoMutation.mutate({
-              porques: [],
-              causaRaiz: '',
-              atividades: [],
-            })}
-            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            onClick={() => setShowAtivarModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
           >
-            {submeterInvestigacaoMutation.isPending ? 'Enviando...' : 'Submeter Investigação'}
+            Enviar para Plano de Ação →
           </button>
+        </div>
+      )}
+
+      {/* Modal — Ativar NC */}
+      {showAtivarModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-semibold text-slate-800">Confirmar Envio para Plano de Ação</h3>
+            <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1">
+              <p><span className="text-slate-500">NC:</span> <strong>{nc.titulo}</strong></p>
+              <p><span className="text-slate-500">Estabelecimento:</span> {nc.estabelecimentoNome}</p>
+            </div>
+            <p className="text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
+              Após confirmar, <strong>não será possível editar</strong> os dados da NC.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowAtivarModal(false)}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => ativarMutation.mutate()}
+                disabled={ativarMutation.isPending}
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+              >
+                {ativarMutation.isPending ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

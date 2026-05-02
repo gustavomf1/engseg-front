@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEstabelecimentos, getEmpresasDoEstabelecimento } from '../../api/estabelecimento'
-import { getEmailsPadrao, createEmailPadrao, deleteEmailPadrao, TipoEmailPadrao } from '../../api/emailPadrao'
+import { getEmailsPadrao, createEmailPadrao, deleteEmailPadrao } from '../../api/emailPadrao'
 import { Mail, Plus, Trash2 } from 'lucide-react'
 import SearchableSelect from '../../components/SearchableSelect'
 import { Estabelecimento, Empresa, EmailPadrao } from '../../types'
 
-const TIPOS: { value: TipoEmailPadrao; label: string }[] = [
-  { value: 'NC', label: 'Não Conformidade' },
-  { value: 'DESVIO', label: 'Desvio' },
-]
-
 export default function EmailPadraoPage() {
-  const [tipo, setTipo] = useState<TipoEmailPadrao>('NC')
   const [estabelecimentoId, setEstabelecimentoId] = useState('')
   const [empresaId, setEmpresaId] = useState('')
   const [novoEmail, setNovoEmail] = useState('')
@@ -31,8 +25,8 @@ export default function EmailPadraoPage() {
   })
 
   const { data: emails = [], isLoading } = useQuery<EmailPadrao[]>({
-    queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId],
-    queryFn: () => getEmailsPadrao(estabelecimentoId, empresaId, tipo),
+    queryKey: ['emails-padrao', estabelecimentoId, empresaId],
+    queryFn: () => getEmailsPadrao(estabelecimentoId, empresaId),
     enabled: !!estabelecimentoId && !!empresaId,
   })
 
@@ -43,10 +37,9 @@ export default function EmailPadraoPage() {
         empresaId,
         email: novoEmail.trim(),
         descricao: novaDescricao.trim() || undefined,
-        tipo,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId] })
+      queryClient.invalidateQueries({ queryKey: ['emails-padrao', estabelecimentoId, empresaId] })
       setNovoEmail('')
       setNovaDescricao('')
     },
@@ -55,7 +48,7 @@ export default function EmailPadraoPage() {
   const removerMutation = useMutation({
     mutationFn: (id: string) => deleteEmailPadrao(id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId] }),
+      queryClient.invalidateQueries({ queryKey: ['emails-padrao', estabelecimentoId, empresaId] }),
   })
 
   const estOptions = estabelecimentos.map(e => ({ id: e.id, label: e.nome }))
@@ -76,27 +69,6 @@ export default function EmailPadraoPage() {
       <p className="text-sm text-slate-500 mb-6">
         Destinatários padrão de notificação por email por (estabelecimento + empresa contratada).
       </p>
-
-      {/* Tabs NC / Desvio */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
-        {TIPOS.map(t => (
-          <button
-            key={t.value}
-            onClick={() => {
-              setTipo(t.value)
-              setNovoEmail('')
-              setNovaDescricao('')
-            }}
-            className={`px-4 py-2 text-sm rounded-md font-medium transition ${
-              tipo === t.value
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-4">Selecionar escopo</h3>

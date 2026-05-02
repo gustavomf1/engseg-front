@@ -23,6 +23,7 @@ const ncLabels: Record<StatusNaoConformidade, string> = {
 }
 
 const desvioColors: Record<StatusDesvio, string> = {
+  ABERTO: 'bg-slate-100 text-slate-800',
   AGUARDANDO_TRATATIVA: 'bg-orange-100 text-orange-800',
   AGUARDANDO_APROVACAO: 'bg-blue-100 text-blue-800',
   CONCLUIDO: 'bg-green-100 text-green-800',
@@ -30,6 +31,7 @@ const desvioColors: Record<StatusDesvio, string> = {
 }
 
 const desvioLabels: Record<StatusDesvio, string> = {
+  ABERTO: 'Aberto',
   AGUARDANDO_TRATATIVA: 'Aguard. Tratativa',
   AGUARDANDO_APROVACAO: 'Aguard. Aprovação',
   CONCLUIDO: 'Concluído',

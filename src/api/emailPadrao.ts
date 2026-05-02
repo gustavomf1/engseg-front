@@ -1,15 +1,12 @@
 import client from './client'
 import { EmailPadrao, EmailPadraoRequest } from '../types'
 
-export type TipoEmailPadrao = 'NC' | 'DESVIO'
-
 export const getEmailsPadrao = async (
   estabelecimentoId: string,
-  empresaId: string,
-  tipo: TipoEmailPadrao
+  empresaId: string
 ): Promise<EmailPadrao[]> => {
   const res = await client.get<EmailPadrao[]>('/emails-padrao', {
-    params: { estabelecimentoId, empresaId, tipo },
+    params: { estabelecimentoId, empresaId },
   })
   return res.data
 }

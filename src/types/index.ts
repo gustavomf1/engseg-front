@@ -19,6 +19,7 @@ export type TipoAcaoHistorico =
   | 'APROVACAO_EVIDENCIAS'
   | 'REJEICAO_EVIDENCIAS'
 export type StatusDesvio =
+  | 'ABERTO'
   | 'AGUARDANDO_TRATATIVA'
   | 'AGUARDANDO_APROVACAO'
   | 'CONCLUIDO'
@@ -254,6 +255,7 @@ export interface NaoConformidade {
   dataLimiteResolucao: string
   usuarioCriacaoNome?: string
   usuarioCriacaoEmail?: string
+  usuarioCriacaoId?: string
   status: StatusNaoConformidade
   vencida: boolean
   reincidencia: boolean
@@ -382,6 +384,7 @@ export interface Desvio {
   tecnicoNome?: string
   usuarioCriacaoNome?: string
   usuarioCriacaoEmail?: string
+  usuarioCriacaoId?: string
   regraDeOuro: boolean
   orientacaoRealizada: string
   status: StatusDesvio
@@ -494,7 +497,6 @@ export interface EmailPadrao {
   empresaNome: string
   email: string
   descricao?: string
-  tipo: 'NC' | 'DESVIO'
 }
 
 export interface EmailPadraoRequest {
@@ -502,7 +504,6 @@ export interface EmailPadraoRequest {
   empresaId: string
   email: string
   descricao?: string
-  tipo: 'NC' | 'DESVIO'
 }
 
 export interface SubmeterTrativaDesvioRequest {
