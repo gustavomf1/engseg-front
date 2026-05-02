@@ -19,18 +19,18 @@ export default function EmailPadraoPage() {
   const [novaDescricao, setNovaDescricao] = useState('')
   const queryClient = useQueryClient()
 
-  const { data: estabelecimentos = [] } = useQuery({
+  const { data: estabelecimentos = [] } = useQuery<Estabelecimento[]>({
     queryKey: ['estabelecimentos'],
     queryFn: () => getEstabelecimentos(true),
   })
 
-  const { data: empresas = [] } = useQuery({
+  const { data: empresas = [] } = useQuery<Empresa[]>({
     queryKey: ['empresas-estabelecimento', estabelecimentoId],
     queryFn: () => getEmpresasDoEstabelecimento(estabelecimentoId),
     enabled: !!estabelecimentoId,
   })
 
-  const { data: emails = [], isLoading } = useQuery({
+  const { data: emails = [], isLoading } = useQuery<EmailPadrao[]>({
     queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId],
     queryFn: () => getEmailsPadrao(estabelecimentoId, empresaId, tipo),
     enabled: !!estabelecimentoId && !!empresaId,
@@ -58,8 +58,8 @@ export default function EmailPadraoPage() {
       queryClient.invalidateQueries({ queryKey: ['emails-padrao', tipo, estabelecimentoId, empresaId] }),
   })
 
-  const estOptions = (estabelecimentos as Estabelecimento[]).map(e => ({ id: e.id, label: e.nome }))
-  const empOptions = (empresas as Empresa[]).map(e => ({
+  const estOptions = estabelecimentos.map(e => ({ id: e.id, label: e.nome }))
+  const empOptions = empresas.map(e => ({
     id: e.id,
     label: e.nomeFantasia || e.razaoSocial,
   }))
@@ -82,7 +82,11 @@ export default function EmailPadraoPage() {
         {TIPOS.map(t => (
           <button
             key={t.value}
-            onClick={() => setTipo(t.value)}
+            onClick={() => {
+              setTipo(t.value)
+              setNovoEmail('')
+              setNovaDescricao('')
+            }}
             className={`px-4 py-2 text-sm rounded-md font-medium transition ${
               tipo === t.value
                 ? 'bg-white text-slate-800 shadow-sm'
@@ -151,16 +155,16 @@ export default function EmailPadraoPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="text-sm font-semibold text-slate-700">
-                Emails cadastrados {isLoading ? '...' : `(${(emails as EmailPadrao[]).length})`}
+                Emails cadastrados {isLoading ? '...' : `(${emails.length})`}
               </h3>
             </div>
-            {!isLoading && (emails as EmailPadrao[]).length === 0 ? (
+            {!isLoading && emails.length === 0 ? (
               <div className="px-6 py-8 text-center text-slate-400 text-sm">
                 Nenhum email padrão cadastrado para este par.
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {(emails as EmailPadrao[]).map(e => (
+                {emails.map(e => (
                   <li key={e.id} className="flex items-center justify-between px-6 py-3">
                     <div>
                       <span className="text-sm text-slate-800">{e.email}</span>
