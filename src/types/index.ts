@@ -484,7 +484,7 @@ export interface RejeitarRequest {
   emailsManuais?: string[]
 }
 
-export interface EmailPadraoNc {
+export interface EmailPadrao {
   id: string
   estabelecimentoId: string
   estabelecimentoNome: string
@@ -492,11 +492,17 @@ export interface EmailPadraoNc {
   empresaNome: string
   email: string
   descricao?: string
+  tipo: 'NC' | 'DESVIO'
 }
 
-export interface EmailPadraoNcRequest {
+export interface EmailPadraoRequest {
   estabelecimentoId: string
   empresaId: string
   email: string
   descricao?: string
+  tipo: 'NC' | 'DESVIO'
+}
+
+export interface SubmeterTrativaDesvioRequest {
+  emailsManuais?: string[]
 }
