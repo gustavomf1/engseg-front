@@ -46,8 +46,11 @@ export const removerTratativaDesvio = async (
   await client.delete(`/desvios/${desvioId}/tratativas/${trativaId}`)
 }
 
-export const submeterTrativaDesvio = async (desvioId: string): Promise<Desvio> => {
-  const res = await client.post<Desvio>(`/desvios/${desvioId}/submeter-tratativa`)
+export const submeterTrativaDesvio = async (
+  desvioId: string,
+  data?: { emailsManuais?: string[] }
+): Promise<Desvio> => {
+  const res = await client.post<Desvio>(`/desvios/${desvioId}/submeter-tratativa`, data ?? {})
   return res.data
 }
 

@@ -18,6 +18,12 @@ export default function DesvioDetailPage() {
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [motivoReprovacao, setMotivoReprovacao] = useState('')
   const [showReprovarModal, setShowReprovarModal] = useState(false)
+  const [emailsManuaisSubmeter, setEmailsManuaisSubmeter] = useState<string[]>([])
+  const [emailsManuaisAprovar, setEmailsManuaisAprovar] = useState<string[]>([])
+  const [emailsManuaisReprovar, setEmailsManuaisReprovar] = useState<string[]>([])
+  const [novoEmailSubmeter, setNovoEmailSubmeter] = useState('')
+  const [novoEmailAprovar, setNovoEmailAprovar] = useState('')
+  const [novoEmailReprovar, setNovoEmailReprovar] = useState('')
 
   const { data: desvio, isLoading } = useQuery({
     queryKey: ['desvio', id],
@@ -26,9 +32,8 @@ export default function DesvioDetailPage() {
   })
 
   const submeterMutation = useMutation({
-    mutationFn: async () => {
-      return submeterTrativaDesvio(desvio!.id)
-    },
+    mutationFn: () => submeterTrativaDesvio(desvio!.id,
+      emailsManuaisSubmeter.length > 0 ? { emailsManuais: emailsManuaisSubmeter } : {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
       setObservacao('')
@@ -40,12 +45,17 @@ export default function DesvioDetailPage() {
   })
 
   const aprovarMutation = useMutation({
-    mutationFn: () => aprovarDesvio(desvio!.id, {}),
+    mutationFn: () => aprovarDesvio(desvio!.id, {
+      emailsManuais: emailsManuaisAprovar.length > 0 ? emailsManuaisAprovar : undefined,
+    }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['desvio', id] }),
   })
 
   const reprovarMutation = useMutation({
-    mutationFn: () => reprovarDesvio(desvio!.id, { itens: [] }),
+    mutationFn: () => reprovarDesvio(desvio!.id, {
+      itens: [],
+      emailsManuais: emailsManuaisReprovar.length > 0 ? emailsManuaisReprovar : undefined,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['desvio', id] })
       setShowReprovarModal(false)
@@ -166,6 +176,49 @@ export default function DesvioDetailPage() {
                     {(submeterMutation.error as Error).message}
                   </p>
                 )}
+                {/* Email manual — Submeter */}
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    placeholder="Email adicional (opcional)"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={novoEmailSubmeter}
+                    onChange={e => setNovoEmailSubmeter(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const em = novoEmailSubmeter.trim()
+                        if (em && !emailsManuaisSubmeter.includes(em)) {
+                          setEmailsManuaisSubmeter(prev => [...prev, em])
+                          setNovoEmailSubmeter('')
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const em = novoEmailSubmeter.trim()
+                      if (em && !emailsManuaisSubmeter.includes(em)) {
+                        setEmailsManuaisSubmeter(prev => [...prev, em])
+                        setNovoEmailSubmeter('')
+                      }
+                    }}
+                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
+                  >
+                    +
+                  </button>
+                </div>
+                {emailsManuaisSubmeter.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {emailsManuaisSubmeter.map(e => (
+                      <span key={e} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        {e}
+                        <button type="button" onClick={() => setEmailsManuaisSubmeter(prev => prev.filter(x => x !== e))} className="hover:text-red-500">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <button
                   onClick={() => submeterMutation.mutate()}
                   disabled={submeterMutation.isPending}
@@ -201,22 +254,67 @@ export default function DesvioDetailPage() {
             </div>
 
             {(isResponsavelDesvio || isAdmin) ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => aprovarMutation.mutate()}
-                  disabled={aprovarMutation.isPending}
-                  className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition"
-                >
-                  <CheckCircle size={16} />
-                  {aprovarMutation.isPending ? 'Aprovando...' : 'Aprovar'}
-                </button>
-                <button
-                  onClick={() => setShowReprovarModal(true)}
-                  className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition"
-                >
-                  <XCircle size={16} />
-                  Reprovar
-                </button>
+              <div className="space-y-2">
+                {/* Email manual — Aprovar */}
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    placeholder="Email adicional (opcional)"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={novoEmailAprovar}
+                    onChange={e => setNovoEmailAprovar(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const em = novoEmailAprovar.trim()
+                        if (em && !emailsManuaisAprovar.includes(em)) {
+                          setEmailsManuaisAprovar(prev => [...prev, em])
+                          setNovoEmailAprovar('')
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const em = novoEmailAprovar.trim()
+                      if (em && !emailsManuaisAprovar.includes(em)) {
+                        setEmailsManuaisAprovar(prev => [...prev, em])
+                        setNovoEmailAprovar('')
+                      }
+                    }}
+                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
+                  >
+                    +
+                  </button>
+                </div>
+                {emailsManuaisAprovar.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {emailsManuaisAprovar.map(e => (
+                      <span key={e} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        {e}
+                        <button type="button" onClick={() => setEmailsManuaisAprovar(prev => prev.filter(x => x !== e))} className="hover:text-red-500">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => aprovarMutation.mutate()}
+                    disabled={aprovarMutation.isPending}
+                    className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition"
+                  >
+                    <CheckCircle size={16} />
+                    {aprovarMutation.isPending ? 'Aprovando...' : 'Aprovar'}
+                  </button>
+                  <button
+                    onClick={() => setShowReprovarModal(true)}
+                    className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition"
+                  >
+                    <XCircle size={16} />
+                    Reprovar
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-indigo-700 bg-indigo-50 rounded-lg p-4 text-sm">
@@ -291,6 +389,49 @@ export default function DesvioDetailPage() {
                 className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
               />
             </div>
+            {/* Email manual — Reprovar */}
+            <div className="flex gap-2 mb-2">
+              <input
+                type="email"
+                placeholder="Email adicional (opcional)"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={novoEmailReprovar}
+                onChange={e => setNovoEmailReprovar(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const em = novoEmailReprovar.trim()
+                    if (em && !emailsManuaisReprovar.includes(em)) {
+                      setEmailsManuaisReprovar(prev => [...prev, em])
+                      setNovoEmailReprovar('')
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const em = novoEmailReprovar.trim()
+                  if (em && !emailsManuaisReprovar.includes(em)) {
+                    setEmailsManuaisReprovar(prev => [...prev, em])
+                    setNovoEmailReprovar('')
+                  }
+                }}
+                className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
+              >
+                +
+              </button>
+            </div>
+            {emailsManuaisReprovar.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {emailsManuaisReprovar.map(e => (
+                  <span key={e} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    {e}
+                    <button type="button" onClick={() => setEmailsManuaisReprovar(prev => prev.filter(x => x !== e))} className="hover:text-red-500">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => { setShowReprovarModal(false); setMotivoReprovacao('') }}

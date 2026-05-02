@@ -416,10 +416,12 @@ export interface AdicionarTrativaRequest {
 
 export interface ReprovarTrativasDesvioRequest {
   itens: { trativaId: string; motivo: string }[]
+  emailsManuais?: string[]
 }
 
 export interface AprovarDesvioRequest {
   comentario?: string
+  emailsManuais?: string[]
 }
 
 export interface ReprovarDesvioRequest {

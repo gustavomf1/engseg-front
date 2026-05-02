@@ -21,8 +21,8 @@ import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
 import { LABELS_SEVERIDADE, LABELS_PROBABILIDADE, calcularNivelRisco } from '../utils/matrizRisco'
 import RiscoBadge from '../components/RiscoBadge'
-import { getEmailsPadraoNc } from '../api/emailPadraoNc'
-import { EmailPadraoNc } from '../types'
+import { getEmailsPadrao } from '../api/emailPadrao'
+import { EmailPadrao } from '../types'
 
 interface TrechoPendente {
   normaId: string
@@ -136,12 +136,23 @@ export default function RegistroOcorrenciaPage() {
     enabled: tipo === 'NAO_CONFORMIDADE' && !!estabelecimentoEfetivo?.id,
   })
 
-  const { data: emailsPadraoNc = [] } = useQuery({
-    queryKey: ['emails-padrao-nc', estabelecimentoEfetivo?.id, empresaFilhaEfetiva?.id],
+  const { data: emailsPadraoNc = [] } = useQuery<EmailPadrao[]>({
+    queryKey: ['emails-padrao', 'NC', estabelecimentoEfetivo?.id, empresaFilhaEfetiva?.id],
     queryFn: () =>
-      getEmailsPadraoNc(estabelecimentoEfetivo!.id, empresaFilhaEfetiva!.id),
+      getEmailsPadrao(estabelecimentoEfetivo!.id, empresaFilhaEfetiva!.id, 'NC'),
     enabled:
       tipo === 'NAO_CONFORMIDADE' &&
+      !isEditing &&
+      !!estabelecimentoEfetivo?.id &&
+      !!empresaFilhaEfetiva?.id,
+  })
+
+  const { data: emailsPadraoDesvio = [] } = useQuery<EmailPadrao[]>({
+    queryKey: ['emails-padrao', 'DESVIO', estabelecimentoEfetivo?.id, empresaFilhaEfetiva?.id],
+    queryFn: () =>
+      getEmailsPadrao(estabelecimentoEfetivo!.id, empresaFilhaEfetiva!.id, 'DESVIO'),
+    enabled:
+      tipo === 'DESVIO' &&
       !isEditing &&
       !!estabelecimentoEfetivo?.id &&
       !!empresaFilhaEfetiva?.id,
@@ -257,6 +268,8 @@ export default function RegistroOcorrenciaPage() {
           orientacaoRealizada: data.descricao,
           responsavelDesvioId: data.responsavelDesvioId,
           responsavelTratativaId: data.responsavelTratativaId,
+          emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
+          emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
         }
         result = isEditing ? await updateDesvio(id!, req) : await createDesvio(req)
       } else {
@@ -793,7 +806,7 @@ export default function RegistroOcorrenciaPage() {
             </div>
           )}
 
-          {tipo === 'NAO_CONFORMIDADE' && !isEditing && (
+          {!isEditing && (
             <div className="border border-blue-100 bg-blue-50 rounded-xl p-5 mt-4">
               <h3 className="text-sm font-semibold text-blue-800 mb-4">
                 Destinatários do email de abertura
@@ -812,7 +825,7 @@ export default function RegistroOcorrenciaPage() {
                       <span className="text-slate-400 ml-1">(você)</span>
                     </li>
                   )}
-                  {watch('engResponsavelConstrutoraId') &&
+                  {tipo === 'NAO_CONFORMIDADE' && watch('engResponsavelConstrutoraId') &&
                     externos.find(u => u.id === watch('engResponsavelConstrutoraId')) && (
                       <li className="text-xs text-slate-700 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
@@ -820,7 +833,7 @@ export default function RegistroOcorrenciaPage() {
                         <span className="text-slate-400 ml-1">(Responsável pela tratativa)</span>
                       </li>
                     )}
-                  {watch('engResponsavelVerificacaoId') &&
+                  {tipo === 'NAO_CONFORMIDADE' && watch('engResponsavelVerificacaoId') &&
                     engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId')) && (
                       <li className="text-xs text-slate-700 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
@@ -846,13 +859,49 @@ export default function RegistroOcorrenciaPage() {
               </div>
 
               {/* Emails padrão — desmarcáveis */}
-              {(emailsPadraoNc as EmailPadraoNc[]).length > 0 && (
+              {emailsPadraoNc.length > 0 && (
                 <div className="mb-4">
                   <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
                     Padrão (desmarcáveis)
                   </p>
                   <ul className="space-y-1.5">
-                    {(emailsPadraoNc as EmailPadraoNc[]).map(ep => {
+                    {emailsPadraoNc.map(ep => {
+                      const excluido = emailsPadraoExcluidos.includes(ep.email)
+                      return (
+                        <li key={ep.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={!excluido}
+                            onChange={() =>
+                              setEmailsPadraoExcluidos(prev =>
+                                excluido
+                                  ? prev.filter(e => e !== ep.email)
+                                  : [...prev, ep.email]
+                              )
+                            }
+                            className="rounded"
+                          />
+                          <span className={`text-xs ${excluido ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                            {ep.email}
+                            {ep.descricao && (
+                              <span className="text-slate-400 ml-1">— {ep.descricao}</span>
+                            )}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Emails padrão Desvio — desmarcáveis */}
+              {emailsPadraoDesvio.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
+                    Padrão (desmarcáveis)
+                  </p>
+                  <ul className="space-y-1.5">
+                    {emailsPadraoDesvio.map(ep => {
                       const excluido = emailsPadraoExcluidos.includes(ep.email)
                       return (
                         <li key={ep.id} className="flex items-center gap-2">
