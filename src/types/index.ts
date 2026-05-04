@@ -409,6 +409,7 @@ export interface DesvioRequest {
   regraDeOuro: boolean
   responsavelDesvioId: string
   responsavelTratativaId: string
+  empresaContratadaId?: string
 }
 
 export interface AdicionarTrativaRequest {

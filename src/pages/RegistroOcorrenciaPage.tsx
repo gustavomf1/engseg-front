@@ -254,6 +254,7 @@ export default function RegistroOcorrenciaPage() {
           responsavelTratativaId: data.responsavelTratativaId,
           emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
           emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
+          empresaContratadaId: empresaFilha?.id,
         }
         result = isEditing ? await updateDesvio(id!, req) : await createDesvio(req)
       } else {
