@@ -95,7 +95,7 @@ export default function SeletorPage() {
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useQuery({
     queryKey: ['empresas-mae'],
-    queryFn: () => getEmpresasMae(true),
+    queryFn: () => getEmpresasMae(true, true),
   })
 
   const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos } = useQuery({

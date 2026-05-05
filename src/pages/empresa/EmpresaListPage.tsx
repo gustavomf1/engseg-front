@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getEmpresas, deleteEmpresa, reativarEmpresa } from '../../api/empresa'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RotateCcw, Building2, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, Building2, Search, Eye, EyeOff } from 'lucide-react'
 import { formatCnpj } from '../../utils/date'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Pagination from '../../components/Pagination'
 import { Empresa } from '../../types'
+import { toggleExibirNoSeletor } from '../../api/empresa'
 
 const PAGE_SIZES = [15, 25, 50, 100, 200]
 
@@ -57,6 +58,14 @@ export default function EmpresaListPage() {
 
   const reativarMutation = useMutation({
     mutationFn: reativarEmpresa,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] })
+      queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
+    },
+  })
+
+  const toggleSeletorMutation = useMutation({
+    mutationFn: toggleExibirNoSeletor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] })
       queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
@@ -127,6 +136,7 @@ export default function EmpresaListPage() {
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Tipo</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Empresa Mãe</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Workspace</th>
                   {user?.perfil === 'ENGENHEIRO' && (
                     <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>
                   )}
@@ -148,6 +158,25 @@ export default function EmpresaListPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${empresa.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {empresa.ativo ? 'Ativo' : 'Inativo'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {!empresa.empresaMaeId ? (
+                        <button
+                          onClick={() => user?.isAdmin && toggleSeletorMutation.mutate(empresa.id)}
+                          disabled={!user?.isAdmin || toggleSeletorMutation.isPending}
+                          title={empresa.exibirNoSeletor ? 'Visível no workspace — clique para ocultar' : 'Oculta no workspace — clique para exibir'}
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                            empresa.exibirNoSeletor
+                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                          } ${user?.isAdmin ? 'cursor-pointer' : 'cursor-default'}`}
+                        >
+                          {empresa.exibirNoSeletor ? <Eye size={11} /> : <EyeOff size={11} />}
+                          {empresa.exibirNoSeletor ? 'Visível' : 'Oculta'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
                     </td>
                     {user?.perfil === 'ENGENHEIRO' && (
                       <td className="px-4 py-3 text-right">

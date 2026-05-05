@@ -77,6 +77,7 @@ export interface Empresa {
   empresaMaeId?: string
   empresaMaeNome?: string
   ativo: boolean
+  exibirNoSeletor: boolean
   dtInativacao?: string
 }
 

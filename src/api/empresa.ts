@@ -7,9 +7,10 @@ export const getEmpresas = async (ativo?: boolean): Promise<Empresa[]> => {
   return res.data
 }
 
-export const getEmpresasMae = async (ativo?: boolean): Promise<Empresa[]> => {
+export const getEmpresasMae = async (ativo?: boolean, exibirNoSeletor?: boolean): Promise<Empresa[]> => {
   const params: Record<string, boolean> = { empresaMae: true }
   if (ativo !== undefined) params.ativo = ativo
+  if (exibirNoSeletor !== undefined) params.exibirNoSeletor = exibirNoSeletor
   const res = await client.get<Empresa[]>('/empresas', { params })
   return res.data
 }
@@ -41,5 +42,10 @@ export const deleteEmpresa = async (id: string): Promise<void> => {
 
 export const reativarEmpresa = async (id: string): Promise<Empresa> => {
   const res = await client.put<Empresa>(`/empresas/${id}/reativar`)
+  return res.data
+}
+
+export const toggleExibirNoSeletor = async (id: string): Promise<Empresa> => {
+  const res = await client.put<Empresa>(`/empresas/${id}/seletor`)
   return res.data
 }
