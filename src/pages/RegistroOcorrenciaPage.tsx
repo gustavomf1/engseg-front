@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import './registro-ocorrencia.css'
+import { useState, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,14 +16,180 @@ import { getEmpresasMae } from '../api/empresa'
 import { getEstabelecimentos, getEmpresasDoEstabelecimento } from '../api/estabelecimento'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Camera, AlertCircle, FileText, Calendar, Search, X, PenLine } from 'lucide-react'
+import {
+  Camera, AlertCircle, FileText, Calendar, Search, X, PenLine,
+  ArrowLeft, ChevronRight, ChevronDown, Activity, Check, Crown,
+  Repeat, ShieldAlert, BookOpen, Users, Send, Building2,
+} from 'lucide-react'
 import SearchableSelect from '../components/SearchableSelect'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
-import { LABELS_SEVERIDADE, LABELS_PROBABILIDADE, calcularNivelRisco } from '../utils/matrizRisco'
-import RiscoBadge from '../components/RiscoBadge'
+import NcRiskMatrix from '../components/NcRiskMatrix'
+import ConfirmModalOcorrencia from '../components/ConfirmModalOcorrencia'
 import { getEmailsPadrao } from '../api/emailPadrao'
-import { EmailPadrao } from '../types'
+import type { EmailPadrao } from '../types'
+
+// ─── Local UI components ──────────────────────────────────────────────────────
+
+function Section({ num, title, subtitle, icon, accent = '#58a6ff', children }: {
+  num: number; title: string; subtitle?: string; icon?: ReactNode; accent?: string; children: ReactNode
+}) {
+  return (
+    <section className="nc-section">
+      <header className="nc-section-header">
+        <div className="nc-section-num" style={{ color: accent, borderColor: accent + '55' }}>
+          {String(num).padStart(2, '0')}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="nc-section-title">{title}</h3>
+          {subtitle && <p className="nc-section-sub">{subtitle}</p>}
+        </div>
+        {icon && <div className="nc-section-icon" style={{ color: accent }}>{icon}</div>}
+      </header>
+      <div className="nc-section-body">{children}</div>
+    </section>
+  )
+}
+
+function Field({ label, required, helper, error, children, style }: {
+  label: string; required?: boolean; helper?: string; error?: string; children: ReactNode; style?: CSSProperties
+}) {
+  return (
+    <div className="nc-field" style={style}>
+      <label className="nc-label">
+        {label}{required && <span className="nc-required">*</span>}
+      </label>
+      {children}
+      {helper && !error && <p className="nc-helper">{helper}</p>}
+      {error && <p className="nc-error">{error}</p>}
+    </div>
+  )
+}
+
+type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
+
+function TypeToggle({ value, onChange, disabled }: { value: Tipo; onChange: (v: Tipo) => void; disabled?: boolean }) {
+  const side = value === 'NAO_CONFORMIDADE' ? 'right' : 'left'
+  return (
+    <div className="nc-type-toggle">
+      <div className="nc-type-toggle-bg" data-side={side} />
+      {([['DESVIO', 'Desvio', 'Situação pontual', <AlertCircle size={20} />],
+        ['NAO_CONFORMIDADE', 'Não Conformidade', 'Requer tratativa formal', <FileText size={20} />]] as const).map(
+        ([v, label, sub, ico]) => (
+          <button
+            key={v}
+            type="button"
+            className={`nc-type-option ${value === v ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+            onClick={() => !disabled && onChange(v as Tipo)}
+          >
+            <span className="nc-type-icon">{ico}</span>
+            <span className="nc-type-text">
+              <span className="nc-type-label">{label}</span>
+              <span className="nc-type-sub">{sub}</span>
+            </span>
+          </button>
+        )
+      )}
+    </div>
+  )
+}
+
+const SEV_OPTS = [
+  { value: 1, label: 'Insignificante', color: '#3fb950' },
+  { value: 2, label: 'Pequena',        color: '#3fb950' },
+  { value: 3, label: 'Moderada',       color: '#d29922' },
+  { value: 4, label: 'Alta',           color: '#f97316' },
+  { value: 5, label: 'Catastrófica',   color: '#f85149' },
+]
+const PROB_OPTS = [
+  { value: 1, label: 'Rara',        color: '#3fb950' },
+  { value: 2, label: 'Improvável',  color: '#3fb950' },
+  { value: 3, label: 'Possível',    color: '#d29922' },
+  { value: 4, label: 'Provável',    color: '#f97316' },
+  { value: 5, label: 'Quase certa', color: '#f85149' },
+]
+
+function RampPicker({ value, onChange, options }: {
+  value: number
+  onChange: (v: number) => void
+  options: typeof SEV_OPTS
+}) {
+  return (
+    <div className="nc-ramp-picker">
+      {options.map(o => {
+        const active = value === o.value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            className={`nc-ramp-pill ${active ? 'active' : ''}`}
+            style={active ? { '--ramp-color': o.color, '--ramp-color-bg': o.color + '22' } as CSSProperties : {}}
+            onClick={() => onChange(o.value)}
+            title={o.label}
+          >
+            <span className="nc-ramp-num">{o.value}</span>
+            <span className="nc-ramp-label">{o.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function NormCheck({ code, name, checked, hasConteudo, isEditing, onToggle, onSearch, onWrite }: {
+  code: string; name: string; checked: boolean; hasConteudo: boolean
+  isEditing: boolean; onToggle: () => void; onSearch: () => void; onWrite: () => void
+}) {
+  return (
+    <div className={`nc-norm-row ${checked ? 'checked' : ''}`}>
+      <button type="button" className="nc-norm-row-main" onClick={onToggle}>
+        <span className={`nc-checkbox ${checked ? 'checked' : ''}`}>
+          {checked && <Check size={12} strokeWidth={3} />}
+        </span>
+        <span className="nc-norm-meta">
+          <span className="nc-norm-code">{code}</span>
+          <span className="nc-norm-name">{name}</span>
+        </span>
+      </button>
+      {checked && !isEditing && (
+        <div className="nc-norm-actions">
+          {hasConteudo && (
+            <button type="button" onClick={onSearch} className="nc-btn nc-btn-blue-soft" style={{ fontSize: 12, padding: '6px 10px' }}>
+              <Search size={13} /> Buscar trecho
+            </button>
+          )}
+          <button type="button" onClick={onWrite} className="nc-btn nc-btn-ghost-soft" style={{ fontSize: 12, padding: '6px 10px' }}>
+            <PenLine size={13} /> Escrever manual
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ToggleRow({ checked, onChange, title, sub, accent = '#58a6ff', icon, children }: {
+  checked: boolean; onChange: (v: boolean) => void; title: string; sub: string
+  accent?: string; icon?: ReactNode; children?: ReactNode
+}) {
+  return (
+    <div className={`nc-toggle-row ${checked ? 'on' : ''}`} style={{ '--toggle-accent': accent } as CSSProperties}>
+      <button type="button" className="nc-toggle-row-head" onClick={() => onChange(!checked)}>
+        <span className={`nc-checkbox ${checked ? 'checked' : ''}`} style={checked ? { background: accent, borderColor: accent } : {}}>
+          {checked && <Check size={12} strokeWidth={3} />}
+        </span>
+        <span className="nc-toggle-row-text">
+          <span className="nc-toggle-row-title" style={{ color: checked ? accent : undefined }}>
+            {icon}{title}
+          </span>
+          <span className="nc-toggle-row-sub">{sub}</span>
+        </span>
+      </button>
+      {checked && children && <div className="nc-toggle-row-body">{children}</div>}
+    </div>
+  )
+}
+
+// ─── Form schema & types ──────────────────────────────────────────────────────
 
 interface TrechoPendente {
   normaId: string
@@ -31,21 +198,21 @@ interface TrechoPendente {
   textoEditado: string
 }
 
-type Tipo = 'DESVIO' | 'NAO_CONFORMIDADE'
-
 const schema = z.object({
   titulo: z.string().min(1, 'Título obrigatório'),
   localizacaoId: z.string().optional(),
   descricao: z.string().min(1, 'Descrição obrigatória'),
-  regraDeOuro: z.boolean().optional(),
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
   engResponsavelConstrutoraId: z.string().optional(),
   engResponsavelVerificacaoId: z.string().optional(),
   responsavelDesvioId: z.string().optional(),
   responsavelTratativaId: z.string().optional(),
 })
-
 type FormData = z.infer<typeof schema>
+
+type MutationPayload = { formData: FormData; emailsManuais: string[]; emailsPadraoExcluidos: string[] }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RegistroOcorrenciaPage() {
   const { tipo: tipoParam, id } = useParams<{ tipo?: string; id?: string }>()
@@ -54,6 +221,7 @@ export default function RegistroOcorrenciaPage() {
   const [arquivos, setArquivos] = useState<File[]>([])
   const [normasSelecionadas, setNormasSelecionadas] = useState<string[]>([])
   const [isReincidencia, setIsReincidencia] = useState(false)
+  const [isRegraDeOuro, setIsRegraDeOuro] = useState(false)
   const [ncAnteriorId, setNcAnteriorId] = useState<string>('')
   const [trechosPendentes, setTrechosPendentes] = useState<TrechoPendente[]>([])
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
@@ -61,11 +229,11 @@ export default function RegistroOcorrenciaPage() {
   const [adminEmpresaId, setAdminEmpresaId] = useState('')
   const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
   const [adminEmpresaFilhaId, setAdminEmpresaFilhaId] = useState('')
-  const [emailsManuais, setEmailsManuais] = useState<string[]>([])
-  const [emailsPadraoExcluidos, setEmailsPadraoExcluidos] = useState<string[]>([])
-  const [novoEmailManual, setNovoEmailManual] = useState('')
   const [severidade, setSeveridade] = useState(0)
   const [probabilidade, setProbabilidade] = useState(0)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [formDataPendente, setFormDataPendente] = useState<FormData | null>(null)
+
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { estabelecimento: estabelecimentoSelecionado, empresaFilha } = useWorkspace()
@@ -76,13 +244,11 @@ export default function RegistroOcorrenciaPage() {
     queryFn: () => getEmpresasMae(true),
     enabled: !!user?.isAdmin,
   })
-
   const { data: estabelecimentosAdmin = [] } = useQuery({
     queryKey: ['estabelecimentos-admin', adminEmpresaId],
     queryFn: () => getEstabelecimentos(true, adminEmpresaId),
     enabled: !!user?.isAdmin && !!adminEmpresaId,
   })
-
   const { data: empresasFilhaAdmin = [] } = useQuery({
     queryKey: ['empresas-filha-admin', adminEstabelecimentoId],
     queryFn: () => getEmpresasDoEstabelecimento(adminEstabelecimentoId),
@@ -93,7 +259,6 @@ export default function RegistroOcorrenciaPage() {
     () => user?.isAdmin ? { id: adminEstabelecimentoId } : estabelecimentoSelecionado,
     [user?.isAdmin, adminEstabelecimentoId, estabelecimentoSelecionado]
   )
-
   const empresaFilhaEfetiva = useMemo(
     () => user?.isAdmin ? { id: adminEmpresaFilhaId } : empresaFilha,
     [user?.isAdmin, adminEmpresaFilhaId, empresaFilha]
@@ -104,31 +269,21 @@ export default function RegistroOcorrenciaPage() {
     queryFn: () => getLocalizacoes(estabelecimentoEfetivo?.id),
     enabled: !!estabelecimentoEfetivo?.id,
   })
-
   const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
     .filter(l => l.ativo && l.estabelecimentoId === estabelecimentoEfetivo?.id)
 
-  const { data: usuarios = [] } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => getUsuarios(true),
-  })
-
+  const { data: usuarios = [] } = useQuery({ queryKey: ['usuarios'], queryFn: () => getUsuarios(true) })
   const { data: usuariosFilha = [] } = useQuery({
     queryKey: ['usuarios', 'empresa', empresaFilhaEfetiva?.id],
     queryFn: () => getUsuarios(true, empresaFilhaEfetiva?.id ?? ''),
     enabled: !!empresaFilhaEfetiva?.id,
   })
 
-  const engenheiros = (usuarios as Array<{ id: string; nome: string; email: string; perfil: string; ativo: boolean }>)
-    .filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
+  type UsuarioItem = { id: string; nome: string; email: string; perfil: string; ativo: boolean }
+  const engenheiros = (usuarios as UsuarioItem[]).filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
+  const externos = (usuariosFilha as UsuarioItem[]).filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
 
-  const externos = (usuariosFilha as Array<{ id: string; nome: string; email: string; perfil: string; ativo: boolean }>)
-    .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
-
-  const { data: normas = [] } = useQuery({
-    queryKey: ['normas'],
-    queryFn: () => getNormas(true),
-  })
+  const { data: normas = [] } = useQuery({ queryKey: ['normas'], queryFn: () => getNormas(true) })
 
   const { data: ncsEstabelecimento = [] } = useQuery({
     queryKey: ['nao-conformidades', 'estabelecimento', estabelecimentoEfetivo?.id],
@@ -143,19 +298,15 @@ export default function RegistroOcorrenciaPage() {
   })
 
   type NcItem = { id: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
-
-  const ncsParaAnterior = useMemo(() =>
-    (ncsEstabelecimento as NcItem[]).filter(nc => nc.id !== id),
+  const ncsParaAnterior = useMemo(
+    () => (ncsEstabelecimento as NcItem[]).filter(nc => nc.id !== id),
     [ncsEstabelecimento, id]
   )
-
   const reincidenciaWarning = useMemo(() => {
     if (!ncAnteriorId) return null
     const allNcs = ncsEstabelecimento as NcItem[]
-    // verifica se a NC selecionada já é ncAnterior de alguma outra NC (exceto a que está sendo editada)
     const successor = allNcs.find(nc => nc.ncAnteriorId === ncAnteriorId && nc.id !== id)
     if (!successor) return null
-    // percorre a cadeia até o fim real
     let fim = successor
     while (true) {
       const prox = allNcs.find(nc => nc.ncAnteriorId === fim.id && nc.id !== id)
@@ -176,7 +327,6 @@ export default function RegistroOcorrenciaPage() {
     queryFn: () => getDesvio(id!),
     enabled: isEditing && tipoParam === 'DESVIO',
   })
-
   const { data: ncData } = useQuery({
     queryKey: ['nc', id],
     queryFn: () => getNaoConformidade(id!),
@@ -185,49 +335,40 @@ export default function RegistroOcorrenciaPage() {
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      regraDeOuro: false,
-      estabelecimentoId: estabelecimentoSelecionado?.id || '',
-    },
+    defaultValues: { estabelecimentoId: estabelecimentoSelecionado?.id || '' },
   })
 
   useEffect(() => {
     if (desvioData) {
       reset({
-        titulo: desvioData.titulo,
-        localizacaoId: desvioData.localizacaoId || '',
-        descricao: desvioData.descricao,
-        regraDeOuro: desvioData.regraDeOuro,
-        estabelecimentoId: desvioData.estabelecimentoId,
+        titulo: desvioData.titulo, localizacaoId: desvioData.localizacaoId || '',
+        descricao: desvioData.descricao, estabelecimentoId: desvioData.estabelecimentoId,
         responsavelDesvioId: desvioData.responsavelDesvioId || '',
         responsavelTratativaId: desvioData.responsavelTratativaId || '',
       })
+      setIsRegraDeOuro(desvioData.regraDeOuro ?? false)
     }
   }, [desvioData, reset])
 
   useEffect(() => {
     if (ncData) {
       reset({
-        titulo: ncData.titulo,
-        localizacaoId: ncData.localizacaoId || '',
-        descricao: ncData.descricao,
-        regraDeOuro: ncData.regraDeOuro,
-        estabelecimentoId: ncData.estabelecimentoId,
+        titulo: ncData.titulo, localizacaoId: ncData.localizacaoId || '',
+        descricao: ncData.descricao, estabelecimentoId: ncData.estabelecimentoId,
         engResponsavelConstrutoraId: ncData.engResponsavelConstrutoraId ?? '',
         engResponsavelVerificacaoId: ncData.engResponsavelVerificacaoId ?? '',
       })
-      if (ncData.normas) {
-        setNormasSelecionadas(ncData.normas.map(n => n.id))
-      }
+      if (ncData.normas) setNormasSelecionadas(ncData.normas.map((n: { id: string }) => n.id))
       setIsReincidencia(ncData.reincidencia ?? false)
       setNcAnteriorId(ncData.ncAnteriorId ?? '')
+      setIsRegraDeOuro(ncData.regraDeOuro ?? false)
+      if (ncData.severidade) setSeveridade(ncData.severidade)
+      if (ncData.probabilidade) setProbabilidade(ncData.probabilidade)
     }
   }, [ncData, reset])
 
   useEffect(() => {
-    if (user?.isAdmin && !isEditing) {
-      setValue('estabelecimentoId', adminEstabelecimentoId)
-    }
+    if (user?.isAdmin && !isEditing) setValue('estabelecimentoId', adminEstabelecimentoId)
   }, [adminEstabelecimentoId, user?.isAdmin, isEditing, setValue])
 
   const dataLimite = new Date()
@@ -235,13 +376,13 @@ export default function RegistroOcorrenciaPage() {
   const dataLimiteStr = dataLimite.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 
   const mutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async ({ formData: data, emailsManuais, emailsPadraoExcluidos }: MutationPayload) => {
       const base = {
         titulo: data.titulo,
         localizacaoId: data.localizacaoId || undefined,
         descricao: data.descricao,
         estabelecimentoId: data.estabelecimentoId,
-        regraDeOuro: data.regraDeOuro ?? false,
+        regraDeOuro: isRegraDeOuro,
       }
       let result
       if (tipo === 'DESVIO') {
@@ -254,7 +395,7 @@ export default function RegistroOcorrenciaPage() {
           responsavelTratativaId: data.responsavelTratativaId,
           emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
           emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
-          empresaContratadaId: empresaFilha?.id,
+          empresaContratadaId: empresaFilhaEfetiva?.id,
         }
         result = isEditing ? await updateDesvio(id!, req) : await createDesvio(req)
       } else {
@@ -272,19 +413,12 @@ export default function RegistroOcorrenciaPage() {
         }
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }
-
-      // Upload evidence files
       if (arquivos.length > 0 && result?.id) {
         for (const file of arquivos) {
-          if (tipo === 'DESVIO') {
-            await uploadEvidenciaDesvio(result.id, file)
-          } else {
-            await uploadEvidencia(result.id, file)
-          }
+          if (tipo === 'DESVIO') await uploadEvidenciaDesvio(result.id, file)
+          else await uploadEvidencia(result.id, file)
         }
       }
-
-      // Vincular trechos pendentes (somente na criação de NC)
       if (!isEditing && tipo === 'NAO_CONFORMIDADE' && result?.id && trechosPendentes.length > 0) {
         for (const t of trechosPendentes) {
           await vincularTrechoNorma(result.id, {
@@ -294,493 +428,486 @@ export default function RegistroOcorrenciaPage() {
           })
         }
       }
-
       return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      navigate('/ocorrencias')
+      if (isEditing) navigate('/ocorrencias')
     },
   })
 
-  const inputClass = "w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:bg-white transition"
+  // ── Progress ──────────────────────────────────────────────────────────────
+  const watchAll = watch()
+  const estabelecimentoId = user?.isAdmin ? adminEstabelecimentoId : estabelecimentoSelecionado?.id || ''
+  const requiredValues = tipo === 'NAO_CONFORMIDADE'
+    ? [watchAll.titulo, watchAll.descricao, estabelecimentoId, severidade > 0, probabilidade > 0]
+    : [watchAll.titulo, watchAll.descricao, estabelecimentoId, watchAll.responsavelDesvioId, watchAll.responsavelTratativaId]
+  const filledCount = requiredValues.filter(Boolean).length
+  const totalRequired = requiredValues.length
+  const progress = Math.round((filledCount / totalRequired) * 100)
 
+  // ── Score ─────────────────────────────────────────────────────────────────
+  const score = severidade * probabilidade
+  const scoreColor = score <= 4 ? '#3fb950' : score <= 9 ? '#d29922' : score <= 16 ? '#f97316' : '#f85149'
+
+  // ── Estabelecimento name ──────────────────────────────────────────────────
+  const estabelecimentoNome = useMemo(() => {
+    if (isEditing) return (desvioData?.estabelecimentoNome ?? ncData?.estabelecimentoNome ?? '') as string
+    if (user?.isAdmin)
+      return (estabelecimentosAdmin as Array<{ id: string; nome: string }>).find(e => e.id === adminEstabelecimentoId)?.nome ?? ''
+    return estabelecimentoSelecionado?.nome ?? ''
+  }, [isEditing, desvioData, ncData, user?.isAdmin, adminEstabelecimentoId, estabelecimentosAdmin, estabelecimentoSelecionado])
+
+  // ── Localização name ──────────────────────────────────────────────────────
+  const localizacaoNome = localizacoesAtivas.find(l => l.id === watchAll.localizacaoId)?.nome
+
+  // ── Dynamic recipients for modal ──────────────────────────────────────────
+  const dynamicRecipients = useMemo(() => {
+    const list: { name: string; email: string; tag: string }[] = []
+    if (user?.email) list.push({ name: (user as { nome: string }).nome, email: user.email, tag: 'você' })
+    if (tipo === 'DESVIO') {
+      const rd = engenheiros.find(u => u.id === watchAll.responsavelDesvioId)
+      if (rd) list.push({ name: rd.nome, email: rd.email, tag: 'Resp. Desvio' })
+      const rt = [...engenheiros, ...externos].find(u => u.id === watchAll.responsavelTratativaId)
+      if (rt) list.push({ name: rt.nome, email: rt.email, tag: 'Resp. Tratativa' })
+    } else {
+      const rc = externos.find(u => u.id === watchAll.engResponsavelConstrutoraId)
+      if (rc) list.push({ name: rc.nome, email: rc.email, tag: 'Resp. Tratativa' })
+      const rv = engenheiros.find(u => u.id === watchAll.engResponsavelVerificacaoId)
+      if (rv) list.push({ name: rv.nome, email: rv.email, tag: 'Resp. NC' })
+    }
+    return list
+  }, [tipo, engenheiros, externos, watchAll, user])
+
+  // ── Submit handlers ───────────────────────────────────────────────────────
+  const onFormValid = (data: FormData) => {
+    if (isEditing) {
+      mutation.mutate({ formData: data, emailsManuais: [], emailsPadraoExcluidos: [] })
+      return
+    }
+    setFormDataPendente(data)
+    setModalOpen(true)
+  }
+
+  const descricaoLen = (watchAll.descricao || '').length
+  const descricaoMax = tipo === 'NAO_CONFORMIDADE' ? 1000 : 400
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-slate-800">
-            {isEditing ? 'Editar Ocorrência' : 'Registro de Ocorrência'}
-          </h2>
-          <p className="text-sm text-blue-500 mt-1">
+    <div className="nc-app">
+      {/* Top progress bar */}
+      <div className="form-progress" style={{ '--p': `${progress}%` } as CSSProperties}>
+        <div className="form-progress-fill" />
+      </div>
+
+      {/* Header */}
+      <header className="nc-app-header">
+        <button type="button" className="nc-btn-back" onClick={() => navigate('/ocorrencias')}>
+          <ArrowLeft size={16} /> Voltar
+        </button>
+        <div className="nc-app-header-text">
+          <div className="nc-breadcrumb">
+            <span>Ocorrências</span>
+            <ChevronRight size={12} />
+            <span style={{ color: 'var(--fg-2)' }}>{isEditing ? 'Editar' : 'Nova'}</span>
+          </div>
+          <h1 className="nc-app-title">{isEditing ? 'Editar Ocorrência' : 'Registro de Ocorrência'}</h1>
+          <p className="nc-app-sub">
             {isEditing ? 'Altere os dados da ocorrência' : 'Preencha os dados da ocorrência identificada'}
           </p>
         </div>
-
-        {/* Type selector — desabilitado na edição */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Ocorrência *</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => !isEditing && setTipo('DESVIO')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'DESVIO' ? 'border-slate-800 bg-slate-50' : 'border-gray-200'} ${isEditing ? 'cursor-not-allowed opacity-60' : 'hover:border-gray-300'}`}
-            >
-              <AlertCircle size={20} className={tipo === 'DESVIO' ? 'text-slate-800' : 'text-gray-400'} />
-              <div>
-                <div className={`font-medium text-sm ${tipo === 'DESVIO' ? 'text-slate-800' : 'text-gray-500'}`}>Desvio</div>
-                <div className="text-xs text-gray-400">Situação pontual</div>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => !isEditing && setTipo('NAO_CONFORMIDADE')}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition ${tipo === 'NAO_CONFORMIDADE' ? 'border-slate-800 bg-slate-50' : 'border-gray-200'} ${isEditing ? 'cursor-not-allowed opacity-60' : 'hover:border-gray-300'}`}
-            >
-              <FileText size={20} className={tipo === 'NAO_CONFORMIDADE' ? 'text-slate-800' : 'text-gray-400'} />
-              <div>
-                <div className={`font-medium text-sm ${tipo === 'NAO_CONFORMIDADE' ? 'text-slate-800' : 'text-gray-500'}`}>Não Conformidade</div>
-                <div className="text-xs text-gray-400">Requer tratativa formal</div>
-              </div>
-            </button>
+        <div>
+          <div className="nc-progress-chip">
+            <span className="nc-progress-chip-dot" />
+            <span>{filledCount}/{totalRequired} campos obrigatórios</span>
           </div>
         </div>
+      </header>
 
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
-          {/* Estabelecimento */}
-          {user?.isAdmin && !isEditing ? (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Empresa *</label>
-                <select
-                  value={adminEmpresaId}
-                  onChange={e => {
-                    setAdminEmpresaId(e.target.value)
-                    setAdminEstabelecimentoId('')
-                    setAdminEmpresaFilhaId('')
-                  }}
-                  className={inputClass}
-                >
-                  <option value="">Selecione a empresa</option>
-                  {(empresasAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
-                    <option key={e.id} value={e.id}>{e.razaoSocial}</option>
-                  ))}
-                </select>
+      <div className="nc-app-grid">
+        {/* ═══ MAIN COLUMN ═══ */}
+        <div className="nc-form-col">
+          <form onSubmit={handleSubmit(onFormValid)}>
+
+            {/* §1 Identificação */}
+            <Section num={1} title="Identificação" subtitle="Tipo, local e descrição da ocorrência" icon={<FileText size={18} />}>
+
+              <Field label="Tipo de Ocorrência" required>
+                <TypeToggle value={tipo} onChange={setTipo} disabled={isEditing} />
+              </Field>
+
+              {user?.isAdmin && !isEditing ? (
+                <>
+                  <div className="nc-form-row-2">
+                    <Field label="Empresa" required>
+                      <div className="nc-input-wrap nc-select-wrap">
+                        <select
+                          value={adminEmpresaId}
+                          onChange={e => { setAdminEmpresaId(e.target.value); setAdminEstabelecimentoId(''); setAdminEmpresaFilhaId('') }}
+                          className="nc-input nc-select"
+                        >
+                          <option value="">Selecione a empresa</option>
+                          {(empresasAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
+                            <option key={e.id} value={e.id}>{e.razaoSocial}</option>
+                          ))}
+                        </select>
+                        <span className="nc-select-chev"><ChevronDown size={16} /></span>
+                      </div>
+                    </Field>
+                    {adminEmpresaId && (
+                      <Field label="Estabelecimento" required error={errors.estabelecimentoId?.message}>
+                        <div className="nc-input-wrap nc-select-wrap">
+                          <select
+                            value={adminEstabelecimentoId}
+                            onChange={e => { setAdminEstabelecimentoId(e.target.value); setAdminEmpresaFilhaId('') }}
+                            className="nc-input nc-select"
+                          >
+                            <option value="">Selecione o estabelecimento</option>
+                            {(estabelecimentosAdmin as Array<{ id: string; nome: string }>).map(e => (
+                              <option key={e.id} value={e.id}>{e.nome}</option>
+                            ))}
+                          </select>
+                          <span className="nc-select-chev"><ChevronDown size={16} /></span>
+                        </div>
+                      </Field>
+                    )}
+                  </div>
+                  {adminEstabelecimentoId && (
+                    <Field label="Empresa Contratada">
+                      <div className="nc-input-wrap nc-select-wrap">
+                        <select value={adminEmpresaFilhaId} onChange={e => setAdminEmpresaFilhaId(e.target.value)} className="nc-input nc-select">
+                          <option value="">Nenhuma</option>
+                          {(empresasFilhaAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
+                            <option key={e.id} value={e.id}>{e.razaoSocial}</option>
+                          ))}
+                        </select>
+                        <span className="nc-select-chev"><ChevronDown size={16} /></span>
+                      </div>
+                    </Field>
+                  )}
+                </>
+              ) : (
+                <Field label="Estabelecimento" required>
+                  <div className="nc-input-wrap has-icon">
+                    <span className="nc-input-icon"><Building2 size={15} /></span>
+                    <input
+                      type="text"
+                      value={isEditing ? (desvioData?.estabelecimentoNome ?? ncData?.estabelecimentoNome ?? '') : (estabelecimentoSelecionado?.nome ?? '')}
+                      readOnly
+                      className="nc-input"
+                    />
+                  </div>
+                </Field>
+              )}
+
+              <div className="nc-form-row-2">
+                <Field label="Localização">
+                  <div className="nc-input-wrap nc-select-wrap">
+                    <select {...register('localizacaoId')} className="nc-input nc-select">
+                      <option value="">Selecione...</option>
+                      {localizacoesAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                    </select>
+                    <span className="nc-select-chev"><ChevronDown size={16} /></span>
+                  </div>
+                </Field>
+                <div />
               </div>
-              {adminEmpresaId && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
-                  <select
-                    value={adminEstabelecimentoId}
-                    onChange={e => {
-                      setAdminEstabelecimentoId(e.target.value)
-                      setAdminEmpresaFilhaId('')
-                    }}
-                    className={inputClass}
-                  >
-                    <option value="">Selecione o estabelecimento</option>
-                    {(estabelecimentosAdmin as Array<{ id: string; nome: string }>).map(e => (
-                      <option key={e.id} value={e.id}>{e.nome}</option>
-                    ))}
-                  </select>
+
+              <Field label="Título" required helper="Resumo curto que aparecerá nas listagens" error={errors.titulo?.message}>
+                <div className="nc-input-wrap">
+                  <input {...register('titulo')} className="nc-input" placeholder="Ex.: Operador sem proteção em prensa hidráulica" />
+                </div>
+              </Field>
+
+              <Field label={tipo === 'NAO_CONFORMIDADE' ? 'Descrição Detalhada' : 'Descrição Curta'} required error={errors.descricao?.message}>
+                <div className="nc-textarea-wrap">
+                  <textarea
+                    {...register('descricao')}
+                    rows={tipo === 'NAO_CONFORMIDADE' ? 5 : 3}
+                    maxLength={descricaoMax}
+                    placeholder={tipo === 'NAO_CONFORMIDADE'
+                      ? 'Descreva detalhadamente a não conformidade identificada — quando, onde, como ocorreu, e o impacto observado.'
+                      : 'Descreva brevemente o desvio identificado'}
+                    className="nc-input nc-textarea"
+                  />
+                  <div className="nc-textarea-counter">
+                    <span style={descricaoLen > descricaoMax * 0.9 ? { color: '#d29922' } : {}}>{descricaoLen}</span>
+                    <span style={{ opacity: 0.5 }}> / {descricaoMax}</span>
+                  </div>
+                </div>
+              </Field>
+            </Section>
+
+            {/* §2 Responsáveis */}
+            <Section
+              num={2}
+              title="Responsáveis"
+              subtitle={tipo === 'NAO_CONFORMIDADE' ? 'Quem trata e quem valida esta ocorrência' : 'Quem identifica e quem trata o desvio'}
+              icon={<Users size={18} />}
+              accent="#79b8ff"
+            >
+              {tipo === 'NAO_CONFORMIDADE' ? (
+                <div className="nc-form-row-2">
+                  <Field label="Eng. Responsável pela Tratativa" helper="Quem irá enviar o plano de ação (geralmente EXTERNO)">
+                    <SearchableSelect
+                      options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                      value={watchAll.engResponsavelConstrutoraId ?? ''}
+                      onChange={id => setValue('engResponsavelConstrutoraId', id)}
+                      placeholder="Selecione..."
+                      className="nc-input"
+                    />
+                  </Field>
+                  <Field label="Eng. Responsável pela NC" helper="Quem irá validar (aprovar/reprovar) a tratativa">
+                    <SearchableSelect
+                      options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                      value={watchAll.engResponsavelVerificacaoId ?? ''}
+                      onChange={id => setValue('engResponsavelVerificacaoId', id)}
+                      placeholder="Selecione..."
+                      className="nc-input"
+                    />
+                  </Field>
+                </div>
+              ) : (
+                <div className="nc-form-row-2">
+                  <Field label="Responsável pelo Desvio" required helper="Quem irá validar a tratativa">
+                    <SearchableSelect
+                      options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                      value={watchAll.responsavelDesvioId ?? ''}
+                      onChange={id => setValue('responsavelDesvioId', id)}
+                      placeholder="Selecione..."
+                      className="nc-input"
+                    />
+                  </Field>
+                  <Field label="Responsável pela Tratativa" required helper="Quem irá executar a tratativa">
+                    <SearchableSelect
+                      options={[...engenheiros, ...externos].map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
+                      value={watchAll.responsavelTratativaId ?? ''}
+                      onChange={id => setValue('responsavelTratativaId', id)}
+                      placeholder="Selecione..."
+                      className="nc-input"
+                    />
+                  </Field>
                 </div>
               )}
-              {adminEstabelecimentoId && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Filha (Contratada)</label>
-                  <select
-                    value={adminEmpresaFilhaId}
-                    onChange={e => setAdminEmpresaFilhaId(e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">Nenhuma</option>
-                    {(empresasFilhaAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
-                      <option key={e.id} value={e.id}>{e.razaoSocial}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {errors.estabelecimentoId && (
-                <p className="text-red-500 text-xs mt-1">{errors.estabelecimentoId.message}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Estabelecimento *</label>
-              <input
-                type="text"
-                value={
-                  isEditing
-                    ? (desvioData?.estabelecimentoNome ?? ncData?.estabelecimentoNome ?? '')
-                    : (estabelecimentoSelecionado?.nome ?? '')
-                }
-                readOnly
-                className={`${inputClass} bg-gray-100 cursor-not-allowed`}
-              />
-            </div>
-          )}
+            </Section>
 
-          {/* Título */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Título *</label>
-            <input {...register('titulo')} placeholder="Título resumido da ocorrência" className={inputClass} />
-            {errors.titulo && <p className="text-red-500 text-xs mt-1">{errors.titulo.message}</p>}
-          </div>
+            {/* §3 Classificação de Risco (NC only) */}
+            {tipo === 'NAO_CONFORMIDADE' && (
+              <Section
+                num={3}
+                title="Classificação de Risco"
+                subtitle="Severidade × Probabilidade definem o nível"
+                icon={<ShieldAlert size={18} />}
+                accent={severidade > 0 && probabilidade > 0 ? scoreColor : '#58a6ff'}
+              >
+                <Field label="Severidade" required>
+                  <RampPicker value={severidade} onChange={setSeveridade} options={SEV_OPTS} />
+                </Field>
+                <Field label="Probabilidade" required>
+                  <RampPicker value={probabilidade} onChange={setProbabilidade} options={PROB_OPTS} />
+                </Field>
+              </Section>
+            )}
 
-          {/* Localização */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Localização</label>
-            <select {...register('localizacaoId')} className={inputClass}>
-              <option value="">Selecione a localização</option>
-              {localizacoesAtivas.map(l => (
-                <option key={l.id} value={l.id}>{l.nome}</option>
-              ))}
-            </select>
-            {errors.localizacaoId && <p className="text-red-500 text-xs mt-1">{errors.localizacaoId.message}</p>}
-          </div>
-
-          {/* NC-only: Eng. responsáveis — acima da descrição */}
-          {tipo === 'NAO_CONFORMIDADE' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela Tratativa</label>
-                <SearchableSelect
-                  options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                  value={watch('engResponsavelConstrutoraId') ?? ''}
-                  onChange={id => setValue('engResponsavelConstrutoraId', id)}
-                  placeholder="Selecione o responsável pela tratativa"
-                  className={inputClass}
-                />
-                <p className="text-xs text-slate-400 mt-1">Quem irá enviar o plano de ação (geralmente EXTERNO)</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Eng. Responsável pela NC</label>
-                <SearchableSelect
-                  options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                  value={watch('engResponsavelVerificacaoId') ?? ''}
-                  onChange={id => setValue('engResponsavelVerificacaoId', id)}
-                  placeholder="Selecione o responsável pela verificação"
-                  className={inputClass}
-                />
-                <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
-              </div>
-            </>
-          )}
-
-          {/* Descrição */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              {tipo === 'DESVIO' ? 'Descrição Curta *' : 'Descrição Detalhada *'}
-            </label>
-            <textarea
-              {...register('descricao')}
-              rows={8}
-              placeholder={tipo === 'DESVIO' ? 'Descreva brevemente o desvio identificado' : 'Descreva detalhadamente a não conformidade identificada'}
-              className={inputClass}
-            />
-            {errors.descricao && <p className="text-red-500 text-xs mt-1">{errors.descricao.message}</p>}
-          </div>
-
-          {/* Desvio-only: responsáveis */}
-          {tipo === 'DESVIO' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Responsável pelo Desvio *</label>
-                <SearchableSelect
-                  options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                  value={watch('responsavelDesvioId') ?? ''}
-                  onChange={id => setValue('responsavelDesvioId', id)}
-                  placeholder="Selecione quem vai aprovar/reprovar a tratativa"
-                  className={inputClass}
-                />
-                <p className="text-xs text-slate-400 mt-1">Quem irá validar (aprovar/reprovar) a tratativa</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Responsável pela Tratativa *</label>
-                <SearchableSelect
-                  options={[...engenheiros, ...externos].map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                  value={watch('responsavelTratativaId') ?? ''}
-                  onChange={id => setValue('responsavelTratativaId', id)}
-                  placeholder="Selecione quem irá executar a tratativa"
-                  className={inputClass}
-                />
-                <p className="text-xs text-slate-400 mt-1">Quem irá enviar a observação e evidência da tratativa</p>
-              </div>
-            </>
-          )}
-
-          {/* NF-only fields */}
-          {tipo === 'NAO_CONFORMIDADE' && (
-            <>
-              {/* Severidade */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Severidade <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={severidade || ''}
-                  onChange={e => setSeveridade(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <option key={n} value={n}>{LABELS_SEVERIDADE[n]}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Probabilidade */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Probabilidade <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={probabilidade || ''}
-                  onChange={e => setProbabilidade(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {[1, 2, 3, 4].map(n => (
-                    <option key={n} value={n}>{LABELS_PROBABILIDADE[n]}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Preview do nível de risco */}
-              {severidade > 0 && probabilidade > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Nível de risco:</span>
-                  <RiscoBadge nivel={calcularNivelRisco(severidade, probabilidade)} />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Normas / Regras Violadas</label>
+            {/* §4 Normas (NC only) */}
+            {tipo === 'NAO_CONFORMIDADE' && (
+              <Section num={4} title="Normas / Regras Violadas" subtitle="Selecione as NRs aplicáveis e vincule trechos" icon={<BookOpen size={18} />}>
                 {normas.length === 0 ? (
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="nc-helper">
                     Nenhuma norma cadastrada.{' '}
-                    <a href="/normas/novo" className="text-blue-500 hover:underline" target="_blank" rel="noreferrer">
-                      Cadastre uma norma
-                    </a>{' '}
+                    <a href="/normas/novo" style={{ color: 'var(--accent)' }} target="_blank" rel="noreferrer">Cadastre uma norma</a>{' '}
                     para vincular aqui.
                   </p>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                  <div className="nc-norms-list">
                     {normas.map(norma => (
-                      <div key={norma.id} className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50">
-                        <label className="flex items-start gap-3 flex-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-4 w-4 rounded"
-                            checked={normasSelecionadas.includes(norma.id)}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                setNormasSelecionadas(prev => [...prev, norma.id])
-                              } else {
-                                setNormasSelecionadas(prev => prev.filter(nid => nid !== norma.id))
-                              }
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-800">{norma.titulo}</p>
-                            {norma.descricao && (
-                              <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{norma.descricao}</p>
-                            )}
-                          </div>
-                        </label>
-                        {normasSelecionadas.includes(norma.id) && !isEditing && (
-                          <div className="flex gap-1 shrink-0">
-                            {norma.conteudo && (
-                              <button
-                                type="button"
-                                onClick={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                              >
-                                <Search size={11} />
-                                Buscar trecho
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setManualModal({ normaId: norma.id, normaTitulo: norma.titulo })}
-                              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700 transition"
-                            >
-                              <PenLine size={11} />
-                              Escrever manual
-                            </button>
-                          </div>
+                      <NormCheck
+                        key={norma.id}
+                        code={norma.titulo}
+                        name={norma.descricao || ''}
+                        checked={normasSelecionadas.includes(norma.id)}
+                        hasConteudo={!!norma.conteudo}
+                        isEditing={isEditing}
+                        onToggle={() => setNormasSelecionadas(prev =>
+                          prev.includes(norma.id) ? prev.filter(n => n !== norma.id) : [...prev, norma.id]
                         )}
-                      </div>
+                        onSearch={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                        onWrite={() => setManualModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                      />
                     ))}
                   </div>
                 )}
+
                 {trechosPendentes.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Trechos a vincular ({trechosPendentes.length})</p>
+                  <div className="nc-trechos-block">
+                    <div className="nc-trechos-label">
+                      <span className="nc-trechos-label-bullet" />
+                      Trechos a vincular ({trechosPendentes.length})
+                    </div>
                     {trechosPendentes.map((t, i) => (
-                      <div key={i} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-blue-700">{t.normaTitulo}{t.clausulaReferencia ? ` — ${t.clausulaReferencia}` : ''}</p>
-                          <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{t.textoEditado}</p>
+                      <div key={i} className="nc-trecho-card">
+                        <div>
+                          <div className="nc-trecho-code">
+                            {t.normaTitulo}{t.clausulaReferencia ? ` — ${t.clausulaReferencia}` : ''}
+                          </div>
+                          <div className="nc-trecho-desc">{t.textoEditado}</div>
                         </div>
                         <button
                           type="button"
+                          className="nc-trecho-x"
                           onClick={() => setTrechosPendentes(prev => prev.filter((_, idx) => idx !== i))}
-                          className="p-1 text-slate-400 hover:text-red-500 transition shrink-0"
                         >
-                          <X size={13} />
+                          <X size={14} />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
+              </Section>
+            )}
 
-              <div className="border border-red-100 rounded-lg p-4 space-y-3 bg-red-50/40">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="reincidencia"
-                    className="mt-0.5 h-4 w-4 rounded accent-red-600"
-                    checked={isReincidencia}
-                    onChange={e => {
-                      setIsReincidencia(e.target.checked)
-                      if (!e.target.checked) setNcAnteriorId('')
-                    }}
-                  />
-                  <div>
-                    <label htmlFor="reincidencia" className="font-medium text-sm text-red-700 cursor-pointer">Reincidência</label>
-                    <p className="text-xs text-slate-500 mt-0.5">Marque se esta NC é recorrência de uma ocorrência anterior</p>
-                  </div>
-                </div>
-                {isReincidencia && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">NC Anterior *</label>
+            {/* §5 Sinalizações (NC only) */}
+            {tipo === 'NAO_CONFORMIDADE' && (
+              <Section num={5} title="Sinalizações" subtitle="Reincidência e regra crítica" icon={<Repeat size={18} />} accent="#f85149">
+                <ToggleRow
+                  checked={isReincidencia}
+                  onChange={v => { setIsReincidencia(v); if (!v) setNcAnteriorId('') }}
+                  title="Reincidência"
+                  sub="Marque se esta NC é recorrência de uma ocorrência anterior"
+                  accent="#f85149"
+                >
+                  <Field label="NC Anterior" required>
+                    <div className="nc-input-wrap nc-select-wrap">
                       <select
                         value={ncAnteriorId}
                         onChange={e => setNcAnteriorId(e.target.value)}
-                        className={`${inputClass} ${reincidenciaWarning ? 'border-orange-400 ring-1 ring-orange-300' : ''}`}
+                        className="nc-input nc-select"
+                        style={reincidenciaWarning ? { borderColor: '#f97316', boxShadow: '0 0 0 3px rgba(249,115,22,0.18)' } : {}}
                       >
                         <option value="">Selecione a NC anterior</option>
                         {ncsParaAnterior.map(nc => (
-                          <option key={nc.id} value={nc.id}>
-                            {nc.titulo} — {nc.status}
-                          </option>
+                          <option key={nc.id} value={nc.id}>{nc.titulo} — {nc.status}</option>
                         ))}
                       </select>
-                      {reincidenciaWarning && (
-                        <div className="mt-2 bg-orange-50 border border-orange-300 rounded-lg p-3 text-sm">
-                          <p className="font-semibold text-orange-700 mb-1">⚠ Esta NC já possui uma reincidência registrada</p>
-                          <p className="text-orange-600 text-xs mb-2">
-                            Para manter o rastro linear, selecione a última NC da cadeia:
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setNcAnteriorId(reincidenciaWarning.id)}
-                            className="inline-flex items-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-semibold px-3 py-1.5 rounded-md transition"
-                          >
-                            Usar "{reincidenciaWarning.titulo}"
-                          </button>
-                        </div>
-                      )}
+                      <span className="nc-select-chev"><ChevronDown size={16} /></span>
                     </div>
-                    {ncAnteriorId && ncAnteriorData && (
-                      <div className="bg-white border border-red-200 rounded-lg p-3">
-                        <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Rastro de reincidências</p>
-                        <div className="flex flex-wrap items-center gap-1 text-sm">
-                          {ncAnteriorData.cadeiaReincidencias.map((item, idx) => (
-                            <span key={item.id} className="flex items-center gap-1">
-                              <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-medium max-w-[160px] truncate" title={item.titulo}>
-                                {item.titulo}
-                              </span>
-                              <span className="text-slate-400 text-xs">→</span>
-                            </span>
-                          ))}
-                          <span className="px-2 py-0.5 rounded bg-red-200 text-red-800 text-xs font-semibold max-w-[160px] truncate" title={ncAnteriorData.titulo}>
-                            {ncAnteriorData.titulo}
-                          </span>
-                          <span className="text-slate-400 text-xs">→</span>
-                          <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-xs font-semibold">Esta NC</span>
-                        </div>
+                  </Field>
+
+                  {reincidenciaWarning && (
+                    <div className="nc-reinc-warn">
+                      <div className="nc-reinc-warn-title">⚠ Esta NC já possui uma reincidência registrada</div>
+                      <div className="nc-reinc-warn-body">Para manter o rastro linear, selecione a última NC da cadeia:</div>
+                      <div className="nc-reinc-warn-last" style={{ marginTop: 8, padding: 8, background: 'rgba(249,115,22,0.1)', borderRadius: 6, border: '1px solid rgba(249,115,22,0.3)' }}>
+                        <div style={{ fontSize: 12, color: '#f97316', fontWeight: 500, marginBottom: 6 }}>📍 Última NC da cadeia:</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#d58a15', marginBottom: 6 }}>{reincidenciaWarning.titulo}</div>
+                        <button
+                          type="button"
+                          onClick={() => setNcAnteriorId(reincidenciaWarning.id)}
+                          className="nc-btn-link"
+                          style={{ display: 'inline-block', padding: '6px 12px', background: 'rgba(249,115,22,0.2)', color: '#f97316', border: '1px solid #f97316', borderRadius: 4, fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          Usar esta NC
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {ncAnteriorId && ncAnteriorData && (
+                    <div className="nc-reinc-trail">
+                      <div className="nc-reinc-trail-label">Rastro de reincidências</div>
+                      <div className="nc-reinc-trail-row">
+                        {(ncAnteriorData as { cadeiaReincidencias: { id: string; titulo: string }[] }).cadeiaReincidencias.map(item => (
+                          <span key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className="nc-pill nc-pill-red" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.titulo}>{item.titulo}</span>
+                            <span className="nc-reinc-arrow">→</span>
+                          </span>
+                        ))}
+                        <span className="nc-pill nc-pill-red" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(ncAnteriorData as { titulo: string }).titulo}</span>
+                        <span className="nc-reinc-arrow">→</span>
+                        <span className="nc-pill nc-pill-slate" style={{ boxShadow: '0 0 0 1px rgba(88,166,255,0.6)' }}>Esta NC</span>
+                      </div>
+                    </div>
+                  )}
+                </ToggleRow>
+
+                <ToggleRow
+                  checked={isRegraDeOuro}
+                  onChange={setIsRegraDeOuro}
+                  title="Regra de Ouro"
+                  sub="Marque se a ocorrência viola uma regra crítica de segurança"
+                  accent="#d29922"
+                  icon={<Crown size={14} />}
+                />
+              </Section>
+            )}
+
+            {/* §6/3 Prazo e Evidências */}
+            <Section
+              num={tipo === 'NAO_CONFORMIDADE' ? 6 : 3}
+              title="Prazo e Evidências"
+              subtitle="Data limite e arquivos da ocorrência"
+              icon={<Calendar size={18} />}
+            >
+              <div className="nc-form-row-2">
+                {tipo === 'NAO_CONFORMIDADE' && !isEditing && (
+                  <Field label="Data Limite para Tratativa" helper="Prazo padrão: 30 dias a partir do registro">
+                    <div className="nc-input-wrap has-icon">
+                      <span className="nc-input-icon"><Calendar size={15} /></span>
+                      <input type="text" value={dataLimiteStr} readOnly className="nc-input" style={{ color: '#79b8ff' }} />
+                    </div>
+                  </Field>
+                )}
+                {!isEditing && (
+                  <Field
+                    label="Evidências Fotográficas"
+                    style={tipo !== 'NAO_CONFORMIDADE' ? { gridColumn: '1 / -1' } : {}}
+                  >
+                    <label style={{ cursor: 'pointer' }}>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpg,image/jpeg,application/pdf"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const files = Array.from(e.target.files ?? [])
+                          if (files.length > 0) setArquivos(prev => [...prev, ...files])
+                          e.target.value = ''
+                        }}
+                      />
+                      <div className="nc-upload-tile">
+                        <Camera size={22} />
+                        <span className="nc-upload-tile-main">Clique para anexar</span>
+                        <span className="nc-upload-tile-sub">PNG, JPG, PDF — múltiplos arquivos</span>
+                      </div>
+                    </label>
+                  </Field>
                 )}
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-                <input type="checkbox" {...register('regraDeOuro')} id="regraDeOuro" className="mt-0.5 h-4 w-4 rounded" />
-                <div>
-                  <label htmlFor="regraDeOuro" className="font-medium text-sm text-slate-800 cursor-pointer">Regra de Ouro</label>
-                  <p className="text-xs text-slate-500 mt-0.5">Marque se a ocorrência viola uma regra crítica de segurança</p>
-                </div>
-              </div>
-
-              {!isEditing && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    <span className="flex items-center gap-2"><Calendar size={14} /> Data Limite para Tratativa</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={dataLimiteStr}
-                    readOnly
-                    className={`${inputClass} bg-gray-100 cursor-not-allowed text-blue-600 font-medium`}
-                  />
-                  <p className="text-xs text-blue-500 mt-1">Prazo padrão: 30 dias a partir do registro</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* File upload — múltiplos arquivos */}
-          {!isEditing && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Evidências Fotográficas</label>
-              <label className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-slate-400 transition">
-                <input
-                  type="file"
-                  accept="image/png,image/jpg,image/jpeg,application/pdf"
-                  multiple
-                  className="hidden"
-                  onChange={e => {
-                    const files = Array.from(e.target.files ?? [])
-                    if (files.length > 0) setArquivos(prev => [...prev, ...files])
-                    e.target.value = ''
-                  }}
-                />
-                <Camera size={28} className="mx-auto text-gray-400 mb-2" />
-                <div className="text-sm text-blue-500 font-medium">Clique para anexar fotos ou documentos</div>
-                <div className="text-xs text-gray-400 mt-1">PNG, JPG, PDF — múltiplos arquivos permitidos</div>
-              </label>
               {arquivos.length > 0 && (
-                <div className="mt-3 space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {arquivos.map((file, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      background: 'var(--bg-input)', border: '1px solid var(--border-soft)',
+                      borderRadius: 10, padding: '10px 14px',
+                    }}>
                       {file.type.startsWith('image/') ? (
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        />
+                        <img src={URL.createObjectURL(file)} alt={file.name} style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <FileText size={16} className="text-red-500" />
+                        <div style={{ width: 40, height: 40, borderRadius: 6, background: 'rgba(248,81,73,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <FileText size={16} style={{ color: '#f85149' }} />
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-700 font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(0)} KB</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--fg-3)' }}>{(file.size / 1024).toFixed(0)} KB</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setArquivos(prev => prev.filter((_, idx) => idx !== i))}
-                        className="p-1 text-slate-400 hover:text-red-500 transition"
+                        className="nc-trecho-x"
                       >
                         <X size={16} />
                       </button>
@@ -788,178 +915,142 @@ export default function RegistroOcorrenciaPage() {
                   ))}
                 </div>
               )}
+            </Section>
+
+            {/* Action bar */}
+            <div className="nc-action-bar">
+              <button type="button" className="nc-btn nc-btn-ghost" onClick={() => navigate('/ocorrencias')}>
+                Cancelar
+              </button>
+              <button type="submit" className="nc-btn nc-btn-primary" disabled={mutation.isPending}>
+                <Send size={15} />
+                {mutation.isPending ? 'Salvando…' : isEditing ? 'Salvar Alterações' : 'Registrar Ocorrência'}
+              </button>
             </div>
-          )}
+          </form>
+        </div>
 
-          {!isEditing && (
-            <div className="border border-blue-100 bg-blue-50 rounded-xl p-5 mt-4">
-              <h3 className="text-sm font-semibold text-blue-800 mb-4">
-                Destinatários do email de abertura
-              </h3>
+        {/* ═══ SIDEBAR ═══ */}
+        <aside className="nc-summary-col">
+          <div className="nc-summary-card nc-sticky-card">
+            <header className="nc-summary-head">
+              <div className="nc-summary-title">
+                <Activity size={16} /> Resumo ao vivo
+              </div>
+              <span className="nc-live-pulse" />
+            </header>
 
-              {/* Emails dinâmicos — somente leitura */}
-              <div className="mb-4">
-                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
-                  Dinâmicos (automáticos)
-                </p>
-                <ul className="space-y-1">
-                  {user?.email && (
-                    <li className="text-xs text-slate-700 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                      {user.nome} &lt;{user.email}&gt;
-                      <span className="text-slate-400 ml-1">(você)</span>
-                    </li>
+            {tipo === 'NAO_CONFORMIDADE' ? (
+              <NcRiskMatrix severidade={severidade} probabilidade={probabilidade} />
+            ) : (
+              <div className="nc-desvio-banner">
+                <div className="nc-desvio-banner-icon"><AlertCircle size={20} /></div>
+                <div>
+                  <div className="nc-desvio-banner-title">Desvio</div>
+                  <div className="nc-desvio-banner-sub">Situação pontual — não requer matriz de risco nem plano formal</div>
+                </div>
+              </div>
+            )}
+
+            <div className="nc-summary-facts">
+              <div className="nc-summary-fact">
+                <span className="nc-summary-fact-label">Tipo</span>
+                <span className="nc-summary-fact-value">
+                  <span className={`nc-pill ${tipo === 'NAO_CONFORMIDADE' ? 'nc-pill-blue' : 'nc-pill-amber'}`}>
+                    {tipo === 'NAO_CONFORMIDADE' ? 'Não Conformidade' : 'Desvio'}
+                  </span>
+                </span>
+              </div>
+              <div className="nc-summary-fact">
+                <span className="nc-summary-fact-label">Local</span>
+                <span className="nc-summary-fact-value" title={estabelecimentoNome}>
+                  {estabelecimentoNome || <span style={{ color: 'var(--fg-3)', fontStyle: 'italic' }}>—</span>}
+                </span>
+              </div>
+              {tipo === 'NAO_CONFORMIDADE' && (
+                <>
+                  <div className="nc-summary-fact">
+                    <span className="nc-summary-fact-label">Normas</span>
+                    <span className="nc-summary-fact-value" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                      {normasSelecionadas.length === 0
+                        ? <span style={{ color: 'var(--fg-3)', fontStyle: 'italic' }}>nenhuma</span>
+                        : normasSelecionadas.slice(0, 2).map(nid => {
+                            const n = normas.find(x => x.id === nid)
+                            return n ? <span key={nid} className="nc-pill nc-pill-slate">{n.titulo.split(' ').slice(0, 2).join(' ')}</span> : null
+                          })
+                      }
+                      {normasSelecionadas.length > 2 && <span className="nc-pill nc-pill-slate">+{normasSelecionadas.length - 2}</span>}
+                    </span>
+                  </div>
+                  <div className="nc-summary-fact">
+                    <span className="nc-summary-fact-label">Reincidência</span>
+                    <span className="nc-summary-fact-value">
+                      {isReincidencia
+                        ? <span className="nc-pill nc-pill-red">Sim</span>
+                        : <span style={{ color: 'var(--fg-3)' }}>Não</span>
+                      }
+                    </span>
+                  </div>
+                  <div className="nc-summary-fact">
+                    <span className="nc-summary-fact-label">Regra de Ouro</span>
+                    <span className="nc-summary-fact-value">
+                      {isRegraDeOuro
+                        ? <span className="nc-pill nc-pill-amber">Sim</span>
+                        : <span style={{ color: 'var(--fg-3)' }}>Não</span>
+                      }
+                    </span>
+                  </div>
+                  {!isEditing && (
+                    <div className="nc-summary-fact">
+                      <span className="nc-summary-fact-label">Prazo</span>
+                      <span className="nc-summary-fact-value">
+                        {dataLimiteStr} <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>· 30 dias</span>
+                      </span>
+                    </div>
                   )}
-                  {tipo === 'DESVIO' && watch('responsavelDesvioId') &&
-                    engenheiros.find(u => u.id === watch('responsavelDesvioId')) && (
-                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {(() => { const u = engenheiros.find(x => x.id === watch('responsavelDesvioId')); return u ? `${u.nome} <${u.email}>` : '' })()}
-                        <span className="text-slate-400 ml-1">(Responsável pelo desvio)</span>
-                      </li>
-                    )}
-                  {tipo === 'DESVIO' && watch('responsavelTratativaId') &&
-                    [...engenheiros, ...externos].find(u => u.id === watch('responsavelTratativaId')) && (
-                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {(() => { const u = [...engenheiros, ...externos].find(x => x.id === watch('responsavelTratativaId')); return u ? `${u.nome} <${u.email}>` : '' })()}
-                        <span className="text-slate-400 ml-1">(Responsável pela tratativa)</span>
-                      </li>
-                    )}
-                  {tipo === 'NAO_CONFORMIDADE' && watch('engResponsavelConstrutoraId') &&
-                    externos.find(u => u.id === watch('engResponsavelConstrutoraId')) && (
-                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {(() => { const u = externos.find(x => x.id === watch('engResponsavelConstrutoraId')); return u ? `${u.nome} <${u.email}>` : '' })()}
-                        <span className="text-slate-400 ml-1">(Responsável pela tratativa)</span>
-                      </li>
-                    )}
-                  {tipo === 'NAO_CONFORMIDADE' && watch('engResponsavelVerificacaoId') &&
-                    engenheiros.find(u => u.id === watch('engResponsavelVerificacaoId')) && (
-                      <li className="text-xs text-slate-700 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                        {(() => { const u = engenheiros.find(x => x.id === watch('engResponsavelVerificacaoId')); return u ? `${u.nome} <${u.email}>` : '' })()}
-                        <span className="text-slate-400 ml-1">(Responsável pela NC)</span>
-                      </li>
-                    )}
-                  {emailsManuais.map(e => (
-                    <li key={e} className="text-xs text-slate-700 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                      Manual &lt;{e}&gt;
-                      <span className="text-slate-400 ml-1">(Outros)</span>
-                      <button
-                        type="button"
-                        onClick={() => setEmailsManuais(prev => prev.filter(x => x !== e))}
-                        className="text-slate-400 hover:text-red-500 ml-1 leading-none"
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Emails padrão — desmarcáveis */}
-              {emailsPadrao.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
-                    Padrão (desmarcáveis)
-                  </p>
-                  <ul className="space-y-1.5">
-                    {emailsPadrao.map(ep => {
-                      const excluido = emailsPadraoExcluidos.includes(ep.email)
-                      return (
-                        <li key={ep.id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={!excluido}
-                            onChange={() =>
-                              setEmailsPadraoExcluidos(prev =>
-                                excluido
-                                  ? prev.filter(e => e !== ep.email)
-                                  : [...prev, ep.email]
-                              )
-                            }
-                            className="rounded"
-                          />
-                          <span className={`text-xs ${excluido ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                            {ep.email}
-                            {ep.descricao && (
-                              <span className="text-slate-400 ml-1">— {ep.descricao}</span>
-                            )}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
+                </>
               )}
+            </div>
 
-              {/* Email manual */}
-              <div>
-                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2">
-                  Adicionar email manual
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    placeholder="email@empresa.com"
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    value={novoEmailManual}
-                    onChange={e => setNovoEmailManual(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const em = novoEmailManual.trim()
-                        if (em && !emailsManuais.includes(em)) {
-                          setEmailsManuais(prev => [...prev, em])
-                          setNovoEmailManual('')
-                        }
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const em = novoEmailManual.trim()
-                      if (em && !emailsManuais.includes(em)) {
-                        setEmailsManuais(prev => [...prev, em])
-                        setNovoEmailManual('')
-                      }
-                    }}
-                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Adicionar
-                  </button>
-                </div>
+            <div className="nc-summary-progress">
+              <div className="nc-summary-progress-head">
+                <span>Preenchimento</span>
+                <span style={{ color: '#79b8ff', fontWeight: 600 }}>{progress}%</span>
+              </div>
+              <div className="nc-summary-progress-track">
+                <div className="nc-summary-progress-fill" style={{ width: `${progress}%` }} />
               </div>
             </div>
-          )}
-
-          {mutation.isError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
-              Erro ao salvar ocorrência. Verifique os dados e tente novamente.
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => navigate('/ocorrencias')}
-              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="flex-1 bg-slate-900 text-white py-3 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-60 transition flex items-center justify-center gap-2"
-            >
-              {mutation.isPending ? 'Salvando...' : isEditing ? '✓ Salvar Alterações' : '↓ Registrar Ocorrência'}
-            </button>
           </div>
-        </form>
+        </aside>
       </div>
+
+      {/* ─── Confirm Modal (creation only) ─── */}
+      {!isEditing && (
+        <ConfirmModalOcorrencia
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          tipo={tipo}
+          titulo={watchAll.titulo || ''}
+          estabelecimentoNome={estabelecimentoNome}
+          localizacaoNome={localizacaoNome}
+          severidade={severidade}
+          probabilidade={probabilidade}
+          prazoStr={dataLimiteStr}
+          dynamicRecipients={dynamicRecipients}
+          emailsPadrao={emailsPadrao}
+          isPending={mutation.isPending}
+          isSuccess={mutation.isSuccess}
+          isError={mutation.isError}
+          createdId={(mutation.data as { id?: string } | undefined)?.id}
+          onConfirm={({ emailsManuais, emailsPadraoExcluidos }) => {
+            if (formDataPendente) {
+              mutation.mutate({ formData: formDataPendente, emailsManuais, emailsPadraoExcluidos })
+            }
+          }}
+          onNavigate={() => navigate('/ocorrencias')}
+        />
+      )}
 
       {buscaModal && (
         <BuscaTrechoModal

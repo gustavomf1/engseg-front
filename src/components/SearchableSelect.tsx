@@ -34,7 +34,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         autoComplete="off"
       />
       {open && (
-        <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-52 overflow-y-auto">
+        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-52 overflow-y-auto">
           <div
             onMouseDown={() => { onChange(''); setOpen(false) }}
             className="px-3 py-2 text-sm text-slate-400 hover:bg-gray-50 cursor-pointer border-b border-gray-100"

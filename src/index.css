@@ -169,6 +169,11 @@ body {
 .dark .hover\:bg-gray-100:hover  { background-color: var(--bg-muted); }
 .dark .hover\:bg-slate-50:hover  { background-color: var(--bg-muted); }
 .dark .hover\:bg-slate-100:hover { background-color: var(--bg-muted); }
+.dark .hover\:bg-blue-50:hover   { background-color: rgba(88, 166, 255, 0.08); }
+
+/* Blue accent */
+.dark .bg-blue-50   { background-color: rgba(88, 166, 255, 0.12); }
+.dark .text-blue-700 { color: #79b8ff; }
 
 /* Shadows */
 .dark .shadow-sm { box-shadow: var(--shadow-sm); }
