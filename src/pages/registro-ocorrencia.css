@@ -275,25 +275,108 @@
 .nc-ramp-num { font-size: 15px; font-weight: 800; line-height: 1; }
 .nc-ramp-label { font-size: 9.5px; font-weight: 600; text-align: center; line-height: 1.2; }
 
+/* ── Norms picker ──────────────────────────────────────────── */
+.nc-norms-picker { display: flex; flex-direction: column; gap: 8px; }
+
+.nc-norms-chips {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--nc-accent) 6%, var(--nc-bg-input));
+  border: 1px solid color-mix(in srgb, var(--nc-accent) 20%, transparent);
+  border-radius: 10px;
+}
+.nc-norms-chips-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--nc-accent); opacity: 0.7;
+}
+.nc-norms-chips-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.nc-norm-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--nc-accent); color: #fff;
+  border: 0; border-radius: 6px; padding: 4px 9px;
+  font-size: 11.5px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--nc-accent) 35%, transparent);
+  animation: nc-chip-in 0.2s cubic-bezier(.4, 1.5, .5, 1) both;
+}
+@keyframes nc-chip-in {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.nc-norm-chip:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--nc-accent) 45%, transparent);
+}
+.nc-norm-chip span { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.nc-norms-search-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.nc-norms-search-icon {
+  position: absolute; left: 11px;
+  color: var(--nc-fg-3); pointer-events: none; display: flex; flex-shrink: 0;
+}
+.nc-norms-search-input {
+  width: 100%;
+  background: var(--nc-bg-input);
+  border: 1px solid var(--nc-border-main);
+  border-radius: 8px;
+  color: var(--nc-fg-0);
+  padding: 9px 34px 9px 32px;
+  font-family: inherit; font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.nc-norms-search-input:focus {
+  border-color: var(--nc-accent);
+  background: var(--nc-bg-card);
+  box-shadow: 0 0 0 3px var(--nc-accent-s);
+}
+.nc-norms-search-input::placeholder { color: var(--nc-fg-3); }
+.nc-norms-search-clear {
+  position: absolute; right: 9px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--nc-fg-3); display: flex; padding: 4px; border-radius: 4px; transition: all 0.12s;
+}
+.nc-norms-search-clear:hover { color: var(--nc-fg-0); background: var(--nc-bg-elev); }
+
+.nc-norms-footer {
+  font-size: 11px; color: var(--nc-fg-3); padding: 2px 2px 0;
+  display: flex; gap: 4px;
+}
+.nc-norms-footer-sel { color: var(--nc-accent); font-weight: 600; }
+
 /* ── Norms list ────────────────────────────────────────────── */
 .nc-norms-list {
   display: flex; flex-direction: column;
   background: var(--nc-bg-input); border: 1px solid var(--nc-border-main);
   border-radius: 10px; overflow: hidden;
+  max-height: 256px; overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nc-border-main) transparent;
+}
+.nc-norms-list::-webkit-scrollbar { width: 4px; }
+.nc-norms-list::-webkit-scrollbar-track { background: transparent; }
+.nc-norms-list::-webkit-scrollbar-thumb { background: var(--nc-border-main); border-radius: 99px; }
+.nc-norms-empty {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 22px 16px;
+  font-size: 12px; color: var(--nc-fg-3); font-style: italic;
 }
 .nc-norm-row { border-bottom: 1px solid var(--nc-border-soft); transition: background 0.12s; }
 .nc-norm-row:last-child { border-bottom: 0; }
 .nc-norm-row.checked { background: var(--nc-accent-s); }
 .nc-norm-row-main {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 11px 14px; background: transparent; border: 0;
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: transparent; border: 0;
   text-align: left; cursor: pointer; font-family: inherit;
 }
 .nc-norm-row-main:hover { background: var(--nc-accent-s); }
-.nc-norm-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.nc-norm-code { font-size: 13px; font-weight: 700; color: var(--nc-fg-0); }
-.nc-norm-name { font-size: 11px; color: var(--nc-fg-3); }
-.nc-norm-actions { display: flex; gap: 8px; padding: 0 14px 11px 44px; }
+.nc-norm-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.nc-norm-code { font-size: 12.5px; font-weight: 700; color: var(--nc-fg-0); flex-shrink: 0; }
+.nc-norm-name { font-size: 11px; color: var(--nc-fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc-norm-actions { display: flex; gap: 8px; padding: 0 12px 9px 42px; }
 
 .nc-checkbox {
   flex-shrink: 0; width: 17px; height: 17px;

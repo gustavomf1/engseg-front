@@ -233,6 +233,7 @@ export default function RegistroOcorrenciaPage() {
   const [probabilidade, setProbabilidade] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [formDataPendente, setFormDataPendente] = useState<FormData | null>(null)
+  const [normaSearch, setNormaSearch] = useState('')
 
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -301,6 +302,14 @@ export default function RegistroOcorrenciaPage() {
   const ncsParaAnterior = useMemo(
     () => (ncsEstabelecimento as NcItem[]).filter(nc => nc.id !== id),
     [ncsEstabelecimento, id]
+  )
+  type NormaItem = { id: string; titulo: string; descricao?: string; conteudo?: string }
+  const filteredNormas = useMemo(
+    () => (normas as NormaItem[]).filter(n =>
+      n.titulo.toLowerCase().includes(normaSearch.toLowerCase()) ||
+      (n.descricao || '').toLowerCase().includes(normaSearch.toLowerCase())
+    ),
+    [normas, normaSearch]
   )
   const reincidenciaWarning = useMemo(() => {
     if (!ncAnteriorId) return null
@@ -720,22 +729,76 @@ export default function RegistroOcorrenciaPage() {
                     para vincular aqui.
                   </p>
                 ) : (
-                  <div className="nc-norms-list">
-                    {normas.map(norma => (
-                      <NormCheck
-                        key={norma.id}
-                        code={norma.titulo}
-                        name={norma.descricao || ''}
-                        checked={normasSelecionadas.includes(norma.id)}
-                        hasConteudo={!!norma.conteudo}
-                        isEditing={isEditing}
-                        onToggle={() => setNormasSelecionadas(prev =>
-                          prev.includes(norma.id) ? prev.filter(n => n !== norma.id) : [...prev, norma.id]
-                        )}
-                        onSearch={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
-                        onWrite={() => setManualModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                  <div className="nc-norms-picker">
+                    {normasSelecionadas.length > 0 && (
+                      <div className="nc-norms-chips">
+                        <span className="nc-norms-chips-label">Selecionadas</span>
+                        <div className="nc-norms-chips-list">
+                          {normasSelecionadas.map(nid => {
+                            const n = (normas as NormaItem[]).find(x => x.id === nid)
+                            if (!n) return null
+                            return (
+                              <button
+                                key={nid}
+                                type="button"
+                                className="nc-norm-chip"
+                                onClick={() => setNormasSelecionadas(prev => prev.filter(id => id !== nid))}
+                                title={n.descricao || n.titulo}
+                              >
+                                <span>{n.titulo}</span>
+                                <X size={10} strokeWidth={2.5} />
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div className="nc-norms-search-wrap">
+                      <Search size={13} className="nc-norms-search-icon" />
+                      <input
+                        type="text"
+                        value={normaSearch}
+                        onChange={e => setNormaSearch(e.target.value)}
+                        placeholder={`Buscar entre ${(normas as NormaItem[]).length} normas…`}
+                        className="nc-norms-search-input"
+                        autoComplete="off"
                       />
-                    ))}
+                      {normaSearch && (
+                        <button type="button" className="nc-norms-search-clear" onClick={() => setNormaSearch('')}>
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="nc-norms-list">
+                      {filteredNormas.length === 0 ? (
+                        <div className="nc-norms-empty">
+                          <Search size={16} />
+                          Nenhuma norma encontrada para <strong>"{normaSearch}"</strong>
+                        </div>
+                      ) : (
+                        filteredNormas.map(norma => (
+                          <NormCheck
+                            key={norma.id}
+                            code={norma.titulo}
+                            name={norma.descricao || ''}
+                            checked={normasSelecionadas.includes(norma.id)}
+                            hasConteudo={!!norma.conteudo}
+                            isEditing={isEditing}
+                            onToggle={() => setNormasSelecionadas(prev =>
+                              prev.includes(norma.id) ? prev.filter(n => n !== norma.id) : [...prev, norma.id]
+                            )}
+                            onSearch={() => setBuscaModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                            onWrite={() => setManualModal({ normaId: norma.id, normaTitulo: norma.titulo })}
+                          />
+                        ))
+                      )}
+                    </div>
+                    <div className="nc-norms-footer">
+                      <span>{(normas as NormaItem[]).length} normas disponíveis</span>
+                      {normasSelecionadas.length > 0 && (
+                        <span className="nc-norms-footer-sel">· {normasSelecionadas.length} selecionada{normasSelecionadas.length > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
                   </div>
                 )}
 
