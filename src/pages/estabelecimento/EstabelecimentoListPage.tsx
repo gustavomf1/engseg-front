@@ -5,7 +5,7 @@ import { getEmpresas } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, MapPin, Eye, X, Building2, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmActionModal from '../../components/ConfirmActionModal'
 import Pagination from '../../components/Pagination'
 import { Estabelecimento } from '../../types'
 
@@ -51,7 +51,7 @@ export default function EstabelecimentoListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteEstabelecimento,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] }); setConfirmando(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['estabelecimentos'] }) },
   })
 
   const reativarMutation = useMutation({
@@ -236,7 +236,7 @@ export default function EstabelecimentoListPage() {
         </div>
       )}
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!confirmando}
         title="Desativar Estabelecimento"
         description="O estabelecimento ficará inativo e não aparecerá mais nas listagens."
@@ -247,10 +247,12 @@ export default function EstabelecimentoListPage() {
           </div>
         )}
         confirmLabel="Desativar"
+        successTitle="Estabelecimento desativado com sucesso"
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
-        onCancel={() => setConfirmando(null)}
+        onCancel={() => { setConfirmando(null); deleteMutation.reset() }}
       />
     </div>
   )

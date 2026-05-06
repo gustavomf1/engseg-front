@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, MapPin, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmActionModal from '../../components/ConfirmActionModal'
 import Pagination from '../../components/Pagination'
 import { Estabelecimento } from '../../types'
 
@@ -69,7 +69,7 @@ export default function LocalizacaoListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteLocalizacao,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['localizacoes'] }); setConfirmando(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['localizacoes'] }) },
   })
 
   const reativarMutation = useMutation({
@@ -209,16 +209,18 @@ export default function LocalizacaoListPage() {
         </>
       )}
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!confirmando}
         title="Desativar Localização"
         description="A localização ficará inativa e não aparecerá mais nas listagens."
         detail={confirmando && <p className="text-sm font-medium text-slate-700">{confirmando.nome}</p>}
         confirmLabel="Desativar"
+        successTitle="Localização desativada com sucesso"
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
-        onCancel={() => setConfirmando(null)}
+        onCancel={() => { setConfirmando(null); deleteMutation.reset() }}
       />
     </div>
   )

@@ -7,7 +7,7 @@ import { getEstabelecimentos } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
-import ConfirmDialog from '../components/ConfirmDialog'
+import ConfirmActionModal from '../components/ConfirmActionModal'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
@@ -73,7 +73,6 @@ export default function OcorrenciasPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      setExcluindo(null)
     },
   })
 
@@ -382,11 +381,11 @@ export default function OcorrenciasPage() {
 
       <Pagination page={page} totalPages={totalPages} onPage={setPage} />
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!excluindo}
         title={excluindo ? `Excluir ${excluindo.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'}` : 'Excluir'}
         message={excluindo ? `Tem certeza que deseja excluir "${excluindo.titulo}"?` : undefined}
-        warning={excluindo && excluindo.tipo === 'NAO_CONFORMIDADE' && ((excluindo.quantidadeAtividades ?? 0) > 0 || (excluindo.quantidadeHistorico ?? 0) > 0) ? (
+        detail={excluindo && excluindo.tipo === 'NAO_CONFORMIDADE' && ((excluindo.quantidadeAtividades ?? 0) > 0 || (excluindo.quantidadeHistorico ?? 0) > 0) ? (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
@@ -402,10 +401,12 @@ export default function OcorrenciasPage() {
           </div>
         ) : undefined}
         confirmLabel="Sim, excluir"
+        successTitle={excluindo ? `${excluindo.tipo === 'DESVIO' ? 'Desvio' : 'Não Conformidade'} excluído com sucesso` : 'Excluído com sucesso'}
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => excluindo && deleteMutation.mutate(excluindo)}
-        onCancel={() => setExcluindo(null)}
+        onCancel={() => { setExcluindo(null); deleteMutation.reset() }}
       />
     </div>
   )

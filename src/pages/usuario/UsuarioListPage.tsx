@@ -7,7 +7,7 @@ import { formatCnpj, formatTelefone } from '../../utils/date'
 import { criarConvite } from '../../api/convite'
 import { getEmpresas } from '../../api/empresa'
 import { useAuth } from '../../contexts/AuthContext'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmActionModal from '../../components/ConfirmActionModal'
 import ConfirmModalUsuario from '../../components/ConfirmModalUsuario'
 import Pagination from '../../components/Pagination'
 import { Usuario, CriarUsuarioDiretoRequest, PerfilUsuario } from '../../types'
@@ -91,7 +91,7 @@ export default function UsuarioListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteUsuario,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['usuarios'] }); setConfirmando(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['usuarios'] }) },
   })
 
   const reativarMutation = useMutation({
@@ -621,7 +621,7 @@ export default function UsuarioListPage() {
         onConfirm={() => criarDiretoMutation.mutate(criarForm)}
       />
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!confirmando}
         title="Desativar Usuário"
         description="O usuário ficará inativo e não conseguirá mais acessar o sistema."
@@ -632,10 +632,12 @@ export default function UsuarioListPage() {
           </div>
         )}
         confirmLabel="Desativar"
+        successTitle="Usuário desativado com sucesso"
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
-        onCancel={() => setConfirmando(null)}
+        onCancel={() => { setConfirmando(null); deleteMutation.reset() }}
       />
     </div>
   )

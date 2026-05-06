@@ -5,7 +5,7 @@ import { getEmpresas } from '../../api/empresa'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, BookOpen, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmActionModal from '../../components/ConfirmActionModal'
 import Pagination from '../../components/Pagination'
 import { Norma } from '../../types'
 
@@ -48,7 +48,7 @@ export default function NormaListPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteNorma,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['normas'] }); setConfirmando(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['normas'] }) },
   })
 
   const reativarMutation = useMutation({
@@ -154,16 +154,18 @@ export default function NormaListPage() {
         </>
       )}
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!confirmando}
         title="Desativar Norma"
         description="A norma ficará inativa e não aparecerá mais para seleção nas não conformidades."
         detail={confirmando && <p className="text-sm font-medium text-slate-700">{confirmando.titulo}</p>}
         confirmLabel="Desativar"
+        successTitle="Norma desativada com sucesso"
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
-        onCancel={() => setConfirmando(null)}
+        onCancel={() => { setConfirmando(null); deleteMutation.reset() }}
       />
     </div>
   )

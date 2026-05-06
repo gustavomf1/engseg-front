@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, RotateCcw, Building2, Search, Eye, EyeOff } from 'lucide-react'
 import { formatCnpj } from '../../utils/date'
 import { useAuth } from '../../contexts/AuthContext'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmActionModal from '../../components/ConfirmActionModal'
 import Pagination from '../../components/Pagination'
 import { Empresa } from '../../types'
 import { toggleExibirNoSeletor } from '../../api/empresa'
@@ -52,7 +52,6 @@ export default function EmpresaListPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] })
       queryClient.invalidateQueries({ queryKey: ['empresas-mae'] })
-      setConfirmando(null)
     },
   })
 
@@ -208,7 +207,7 @@ export default function EmpresaListPage() {
         </>
       )}
 
-      <ConfirmDialog
+      <ConfirmActionModal
         open={!!confirmando}
         title="Desativar Empresa"
         description="A empresa ficará inativa e não aparecerá mais nas listagens."
@@ -219,10 +218,12 @@ export default function EmpresaListPage() {
           </div>
         )}
         confirmLabel="Desativar"
+        successTitle="Empresa desativada com sucesso"
         isLoading={deleteMutation.isPending}
+        isSuccess={deleteMutation.isSuccess}
         isError={deleteMutation.isError}
         onConfirm={() => confirmando && deleteMutation.mutate(confirmando.id)}
-        onCancel={() => setConfirmando(null)}
+        onCancel={() => { setConfirmando(null); deleteMutation.reset() }}
       />
     </div>
   )
