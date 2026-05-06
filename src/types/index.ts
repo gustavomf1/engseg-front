@@ -65,6 +65,7 @@ export interface CriarUsuarioDiretoRequest {
   perfil: PerfilUsuario
   empresaId: string
   isAdmin: boolean
+  telefone?: string
 }
 
 export interface Empresa {

@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getUsuarios, deleteUsuario, reativarUsuario, criarUsuarioDireto } from '../../api/usuario'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck, Link2, Copy, Check, Clock, CheckCircle2, UserPlus } from 'lucide-react'
+import { Pencil, Trash2, RotateCcw, Users, Search, Eye, X, Building2, Phone, Mail, Calendar, ShieldCheck, Link2, Copy, Check, Clock, CheckCircle2, UserPlus } from 'lucide-react'
 import { formatCnpj, formatTelefone } from '../../utils/date'
 import { criarConvite } from '../../api/convite'
 import { getEmpresas } from '../../api/empresa'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import ConfirmModalUsuario from '../../components/ConfirmModalUsuario'
 import Pagination from '../../components/Pagination'
 import { Usuario, CriarUsuarioDiretoRequest, PerfilUsuario } from '../../types'
 
@@ -99,8 +100,9 @@ export default function UsuarioListPage() {
   })
 
   const [showCriarModal, setShowCriarModal] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [criarForm, setCriarForm] = useState({
-    nome: '', email: '', senha: '',
+    nome: '', email: '', senha: '', telefone: '',
     perfil: 'ENGENHEIRO' as PerfilUsuario,
     empresaId: '', isAdmin: false
   })
@@ -112,19 +114,32 @@ export default function UsuarioListPage() {
     enabled: showCriarModal
   })
 
+  const empresaNomeParaConfirm = useMemo(
+    () => (todasEmpresas as Array<{ id: string; razaoSocial: string; nomeFantasia?: string }>)
+      .find(e => e.id === criarForm.empresaId)?.nomeFantasia
+      || (todasEmpresas as Array<{ id: string; razaoSocial: string; nomeFantasia?: string }>)
+        .find(e => e.id === criarForm.empresaId)?.razaoSocial
+      || '',
+    [criarForm.empresaId, todasEmpresas]
+  )
+
   const criarDiretoMutation = useMutation({
     mutationFn: criarUsuarioDireto,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      setShowCriarModal(false)
-      setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
-      setCriarErro(null)
     },
     onError: (error: unknown) => {
       const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
       setCriarErro(msg ?? 'Erro ao criar usuário. Verifique os dados e tente novamente.')
     }
   })
+
+  function handleConfirmClose() {
+    setShowConfirmModal(false)
+    setCriarForm({ nome: '', email: '', senha: '', telefone: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+    setCriarErro(null)
+    criarDiretoMutation.reset()
+  }
 
   return (
     <div>
@@ -156,9 +171,6 @@ export default function UsuarioListPage() {
                   Criar Usuário
                 </button>
               )}
-              <Link to="/usuarios/novo" className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors">
-                <Plus size={16} /> Novo Usuário
-              </Link>
             </>
           )}
         </div>
@@ -460,7 +472,7 @@ export default function UsuarioListPage() {
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowCriarModal(false)
-            setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+            setCriarForm({ nome: '', email: '', senha: '', telefone: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
             setCriarErro(null)
           }}
         >
@@ -475,7 +487,7 @@ export default function UsuarioListPage() {
               <button
                 onClick={() => {
                   setShowCriarModal(false)
-                  setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+                  setCriarForm({ nome: '', email: '', senha: '', telefone: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
                   setCriarErro(null)
                 }}
                 className="text-slate-400 hover:text-slate-600 p-1"
@@ -486,7 +498,9 @@ export default function UsuarioListPage() {
             <form
               onSubmit={e => {
                 e.preventDefault()
-                criarDiretoMutation.mutate(criarForm)
+                setCriarErro(null)
+                setShowCriarModal(false)
+                setShowConfirmModal(true)
               }}
               className="space-y-3"
             >
@@ -503,6 +517,13 @@ export default function UsuarioListPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                   type="email" required value={criarForm.email}
                   onChange={e => setCriarForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Telefone</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  type="tel" placeholder="(00) 00000-0000" value={criarForm.telefone}
+                  onChange={e => setCriarForm(f => ({ ...f, telefone: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Senha temporária *</label>
@@ -559,14 +580,13 @@ export default function UsuarioListPage() {
                   É administrador
                 </label>
               </div>
-              {criarErro && <p className="text-red-500 text-xs">{criarErro}</p>}
               <div className="flex gap-3 justify-end pt-3">
                 <button
                   type="button"
                   className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg transition"
                   onClick={() => {
                     setShowCriarModal(false)
-                    setCriarForm({ nome: '', email: '', senha: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
+                    setCriarForm({ nome: '', email: '', senha: '', telefone: '', perfil: 'ENGENHEIRO', empresaId: '', isAdmin: false })
                     setCriarErro(null)
                   }}
                 >
@@ -584,6 +604,22 @@ export default function UsuarioListPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModalUsuario
+        open={showConfirmModal}
+        onClose={handleConfirmClose}
+        nome={criarForm.nome}
+        email={criarForm.email}
+        telefone={criarForm.telefone || undefined}
+        perfil={criarForm.perfil}
+        empresaNome={empresaNomeParaConfirm}
+        isAdmin={criarForm.isAdmin}
+        isPending={criarDiretoMutation.isPending}
+        isSuccess={criarDiretoMutation.isSuccess}
+        isError={criarDiretoMutation.isError}
+        errorMessage={criarErro ?? undefined}
+        onConfirm={() => criarDiretoMutation.mutate(criarForm)}
+      />
 
       <ConfirmDialog
         open={!!confirmando}
