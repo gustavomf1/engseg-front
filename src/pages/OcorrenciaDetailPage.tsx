@@ -22,7 +22,7 @@ import { formatDate } from '../utils/date'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { exportOcorrenciaBundle, exportOcorrenciaToExcel } from '../utils/exportOcorrencia'
 import { getEvidencias, getEvidenciasDesvio } from '../api/evidencia'
-import { RiskMatrix, RiskMatrixReincidencia } from '../components/RiskMatrix'
+import NcRiskMatrix from '../components/NcRiskMatrix'
 
 const SEV_LABELS: Record<number, string> = {
   1: 'Insignificante', 2: 'Menor', 3: 'Moderada', 4: 'Maior', 5: 'Catastrófica',
@@ -255,13 +255,6 @@ export default function OcorrenciaDetailPage() {
     ? Math.max(0, Math.min(100, ((30 - diasRestantes) / 30) * 100))
     : 0
 
-  const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({
-    id: r.id,
-    severidade: Math.min(5, Math.max(1, 3)),
-    probabilidade: Math.min(4, Math.max(1, 2)),
-    titulo: r.titulo,
-    data: r.dataRegistro ? new Date(r.dataRegistro).toLocaleDateString('pt-BR') : undefined,
-  }))
 
   const inputClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-700 transition"
   const valueClass = "text-sm text-slate-800 dark:text-slate-200"
@@ -672,7 +665,7 @@ export default function OcorrenciaDetailPage() {
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Análise de Risco</div>
                 <div className="flex justify-center mb-3">
-                  <RiskMatrix severidade={nc.severidade} probabilidade={nc.probabilidade} reincidencias={matrizReincidencias} dark={dark} size={220} />
+                  <NcRiskMatrix severidade={nc.severidade} probabilidade={nc.probabilidade} />
                 </div>
                 <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200 dark:border-slate-600 flex-wrap gap-2">
                   <div className="flex flex-col items-center gap-0.5">

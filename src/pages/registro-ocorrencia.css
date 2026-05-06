@@ -557,62 +557,6 @@
   100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 }
 
-/* ── Risk matrix ───────────────────────────────────────────── */
-.nc-risk-matrix {
-  background: var(--nc-bg-elev); border: 1px solid var(--nc-border-soft);
-  border-radius: 10px; padding: 13px; margin-bottom: 16px;
-}
-.nc-risk-matrix-grid { position: relative; }
-.nc-risk-axis { font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: var(--nc-fg-3); text-transform: uppercase; }
-.nc-risk-axis-y { position: absolute; left: -6px; top: 50%; transform-origin: 0 0; transform: rotate(-90deg) translateX(-50%); white-space: nowrap; }
-.nc-risk-axis-x { text-align: right; margin-bottom: 6px; }
-.nc-risk-cells { display: flex; flex-direction: column; gap: 3px; margin-left: 18px; }
-.nc-risk-row { display: flex; align-items: center; gap: 3px; }
-.nc-risk-row-num { width: 14px; text-align: center; font-size: 9.5px; font-weight: 700; color: var(--nc-fg-3); }
-.nc-risk-cell {
-  flex: 1; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: 4px; font-size: 9.5px; font-weight: 700; position: relative;
-  transition: all 0.3s cubic-bezier(.4, 1.3, .5, 1);
-}
-.nc-risk-low  { background: rgba(34, 197, 94, 0.15);  color: rgba(22, 163, 74, 0.75); }
-.nc-risk-med  { background: rgba(234, 179, 8, 0.18);  color: rgba(161, 98,  7, 0.8);  }
-.nc-risk-high { background: rgba(249, 115, 22, 0.18); color: rgba(194, 65,  12, 0.85); }
-.nc-risk-crit { background: rgba(239, 68, 68, 0.18);  color: rgba(185, 28,  28, 0.85); }
-/* Dark mode risk cells — increase opacity for visibility */
-.dark .nc-risk-low  { background: rgba(34, 197, 94, 0.18);  color: rgba(74, 222, 128, 0.9); }
-.dark .nc-risk-med  { background: rgba(234, 179, 8, 0.18);  color: rgba(251, 191, 36, 0.9); }
-.dark .nc-risk-high { background: rgba(249, 115, 22, 0.18); color: rgba(251, 146, 60, 0.9); }
-.dark .nc-risk-crit { background: rgba(239, 68, 68, 0.18);  color: rgba(248, 113, 113, 0.9); }
-.nc-risk-cell.active { z-index: 2; transform: scale(1.18); font-weight: 800; color: #fff; box-shadow: 0 3px 10px -2px currentColor, 0 0 0 2px var(--nc-bg-card), 0 0 0 3px currentColor; }
-.nc-risk-cell.active.nc-risk-low  { background: #22c55e; }
-.nc-risk-cell.active.nc-risk-med  { background: #eab308; }
-.nc-risk-cell.active.nc-risk-high { background: #f97316; }
-.nc-risk-cell.active.nc-risk-crit { background: #ef4444; }
-.nc-risk-cell-dot {
-  position: absolute; inset: -5px; border-radius: 5px; border: 1.5px solid currentColor;
-  opacity: 0.7; animation: nc-cell-ring 1.6s infinite; pointer-events: none;
-}
-@keyframes nc-cell-ring { 0% { transform: scale(0.8); opacity: 0.6; } 100% { transform: scale(1.45); opacity: 0; } }
-.nc-risk-col-nums { display: flex; align-items: center; gap: 3px; margin-top: 3px; font-size: 9.5px; color: var(--nc-fg-3); font-weight: 700; }
-.nc-risk-col-nums > span { flex: 1; text-align: center; }
-.nc-risk-col-nums > span:first-child { width: 14px; flex: none; }
-
-.nc-risk-readout {
-  margin-top: 10px; padding: 11px 12px;
-  background: var(--rk-bg, #eff6ff);
-  border: 1px solid color-mix(in srgb, var(--rk-color, #2563eb) 25%, transparent);
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.dark .nc-risk-readout { background: color-mix(in srgb, var(--rk-color, #58a6ff) 8%, var(--nc-bg-elev)); }
-.nc-risk-readout-num { display: flex; align-items: baseline; gap: 2px; color: var(--rk-color, #2563eb); }
-.nc-risk-score { font-size: 26px; font-weight: 800; line-height: 1; animation: nc-score-bounce 0.4s cubic-bezier(.4, 1.6, .5, 1); }
-@keyframes nc-score-bounce { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
-.nc-risk-score-of { font-size: 13px; opacity: 0.5; font-weight: 600; }
-.nc-risk-readout-label { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.nc-risk-readout-tag { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.nc-risk-readout-formula { font-size: 10px; color: var(--nc-fg-3); }
-
 /* Desvio banner */
 .nc-desvio-banner {
   display: flex; align-items: center; gap: 12px;

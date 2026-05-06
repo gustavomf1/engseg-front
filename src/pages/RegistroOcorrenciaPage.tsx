@@ -102,11 +102,10 @@ const SEV_OPTS = [
   { value: 5, label: 'Catastrófica',   color: '#f85149' },
 ]
 const PROB_OPTS = [
-  { value: 1, label: 'Rara',        color: '#3fb950' },
-  { value: 2, label: 'Improvável',  color: '#3fb950' },
-  { value: 3, label: 'Possível',    color: '#d29922' },
-  { value: 4, label: 'Provável',    color: '#f97316' },
-  { value: 5, label: 'Quase certa', color: '#f85149' },
+  { value: 1, label: 'Rara',       color: '#3fb950' },
+  { value: 2, label: 'Improvável', color: '#3fb950' },
+  { value: 3, label: 'Possível',   color: '#d29922' },
+  { value: 4, label: 'Provável',   color: '#f97316' },
 ]
 
 function RampPicker({ value, onChange, options }: {

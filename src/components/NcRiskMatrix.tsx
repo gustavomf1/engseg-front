@@ -1,3 +1,4 @@
+import './nc-risk-matrix.css'
 import type { CSSProperties } from 'react'
 
 interface Props {
@@ -34,7 +35,7 @@ export default function NcRiskMatrix({ severidade, probabilidade }: Props) {
         <div className="nc-risk-axis nc-risk-axis-y">PROBABILIDADE</div>
         <div className="nc-risk-axis nc-risk-axis-x">SEVERIDADE →</div>
         <div className="nc-risk-cells">
-          {[5, 4, 3, 2, 1].map(p => (
+          {[4, 3, 2, 1].map(p => (
             <div key={p} className="nc-risk-row">
               <span className="nc-risk-row-num">{p}</span>
               {[1, 2, 3, 4, 5].map(s => {
@@ -63,7 +64,7 @@ export default function NcRiskMatrix({ severidade, probabilidade }: Props) {
         >
           <div className="nc-risk-readout-num">
             <span className="nc-risk-score" key={score}>{score}</span>
-            <span className="nc-risk-score-of">/25</span>
+            <span className="nc-risk-score-of">/20</span>
           </div>
           <div className="nc-risk-readout-label">
             <span className="nc-risk-readout-tag" style={{ background: m.bg, color: m.color }}>

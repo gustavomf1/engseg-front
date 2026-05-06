@@ -28,7 +28,7 @@ import { formatDate, formatDateTime } from '../utils/date'
 import { exportTratativaBundle } from '../utils/exportTratativa'
 import { TipoAcaoHistorico } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
-import { RiskMatrix, RiskMatrixReincidencia } from '../components/RiskMatrix'
+import NcRiskMatrix from '../components/NcRiskMatrix'
 
 const acaoLabels: Record<TipoAcaoHistorico, string> = {
   CRIACAO: 'NC Criada',
@@ -235,13 +235,6 @@ export default function TrativaDetailPage() {
     : dias < 21 ? 'text-amber-500'
     : 'text-emerald-500'
   const prazoPct = dias !== null ? Math.max(0, Math.min(100, ((30 - dias) / 30) * 100)) : 0
-  const matrizReincidencias: RiskMatrixReincidencia[] = (nc?.cadeiaReincidencias ?? []).map(r => ({
-    id: r.id,
-    severidade: Math.min(5, Math.max(1, 3)),
-    probabilidade: Math.min(4, Math.max(1, 2)),
-    titulo: r.titulo,
-    data: r.dataRegistro ? new Date(r.dataRegistro).toLocaleDateString('pt-BR') : undefined,
-  }))
   const chainNodes = [
     ...(nc?.cadeiaReincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: true })),
     ...(nc ? [{ id: nc.id, titulo: nc.titulo, dataRegistro: nc.dataRegistro, status: nc.status, isCurrent: true, isPast: false }] : []),
@@ -547,7 +540,7 @@ export default function TrativaDetailPage() {
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Análise de Risco</div>
                 <div className="flex justify-center mb-3">
-                  <RiskMatrix severidade={nc.severidade} probabilidade={nc.probabilidade} reincidencias={matrizReincidencias} dark={dark} size={200} />
+                  <NcRiskMatrix severidade={nc.severidade} probabilidade={nc.probabilidade} />
                 </div>
                 <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200 dark:border-slate-600 flex-wrap gap-2">
                   <div className="flex flex-col items-center gap-0.5">
