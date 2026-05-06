@@ -534,7 +534,7 @@
 .dark .nc-btn-link { color: #f97316; }
 
 /* ── Sidebar ───────────────────────────────────────────────── */
-.nc-summary-col { position: relative; }
+.nc-summary-col { position: relative; align-self: stretch; }
 .nc-sticky-card { position: sticky; top: 24px; }
 .nc-summary-card {
   background: var(--nc-bg-card); border: 1px solid var(--nc-border-soft);

@@ -504,11 +504,6 @@ export default function RegistroOcorrenciaPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="nc-app">
-      {/* Top progress bar */}
-      <div className="form-progress" style={{ '--p': `${progress}%` } as CSSProperties}>
-        <div className="form-progress-fill" />
-      </div>
-
       {/* Header */}
       <header className="nc-app-header">
         <button type="button" className="nc-btn-back" onClick={() => navigate('/ocorrencias')}>
