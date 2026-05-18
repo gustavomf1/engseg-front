@@ -43,6 +43,7 @@ export default function ConfirmModalOcorrencia({
   const [localPadraoPromovidos, setLocalPadraoPromovidos] = useState<string[]>([])
   const [manualInput, setManualInput] = useState('')
   const [manualTipo, setManualTipo] = useState<'DINAMICO' | 'PADRAO'>('DINAMICO')
+  const [manualError, setManualError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -53,6 +54,7 @@ export default function ConfirmModalOcorrencia({
       setLocalPadraoPromovidos([])
       setManualInput('')
       setManualTipo('DINAMICO')
+      setManualError(null)
     }
   }, [open])
 
@@ -92,17 +94,23 @@ export default function ConfirmModalOcorrencia({
   const addManual = () => {
     const em = manualInput.trim()
     if (!em) return
+
+    const emDinamico = dynamicRecipients.some(r => r.email === em)
+      || localManuaisDinamico.includes(em)
+      || localPadraoPromovidos.includes(em)
+    const emPadrao = emailsPadraoFiltrados.some(ep => ep.email === em)
+      || localManuaisPadrao.some(e => e.email === em)
+
+    if (emDinamico) { setManualError('Este email já está vinculado na seção Dinâmicos'); return }
+    if (emPadrao)   { setManualError('Este email já está vinculado na seção Padrão'); return }
+
+    setManualError(null)
     if (manualTipo === 'DINAMICO') {
-      if (!localManuaisDinamico.includes(em)) {
-        setLocalManuaisDinamico(prev => [...prev, em])
-        setManualInput('')
-      }
+      setLocalManuaisDinamico(prev => [...prev, em])
     } else {
-      if (!localManuaisPadrao.some(e => e.email === em)) {
-        setLocalManuaisPadrao(prev => [...prev, { email: em, checked: true }])
-        setManualInput('')
-      }
+      setLocalManuaisPadrao(prev => [...prev, { email: em, checked: true }])
     }
+    setManualInput('')
   }
 
   return (
@@ -361,14 +369,18 @@ export default function ConfirmModalOcorrencia({
                       </button>
                     ))}
                   </div>
+                  {manualError && (
+                    <span style={{ fontSize: 11, color: '#f85149' }}>{manualError}</span>
+                  )}
                   <div style={{ display: 'flex', gap: 6, width: '100%' }}>
                     <input
                       type="email"
                       value={manualInput}
-                      onChange={e => setManualInput(e.target.value)}
+                      onChange={e => { setManualInput(e.target.value); setManualError(null) }}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addManual() } }}
                       placeholder="email@empresa.com"
                       className="nc-input"
+                      style={manualError ? { borderColor: '#f85149' } : undefined}
                     />
                     <button type="button" className="nc-btn nc-btn-blue" onClick={addManual}>
                       <Plus size={14} /> Adicionar
