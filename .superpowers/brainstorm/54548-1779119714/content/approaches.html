@@ -1,0 +1,57 @@
+<style>
+  .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .badge-blue { background:rgba(88,166,255,.15); color:#58a6ff; }
+  .badge-green { background:rgba(63,185,80,.15); color:#3fb950; }
+  .badge-orange { background:rgba(249,115,22,.15); color:#f97316; }
+  .tradeoffs { margin-top:10px; font-size:12px; color:#8b949e; line-height:1.6; }
+  .tradeoffs strong { color:#c9d1d9; }
+  .rec-badge { background:rgba(31,111,235,.18); color:#79b8ff; border:1px solid rgba(31,111,235,.4); border-radius:6px; font-size:10px; padding:2px 8px; font-weight:600; margin-left:8px; }
+</style>
+
+<h2>Como implementar o estado dos emails manuais?</h2>
+<p class="subtitle">O segmented control (A) já está definido. A questão agora é como organizar o estado interno e o payload do <code>onConfirm</code>.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Dois arrays separados <span class="rec-badge">Recomendado</span></h3>
+      <div class="tradeoffs">
+        <code>localManuaisDinamico: string[]</code><br>
+        <code>localManuaisPadrao: &#123;email, checked&#125;[]</code><br><br>
+        <strong>Prós:</strong> espelha a arquitetura atual (dois grupos distintos), fácil de renderizar em cada seção separada, sem ambiguidade de tipo.<br>
+        <strong>Contras:</strong> dois estados em vez de um.<br><br>
+        No <code>onConfirm</code>: <code>emailsManuais</code> recebe a união dos dois grupos (padrão só se checked). Nenhuma mudança de interface com o backend.
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Array unificado com tipo</h3>
+      <div class="tradeoffs">
+        <code>localManuais: &#123;email, tipo: 'DINAMICO'|'PADRAO', checked&#125;[]</code><br><br>
+        <strong>Prós:</strong> estado único, fácil de iterar.<br>
+        <strong>Contras:</strong> renderização fica mais complexa (filtragem por tipo para cada seção); <code>checked</code> é irrelevante para DINAMICO (ruído no tipo).<br><br>
+        No <code>onConfirm</code>: filtra os que devem ser enviados e envia em <code>emailsManuais</code>.
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Padrão manual vira EmailPadrao local</h3>
+      <div class="tradeoffs">
+        <code>localManuaisDinamico: string[]</code><br>
+        Padrão manual injeta em <code>emailsPadrao</code> com flag <code>isManual</code><br><br>
+        <strong>Prós:</strong> padrão manual reutiliza toda a lógica de renderização e exclusão dos emails padrão.<br>
+        <strong>Contras:</strong> mistura dados de configuração (vindos do backend) com dados locais — confuso, pode causar bugs se <code>emailsPadrao</code> for somente-leitura.<br><br>
+        Não recomendado: acopla estado derivado do servidor com estado local.
+      </div>
+    </div>
+  </div>
+
+</div>

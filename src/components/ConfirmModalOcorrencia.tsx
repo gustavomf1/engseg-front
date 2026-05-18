@@ -38,15 +38,19 @@ export default function ConfirmModalOcorrencia({
 }: Props) {
   const [stage, setStage] = useState<'review' | 'sending' | 'success'>('review')
   const [localExcluidos, setLocalExcluidos] = useState<string[]>([])
-  const [localManuais, setLocalManuais] = useState<string[]>([])
+  const [localManuaisDinamico, setLocalManuaisDinamico] = useState<string[]>([])
+  const [localManuaisPadrao, setLocalManuaisPadrao] = useState<{ email: string; checked: boolean }[]>([])
   const [manualInput, setManualInput] = useState('')
+  const [manualTipo, setManualTipo] = useState<'DINAMICO' | 'PADRAO'>('DINAMICO')
 
   useEffect(() => {
     if (open) {
       setStage('review')
       setLocalExcluidos([])
-      setLocalManuais([])
+      setLocalManuaisDinamico([])
+      setLocalManuaisPadrao([])
       setManualInput('')
+      setManualTipo('DINAMICO')
     }
   }, [open])
 
@@ -64,18 +68,31 @@ export default function ConfirmModalOcorrencia({
     : score <= 16 ? { label: 'Alto', color: '#f97316' }
     : { label: 'Crítico', color: '#f85149' }
 
-  const totalCount = dynamicRecipients.length + localManuais.length +
-    emailsPadrao.filter(ep => !localExcluidos.includes(ep.email)).length
+  const totalCount = dynamicRecipients.length + localManuaisDinamico.length +
+    emailsPadrao.filter(ep => !localExcluidos.includes(ep.email)).length +
+    localManuaisPadrao.filter(e => e.checked).length
 
   const handleConfirm = () => {
-    onConfirm({ emailsManuais: localManuais, emailsPadraoExcluidos: localExcluidos })
+    const emailsManuais = [
+      ...localManuaisDinamico,
+      ...localManuaisPadrao.filter(e => e.checked).map(e => e.email),
+    ]
+    onConfirm({ emailsManuais, emailsPadraoExcluidos: localExcluidos })
   }
 
   const addManual = () => {
     const em = manualInput.trim()
-    if (em && !localManuais.includes(em)) {
-      setLocalManuais(prev => [...prev, em])
-      setManualInput('')
+    if (!em) return
+    if (manualTipo === 'DINAMICO') {
+      if (!localManuaisDinamico.includes(em)) {
+        setLocalManuaisDinamico(prev => [...prev, em])
+        setManualInput('')
+      }
+    } else {
+      if (!localManuaisPadrao.some(e => e.email === em)) {
+        setLocalManuaisPadrao(prev => [...prev, { email: em, checked: true }])
+        setManualInput('')
+      }
     }
   }
 
@@ -204,14 +221,14 @@ export default function ConfirmModalOcorrencia({
                       <span className="nc-recipient-tag">{r.tag}</span>
                     </div>
                   ))}
-                  {localManuais.map(email => (
+                  {localManuaisDinamico.map(email => (
                     <div key={email} className="nc-recipient-row">
                       <span className="nc-recipient-dot" style={{ background: '#58a6ff' }} />
                       <span className="nc-recipient-name">Manual</span>
                       <span className="nc-recipient-email">&lt;{email}&gt;</span>
                       <button
                         type="button"
-                        onClick={() => setLocalManuais(prev => prev.filter(e => e !== email))}
+                        onClick={() => setLocalManuaisDinamico(prev => prev.filter(e => e !== email))}
                         style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
                       >
                         <X size={12} />
@@ -221,7 +238,7 @@ export default function ConfirmModalOcorrencia({
                 </div>
 
                 {/* Default (toggleable) */}
-                {emailsPadrao.length > 0 && (
+                {(emailsPadrao.length > 0 || localManuaisPadrao.length > 0) && (
                   <div className="nc-recipients-group">
                     <div className="nc-recipients-group-label">Padrão (desmarcáveis)</div>
                     {emailsPadrao.map(ep => {
@@ -246,22 +263,73 @@ export default function ConfirmModalOcorrencia({
                         </label>
                       )
                     })}
+                    {localManuaisPadrao.map(({ email, checked }) => (
+                      <label key={email} className="nc-recipient-row toggleable">
+                        <span className={`nc-checkbox ${checked ? 'checked' : ''}`}>
+                          {checked && <Check size={11} strokeWidth={3} />}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setLocalManuaisPadrao(prev =>
+                              prev.map(e => e.email === email ? { ...e, checked: !e.checked } : e)
+                            )
+                          }
+                          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                        />
+                        <span className="nc-recipient-name">{email}</span>
+                        <span className="nc-recipient-tag">— Manual</span>
+                        <button
+                          type="button"
+                          onClick={e => { e.preventDefault(); setLocalManuaisPadrao(prev => prev.filter(e2 => e2.email !== email)) }}
+                          style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </label>
+                    ))}
                   </div>
                 )}
 
                 {/* Add manual */}
-                <div className="nc-recipients-add">
-                  <input
-                    type="email"
-                    value={manualInput}
-                    onChange={e => setManualInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addManual() } }}
-                    placeholder="email@empresa.com"
-                    className="nc-input"
-                  />
-                  <button type="button" className="nc-btn nc-btn-blue" onClick={addManual}>
-                    <Plus size={14} /> Adicionar
-                  </button>
+                <div className="nc-recipients-add" style={{ flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 4, alignSelf: 'flex-start' }}>
+                    {(['DINAMICO', 'PADRAO'] as const).map(tipo => (
+                      <button
+                        key={tipo}
+                        type="button"
+                        onClick={() => setManualTipo(tipo)}
+                        style={{
+                          padding: '3px 10px',
+                          fontSize: 11,
+                          fontWeight: 500,
+                          borderRadius: 6,
+                          border: '1px solid',
+                          cursor: 'pointer',
+                          transition: 'all .15s',
+                          borderColor: manualTipo === tipo ? '#1f6feb' : 'var(--border)',
+                          background: manualTipo === tipo ? 'rgba(31,111,235,.18)' : 'transparent',
+                          color: manualTipo === tipo ? '#79b8ff' : 'var(--fg-3)',
+                        }}
+                      >
+                        {tipo === 'DINAMICO' ? 'Dinâmico' : 'Padrão'}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+                    <input
+                      type="email"
+                      value={manualInput}
+                      onChange={e => setManualInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addManual() } }}
+                      placeholder="email@empresa.com"
+                      className="nc-input"
+                    />
+                    <button type="button" className="nc-btn nc-btn-blue" onClick={addManual}>
+                      <Plus size={14} /> Adicionar
+                    </button>
+                  </div>
                 </div>
               </div>
 

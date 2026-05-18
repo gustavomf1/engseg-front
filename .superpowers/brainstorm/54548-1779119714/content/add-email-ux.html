@@ -1,0 +1,181 @@
+<style>
+  .mock-modal {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #c9d1d9;
+    font-size: 13px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: #8b949e;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .mock-group { margin-bottom: 10px; }
+  .mock-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .mock-dot { width: 7px; height: 7px; border-radius: 50%; background: #58a6ff; flex-shrink: 0; }
+  .mock-dot.green { background: #3fb950; }
+  .mock-tag { margin-left: auto; font-size: 10px; color: #8b949e; }
+  .mock-cb { width: 14px; height: 14px; border-radius: 3px; background: #238636; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mock-cb svg { width: 10px; height: 10px; stroke: #fff; fill: none; stroke-width: 3; }
+  .mock-input-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+  .mock-input {
+    flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 7px;
+    padding: 6px 10px; color: #c9d1d9; font-size: 12px;
+  }
+  .mock-btn-blue {
+    background: #1f6feb; color: #fff; border: none; border-radius: 7px;
+    padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .mock-btn-ghost {
+    background: transparent; color: #8b949e; border: 1px solid #30363d; border-radius: 7px;
+    padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  .mock-seg {
+    display: flex; border-radius: 7px; overflow: hidden;
+    border: 1px solid #30363d; width: fit-content;
+  }
+  .mock-seg-opt {
+    padding: 5px 12px; font-size: 11px; cursor: pointer; background: #0d1117; color: #8b949e;
+  }
+  .mock-seg-opt.active { background: #1f6feb; color: #fff; }
+  .mock-split-btn {
+    display: flex; border-radius: 7px; overflow: hidden;
+  }
+  .mock-split-main {
+    background: #1f6feb; color: #fff; border: none;
+    padding: 6px 12px; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .mock-split-arrow {
+    background: #1158c7; color: #fff; border: none; border-left: 1px solid #1f6feb;
+    padding: 6px 8px; font-size: 12px; cursor: pointer;
+  }
+  .mock-dropdown {
+    position: relative;
+  }
+  .mock-dropdown-menu {
+    background: #21262d; border: 1px solid #30363d; border-radius: 7px;
+    padding: 4px; font-size: 12px; margin-top: 4px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .mock-dd-item {
+    padding: 6px 10px; border-radius: 5px; cursor: pointer; color: #c9d1d9;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mock-dd-item:hover { background: #30363d; }
+  .mock-dd-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .mock-radio-row { display: flex; gap: 10px; align-items: center; }
+  .mock-radio-opt {
+    display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer;
+    padding: 4px 10px; border-radius: 6px; border: 1px solid #30363d;
+    background: #0d1117; color: #8b949e;
+  }
+  .mock-radio-opt.active { border-color: #1f6feb; color: #79b8ff; background: rgba(31,111,235,.12); }
+  .mock-radio-circle {
+    width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mock-radio-circle .dot { width: 6px; height: 6px; border-radius: 50%; background: #79b8ff; display: none; }
+  .mock-radio-opt.active .dot { display: block; }
+</style>
+
+<h2>Como o usuário escolhe o tipo do email manual?</h2>
+<p class="subtitle">Ao adicionar um email manualmente, precisa indicar se vai para <strong>Dinâmico</strong> (sempre enviado) ou <strong>Padrão</strong> (desmarcável). Qual abordagem faz mais sentido?</p>
+
+<div class="cards">
+
+  <!-- Opção A: Segmented control acima do input -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px">
+      <div class="mock-modal">
+        <div class="mock-label" style="margin-bottom:8px">Adicionar email</div>
+        <div style="margin-bottom:8px">
+          <div class="mock-seg">
+            <div class="mock-seg-opt">Dinâmico</div>
+            <div class="mock-seg-opt active">Padrão</div>
+          </div>
+        </div>
+        <div class="mock-input-row">
+          <input class="mock-input" placeholder="email@empresa.com" readonly />
+          <button class="mock-btn-blue">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Segmented control</h3>
+      <p>Toggle entre "Dinâmico" e "Padrão" antes de clicar em Adicionar. Simples, mas requer que o usuário note o toggle antes de clicar.</p>
+    </div>
+  </div>
+
+  <!-- Opção B: Split button com dropdown -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px">
+      <div class="mock-modal">
+        <div class="mock-input-row" style="margin-bottom:8px">
+          <input class="mock-input" placeholder="email@empresa.com" readonly />
+          <div class="mock-split-btn">
+            <button class="mock-split-main">+ Adicionar</button>
+            <button class="mock-split-arrow">▾</button>
+          </div>
+        </div>
+        <div class="mock-dropdown-menu" style="max-width:200px;margin-left:auto">
+          <div class="mock-dd-item">
+            <span class="mock-dd-dot" style="background:#58a6ff"></span>
+            Como Dinâmico (sempre)
+          </div>
+          <div class="mock-dd-item" style="background:#30363d">
+            <span class="mock-dd-dot" style="background:#3fb950"></span>
+            Como Padrão (desmarcável)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Split button com dropdown</h3>
+      <p>Botão "Adicionar" + seta que abre menu com as duas opções. Familiar para quem usa ferramentas como GitHub/Linear. Um pouco mais clique.</p>
+    </div>
+  </div>
+
+  <!-- Opção C: Radio pills inline -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px">
+      <div class="mock-modal">
+        <div class="mock-input-row" style="margin-bottom:8px">
+          <input class="mock-input" placeholder="email@empresa.com" readonly />
+          <button class="mock-btn-blue">+ Adicionar</button>
+        </div>
+        <div class="mock-radio-row">
+          <div class="mock-radio-opt">
+            <div class="mock-radio-circle"><div class="dot"></div></div>
+            Dinâmico
+          </div>
+          <div class="mock-radio-opt active">
+            <div class="mock-radio-circle"><div class="dot"></div></div>
+            Padrão (desmarcável)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Radio pills abaixo do input</h3>
+      <p>Dois radio buttons visíveis com rótulo explicativo. Mais legível e explícito — ninguém precisa descobrir o dropdown.</p>
+    </div>
+  </div>
+
+</div>
