@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   FileCheck, X, Mail, Building2, MapPin, ShieldAlert,
-  Calendar, Send, CheckCheck, Plus, Check,
+  Calendar, Send, CheckCheck, Plus, Check, ArrowUp,
 } from 'lucide-react'
 import type { EmailPadrao } from '../types'
 
@@ -40,6 +40,7 @@ export default function ConfirmModalOcorrencia({
   const [localExcluidos, setLocalExcluidos] = useState<string[]>([])
   const [localManuaisDinamico, setLocalManuaisDinamico] = useState<string[]>([])
   const [localManuaisPadrao, setLocalManuaisPadrao] = useState<{ email: string; checked: boolean }[]>([])
+  const [localPadraoPromovidos, setLocalPadraoPromovidos] = useState<string[]>([])
   const [manualInput, setManualInput] = useState('')
   const [manualTipo, setManualTipo] = useState<'DINAMICO' | 'PADRAO'>('DINAMICO')
 
@@ -49,6 +50,7 @@ export default function ConfirmModalOcorrencia({
       setLocalExcluidos([])
       setLocalManuaisDinamico([])
       setLocalManuaisPadrao([])
+      setLocalPadraoPromovidos([])
       setManualInput('')
       setManualTipo('DINAMICO')
     }
@@ -68,16 +70,23 @@ export default function ConfirmModalOcorrencia({
     : score <= 16 ? { label: 'Alto', color: '#f97316' }
     : { label: 'Crítico', color: '#f85149' }
 
-  const totalCount = dynamicRecipients.length + localManuaisDinamico.length +
-    emailsPadrao.filter(ep => !localExcluidos.includes(ep.email)).length +
+  const dynamicEmails = new Set(dynamicRecipients.map(r => r.email))
+  const emailsPadraoFiltrados = emailsPadrao.filter(ep =>
+    !dynamicEmails.has(ep.email) && !localPadraoPromovidos.includes(ep.email)
+  )
+
+  const totalCount = dynamicRecipients.length + localManuaisDinamico.length + localPadraoPromovidos.length +
+    emailsPadraoFiltrados.filter(ep => !localExcluidos.includes(ep.email)).length +
     localManuaisPadrao.filter(e => e.checked).length
 
   const handleConfirm = () => {
     const emailsManuais = [
       ...localManuaisDinamico,
+      ...localPadraoPromovidos,
       ...localManuaisPadrao.filter(e => e.checked).map(e => e.email),
     ]
-    onConfirm({ emailsManuais, emailsPadraoExcluidos: localExcluidos })
+    const emailsPadraoExcluidos = [...localExcluidos, ...localPadraoPromovidos]
+    onConfirm({ emailsManuais, emailsPadraoExcluidos })
   }
 
   const addManual = () => {
@@ -235,13 +244,28 @@ export default function ConfirmModalOcorrencia({
                       </button>
                     </div>
                   ))}
+                  {localPadraoPromovidos.map(email => (
+                    <div key={email} className="nc-recipient-row">
+                      <span className="nc-recipient-dot" style={{ background: '#58a6ff' }} />
+                      <span className="nc-recipient-name">{email}</span>
+                      <span className="nc-recipient-tag">— Promovido</span>
+                      <button
+                        type="button"
+                        title="Remover"
+                        onClick={() => setLocalPadraoPromovidos(prev => prev.filter(e => e !== email))}
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Default (toggleable) */}
-                {(emailsPadrao.length > 0 || localManuaisPadrao.length > 0) && (
+                {(emailsPadraoFiltrados.length > 0 || localManuaisPadrao.length > 0) && (
                   <div className="nc-recipients-group">
                     <div className="nc-recipients-group-label">Padrão (desmarcáveis)</div>
-                    {emailsPadrao.map(ep => {
+                    {emailsPadraoFiltrados.map(ep => {
                       const excluido = localExcluidos.includes(ep.email)
                       return (
                         <label key={ep.id} className="nc-recipient-row toggleable">
@@ -260,6 +284,14 @@ export default function ConfirmModalOcorrencia({
                           />
                           <span className="nc-recipient-name">{ep.email}</span>
                           {ep.descricao && <span className="nc-recipient-tag">— {ep.descricao}</span>}
+                          <button
+                            type="button"
+                            title="Tornar dinâmico"
+                            onClick={e => { e.preventDefault(); setLocalPadraoPromovidos(prev => [...prev, ep.email]) }}
+                            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
+                          >
+                            <ArrowUp size={12} />
+                          </button>
                         </label>
                       )
                     })}
@@ -282,8 +314,20 @@ export default function ConfirmModalOcorrencia({
                         <span className="nc-recipient-tag">— Manual</span>
                         <button
                           type="button"
-                          onClick={e => { e.preventDefault(); setLocalManuaisPadrao(prev => prev.filter(e2 => e2.email !== email)) }}
+                          title="Tornar dinâmico"
+                          onClick={e => {
+                            e.preventDefault()
+                            setLocalManuaisPadrao(prev => prev.filter(e2 => e2.email !== email))
+                            setLocalManuaisDinamico(prev => [...prev, email])
+                          }}
                           style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
+                        >
+                          <ArrowUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={e => { e.preventDefault(); setLocalManuaisPadrao(prev => prev.filter(e2 => e2.email !== email)) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', padding: '2px 4px', borderRadius: 4 }}
                         >
                           <X size={12} />
                         </button>
