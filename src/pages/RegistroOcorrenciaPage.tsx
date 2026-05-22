@@ -857,7 +857,7 @@ export default function RegistroOcorrenciaPage() {
                       <div className="nc-reinc-warn-body">Para manter o rastro linear, selecione a última NC da cadeia:</div>
                       <div className="nc-reinc-warn-last" style={{ marginTop: 8, padding: 8, background: 'rgba(249,115,22,0.1)', borderRadius: 6, border: '1px solid rgba(249,115,22,0.3)' }}>
                         <div style={{ fontSize: 12, color: '#f97316', fontWeight: 500, marginBottom: 6 }}>📍 Última NC da cadeia:</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#d58a15', marginBottom: 6 }}>{reincidenciaWarning.titulo}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#d58a15', marginBottom: 6, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{reincidenciaWarning.titulo}</div>
                         <button
                           type="button"
                           onClick={() => setNcAnteriorId(reincidenciaWarning.id)}

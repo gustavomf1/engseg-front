@@ -37,7 +37,7 @@ export default function NaoConformidadeListPage() {
       </div>
 
       <div className="mb-4 flex gap-2 flex-wrap">
-        {(['', 'ABERTA', 'EM_TRATAMENTO', 'CONCLUIDO', 'NAO_RESOLVIDA'] as const).map((s) => (
+        {(['', 'ABERTA', 'AGUARDANDO_TRATATIVA', 'AGUARDANDO_APROVACAO_PLANO', 'EM_EXECUCAO', 'CONCLUIDO'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s as StatusNaoConformidade | '')}
@@ -47,7 +47,7 @@ export default function NaoConformidadeListPage() {
                 : 'bg-white border border-gray-200 text-slate-600 hover:bg-gray-50'
             }`}
           >
-            {s === '' ? 'Todos' : s === 'EM_TRATAMENTO' ? 'Em Tratamento' : s === 'NAO_RESOLVIDA' ? 'Não Resolvidas' : s.charAt(0) + s.slice(1).toLowerCase()}
+            {s === '' ? 'Todos' : s === 'ABERTA' ? 'Abertas' : s === 'AGUARDANDO_TRATATIVA' ? 'Aguard. Tratativa' : s === 'AGUARDANDO_APROVACAO_PLANO' ? 'Aguard. Aprovação' : s === 'EM_EXECUCAO' ? 'Em Execução' : 'Concluídas'}
           </button>
         ))}
       </div>

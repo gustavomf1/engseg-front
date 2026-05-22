@@ -241,7 +241,8 @@ export default function TrativaDetailPage() {
     ...(nc?.reincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: false })),
   ]
 
-  const showInvestigacaoForm = !isDesvio && nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && isExterno
+  const showInvestigacaoForm = !isDesvio && (nc?.status === 'AGUARDANDO_TRATATIVA' || nc?.status === 'EM_AJUSTE_PELO_EXTERNO') && isExterno
+  const showAguardandoTratativa = !isDesvio && nc?.status === 'AGUARDANDO_TRATATIVA' && !isExterno
   const showAguardandoAprovacaoPlano = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isExterno
   const showAprovacaoPlanoForm = !isDesvio && nc?.status === 'AGUARDANDO_APROVACAO_PLANO' && isEngenheiro
   const showExecucaoForm = !isDesvio && nc?.status === 'EM_EXECUCAO' && isExterno
@@ -934,6 +935,16 @@ export default function TrativaDetailPage() {
           <div>
             <div className="font-bold text-blue-800 text-base">NC aguardando envio para plano de ação</div>
             <div className="text-sm text-blue-600 mt-0.5">O criador da NC precisa confirmar o envio para plano de ação antes que o formulário de investigação fique disponível.</div>
+          </div>
+        </div>
+      )}
+
+      {showAguardandoTratativa && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 flex items-center gap-4">
+          <Clock size={32} className="text-orange-400 shrink-0" />
+          <div>
+            <div className="font-bold text-orange-800 text-base">Aguardando investigação pelo responsável</div>
+            <div className="text-sm text-orange-600 mt-0.5">O responsável pela tratativa deve preencher o plano de investigação (5 Porquês, Causa Raiz e Atividades).</div>
           </div>
         </div>
       )}

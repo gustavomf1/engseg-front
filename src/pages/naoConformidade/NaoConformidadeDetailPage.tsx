@@ -247,7 +247,7 @@ export default function NaoConformidadeDetailPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-2xl font-bold text-slate-800">NC — {nc.titulo}</h2>
+            <h2 className="text-2xl font-bold text-slate-800 break-words min-w-0 w-full">{nc.titulo}</h2>
             <StatusBadge status={nc.status} type="nc" />
             <RiscoBadge nivel={nc.nivelRisco} />
             <span className="text-sm text-gray-600">
@@ -534,7 +534,7 @@ export default function NaoConformidadeDetailPage() {
         </div>
       )}
 
-      {/* Ações — ativar NC (ABERTA → AGUARDANDO_APROVACAO_PLANO) */}
+      {/* Ações — ativar NC (ABERTA → AGUARDANDO_TRATATIVA) */}
       {nc.status === 'ABERTA' && (isCriadorNc || user?.isAdmin) && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
           <h3 className="font-semibold text-slate-700 mb-3">Enviar para Plano de Ação</h3>
@@ -579,6 +579,18 @@ export default function NaoConformidadeDetailPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Status — aguardando tratativa (responsável preenche investigação) */}
+      {nc.status === 'AGUARDANDO_TRATATIVA' && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-orange-500 font-bold text-sm">⏳ Aguardando Investigação</span>
+          </div>
+          <p className="text-sm text-orange-700">
+            O responsável pela tratativa <strong>{nc.engConstruturaNome || '—'}</strong> deve preencher o plano de investigação (5 Porquês + Causa Raiz + Atividades).
+          </p>
         </div>
       )}
 

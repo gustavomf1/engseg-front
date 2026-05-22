@@ -2,6 +2,7 @@ export type PerfilUsuario = 'ENGENHEIRO' | 'TECNICO' | 'EXTERNO'
 export type NivelRisco = 'BAIXO' | 'MODERADO' | 'ALTO' | 'CRITICO'
 export type StatusNaoConformidade =
   | 'ABERTA'
+  | 'AGUARDANDO_TRATATIVA'
   | 'AGUARDANDO_APROVACAO_PLANO'
   | 'EM_AJUSTE_PELO_EXTERNO'
   | 'EM_EXECUCAO'

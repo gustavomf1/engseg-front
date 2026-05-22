@@ -376,7 +376,7 @@ export default function OcorrenciaDetailPage() {
         </div>
 
         {/* Page header: tags + title + subtitle */}
-        <div>
+        <div className="overflow-hidden min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
               {isDesvio ? 'Desvio' : 'Não Conformidade'}
@@ -405,7 +405,7 @@ export default function OcorrenciaDetailPage() {
           </div>
           {editando
             ? <input value={form.titulo} onChange={e => set('titulo', e.target.value)} className={`${inputClass} text-xl font-bold mb-1`} />
-            : <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1 break-words overflow-hidden">{(ocorrencia as any).titulo}</h1>
+            : <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1 truncate w-full" title={(ocorrencia as any).titulo}>{(ocorrencia as any).titulo}</h1>
           }
           <p className="text-sm text-slate-400 dark:text-slate-500">
             {(ocorrencia as any).estabelecimentoNome}
@@ -415,7 +415,7 @@ export default function OcorrenciaDetailPage() {
         </div>
 
         {/* Two-column layout — single column for desvios */}
-        <div className={`grid grid-cols-1 ${!isDesvio ? 'lg:grid-cols-[3fr_2fr]' : ''} gap-4 items-start`}>
+        <div className={`grid grid-cols-1 ${!isDesvio ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''} gap-4 items-start`}>
 
           {/* ── LEFT COLUMN ── */}
           <div className="space-y-4">
@@ -804,7 +804,7 @@ export default function OcorrenciaDetailPage() {
                 {isDesvio ? 'Enviar para Tratativa' : 'Enviar para Plano de Ação'}
               </h3>
               <div className="bg-slate-50 rounded-lg p-4 text-sm space-y-1">
-                <p><span className="text-slate-500">Título:</span> <strong>{(ocorrencia as any)?.titulo}</strong></p>
+                <p className="flex gap-1 min-w-0"><span className="text-slate-500 shrink-0">Título:</span> <strong className="truncate" title={(ocorrencia as any)?.titulo}>{(ocorrencia as any)?.titulo}</strong></p>
                 <p><span className="text-slate-500">Estabelecimento:</span> {(ocorrencia as any)?.estabelecimentoNome}</p>
               </div>
               <p className="text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
