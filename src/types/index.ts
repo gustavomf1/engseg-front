@@ -318,6 +318,7 @@ export interface RevisarAtividadesRequest {
   decisoes: { atividadeId: string; status: 'APROVADA' | 'REJEITADA'; motivo?: string }[]
   comentario?: string
   emailsManuais?: string[]
+  porqueRejeitado?: boolean
 }
 
 export interface AprovarRejeitarRequest {

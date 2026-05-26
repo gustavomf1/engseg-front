@@ -79,6 +79,9 @@ export default function TrativaDetailPage() {
   const [execucaoDescricoes, setExecucaoDescricoes] = useState<Record<string, string>>({})
   const [decisoesExecucao, setDecisoesExecucao] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
   const [comentarioRevisaoExecucao, setComentarioRevisaoExecucao] = useState('')
+  const [decisoesPorques, setDecisoesPorques] = useState<Record<number, 'APROVADA' | 'REJEITADA'>>({})
+  const [atividadesMovidas, setAtividadesMovidas] = useState<Set<string>>(new Set())
+
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set())
   const toggleSnapshot = (id: string) => setExpandedSnapshotIds(prev => {
     const next = new Set(prev)
@@ -184,11 +187,15 @@ export default function TrativaDetailPage() {
   })
 
   const mutRevisarAtividades = useMutation({
-    mutationFn: () => revisarAtividades(id!, {
-      decisoes: Object.entries(decisoes).map(([atividadeId, d]) => ({ atividadeId, status: d.status, motivo: d.motivo || undefined })),
-      comentario: comentarioRevisao || undefined,
-    }),
-    onSuccess: () => { invalidate(); setDecisoes({}); setComentarioRevisao('') },
+    mutationFn: () => {
+      const porqueRejeitado = Object.values(decisoesPorques).some(s => s === 'REJEITADA')
+      return revisarAtividades(id!, {
+        decisoes: Object.entries(decisoes).map(([atividadeId, d]) => ({ atividadeId, status: d.status, motivo: d.motivo || undefined })),
+        comentario: comentarioRevisao || undefined,
+        porqueRejeitado,
+      })
+    },
+    onSuccess: () => { invalidate(); setDecisoes({}); setComentarioRevisao(''); setDecisoesPorques({}) },
   })
 
   const mutAprovarPlano = useMutation({
@@ -204,7 +211,7 @@ export default function TrativaDetailPage() {
   const mutSubmeterExecucao = useMutation({
     mutationFn: () => submeterExecucao(id!, {
       atividades: (nc?.atividades ?? [])
-        .filter(a => a.statusExecucao !== 'APROVADA')
+        .filter(a => a.status === 'APROVADA' && a.statusExecucao !== 'APROVADA')
         .map(a => ({ atividadeId: a.id, descricaoExecucao: execucaoDescricoes[a.id] || '' })),
     }),
     onSuccess: () => { invalidate() },
@@ -960,22 +967,8 @@ export default function TrativaDetailPage() {
             </h3>
           </div>
           {nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && (
-            <div className="mb-5 ml-11 space-y-3">
-              <p className="text-sm text-orange-600">Corrija somente as atividades rejeitadas e reenvie o plano.</p>
-              {nc?.atividades?.some(a => a.status === 'APROVADA') && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas (não precisam de ajuste)</p>
-                  {nc.atividades.filter(a => a.status === 'APROVADA').map(a => (
-                    <div key={a.id} className="flex gap-2 items-start p-2.5 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
-                      <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-green-800 break-words">{a.titulo}</p>
-                        <p className="text-xs text-green-700 break-words">{a.descricao}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="mb-5 ml-11">
+              <p className="text-sm text-orange-600">Corrija as atividades rejeitadas e reenvie o plano.</p>
             </div>
           )}
           {nc?.reincidencia && (nc?.cadeiaReincidencias?.length ?? 0) > 0 && (
@@ -1073,6 +1066,28 @@ export default function TrativaDetailPage() {
                   )
                 })}
               </div>
+              {nc?.status === 'EM_AJUSTE_PELO_EXTERNO' && nc.atividades?.some(a => a.status === 'APROVADA' && !atividadesMovidas.has(a.id)) && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Aprovadas (não precisam de ajuste)</p>
+                  {nc.atividades.filter(a => a.status === 'APROVADA' && !atividadesMovidas.has(a.id)).map(a => (
+                    <div key={a.id} className="flex gap-2 items-start p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-green-800 break-words">{a.titulo}</p>
+                        <p className="text-xs text-green-600 break-words">{a.descricao}</p>
+                      </div>
+                      <button type="button"
+                        onClick={() => {
+                          setAtividadesMovidas(prev => new Set([...prev, a.id]))
+                          setAtividades(prev => [...prev, { titulo: a.titulo || '', descricao: a.descricao }])
+                        }}
+                        className="shrink-0 text-xs text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 px-2 py-1 rounded-lg transition">
+                        Editar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
@@ -1099,14 +1114,71 @@ export default function TrativaDetailPage() {
 
       {showAprovacaoPlanoForm && (
         <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle size={16} className="text-green-600" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle size={16} className="text-green-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">Aprovação do Plano de Ação</h3>
             </div>
-            <h3 className="text-base font-bold text-slate-800">Aprovação do Plano de Ação</h3>
+            <button
+              type="button"
+              onClick={() => {
+                const pqs = [nc?.porqueUm, nc?.porqueDois, nc?.porqueTres, nc?.porqueQuatro, nc?.porqueCinco].filter(Boolean)
+                const novasPqs: Record<number, 'APROVADA' | 'REJEITADA'> = {}
+                pqs.forEach((_, i) => { novasPqs[i] = 'APROVADA' })
+                setDecisoesPorques(novasPqs)
+                const novasAtv: Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }> = {}
+                nc?.atividades?.filter(a => a.status === 'PENDENTE').forEach(a => { novasAtv[a.id] = { status: 'APROVADA', motivo: '' } })
+                setDecisoes(novasAtv)
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 border border-green-300 hover:bg-green-100 transition"
+            >
+              <CheckCircle size={13} /> Aprovar Tudo
+            </button>
           </div>
           <p className="text-sm text-green-600 mb-5 ml-11">Revise a investigação e o plano de atividades acima e aprove ou rejeite.</p>
           <div className="space-y-3">
+            {/* 5 Porquês */}
+            {nc?.porqueUm && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">5 Porquês</p>
+                <div className="space-y-2">
+                  {[
+                    { label: nc.porqueUm, resp: nc.porqueUmResposta },
+                    { label: nc.porqueDois, resp: nc.porqueDoisResposta },
+                    { label: nc.porqueTres, resp: nc.porqueTresResposta },
+                    { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
+                    { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
+                  ].filter(p => p.label).map((p, i) => {
+                    const dec = decisoesPorques[i]
+                    return (
+                      <div key={i} className={`rounded-lg border p-3 transition ${dec === 'REJEITADA' ? 'border-red-300 bg-red-50' : dec === 'APROVADA' ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                        <div className="flex gap-3 items-start">
+                          <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                            {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button type="button" onClick={() => setDecisoesPorques(prev => ({ ...prev, [i]: 'APROVADA' }))}
+                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${dec === 'APROVADA' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
+                              <CheckCircle size={12} /> Aprovar
+                            </button>
+                            <button type="button" onClick={() => setDecisoesPorques(prev => ({ ...prev, [i]: 'REJEITADA' }))}
+                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${dec === 'REJEITADA' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
+                              <XCircle size={12} /> Reprovar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <hr className="my-3 border-gray-200" />
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades do Plano</p>
+              </div>
+            )}
             {nc?.atividades?.some(a => a.status === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
@@ -1150,18 +1222,26 @@ export default function TrativaDetailPage() {
                 </div>
               )
             })}
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
-              <textarea value={comentarioRevisao} onChange={e => setComentarioRevisao(e.target.value)} rows={2}
-                placeholder="Comentário sobre esta revisão..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition" />
-            </div>
+            {(() => {
+              const temReprovacao = Object.values(decisoes).some(d => d.status === 'REJEITADA') || Object.values(decisoesPorques).some(s => s === 'REJEITADA')
+              return (
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: temReprovacao ? '#dc2626' : '#64748b' }}>
+                    {temReprovacao ? 'Motivo geral da reprovação *' : 'Comentário geral (opcional)'}
+                  </label>
+                  <textarea value={comentarioRevisao} onChange={e => setComentarioRevisao(e.target.value)} rows={3}
+                    placeholder={temReprovacao ? 'Descreva o motivo geral da reprovação do plano...' : 'Comentário sobre esta revisão...'}
+                    className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition ${temReprovacao ? 'border border-red-300 bg-red-50 focus:ring-red-400' : 'border border-gray-200 bg-gray-50 focus:ring-green-400 focus:bg-white'}`} />
+                </div>
+              )
+            })()}
             <div className="flex gap-3 pt-1">
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
               <button onClick={() => mutRevisarAtividades.mutate()}
                 disabled={
                   (nc?.atividades?.filter(a => a.status === 'PENDENTE') ?? []).some(a => !decisoes[a.id]) ||
                   Object.values(decisoes).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
+                  ((Object.values(decisoes).some(d => d.status === 'REJEITADA') || Object.values(decisoesPorques).some(s => s === 'REJEITADA')) && !comentarioRevisao.trim()) ||
                   mutRevisarAtividades.isPending
                 }
                 className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
@@ -1199,18 +1279,13 @@ export default function TrativaDetailPage() {
                 ))}
               </div>
             )}
-            {nc?.atividades?.filter(a => a.statusExecucao !== 'APROVADA').map(a => (
-              <div key={a.id} className={`rounded-lg border p-4 space-y-3 ${a.statusExecucao === 'REJEITADA' ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50/30'}`}>
+            {nc?.atividades?.filter(a => a.status === 'APROVADA' && a.statusExecucao !== 'APROVADA').map(a => (
+              <div key={a.id} className={`rounded-lg border p-4 space-y-3 border-purple-200 bg-purple-50/30`}>
                 <div className="flex gap-2 items-start">
                   <span className="w-6 h-6 rounded bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{a.ordem}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800 break-words">{a.titulo}</p>
                     <p className="text-xs text-slate-600 break-words">{a.descricao}</p>
-                    {a.statusExecucao === 'REJEITADA' && a.motivoRejeicaoExecucao && (
-                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1 break-words">
-                        <XCircle size={11} className="shrink-0" /> {a.motivoRejeicaoExecucao}
-                      </p>
-                    )}
                   </div>
                 </div>
                 <div>
@@ -1227,7 +1302,7 @@ export default function TrativaDetailPage() {
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
               <button onClick={() => mutSubmeterExecucao.mutate()}
                 disabled={
-                  (nc?.atividades ?? []).filter(a => a.statusExecucao !== 'APROVADA').some(a => !execucaoDescricoes[a.id]?.trim()) ||
+                  (nc?.atividades ?? []).filter(a => a.status === 'APROVADA' && a.statusExecucao !== 'APROVADA').some(a => !execucaoDescricoes[a.id]?.trim()) ||
                   mutSubmeterExecucao.isPending
                 }
                 className="flex-1 bg-purple-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
@@ -1270,6 +1345,31 @@ export default function TrativaDetailPage() {
           </div>
           <p className="text-sm text-green-600 mb-5 ml-11">Revise a execução de cada atividade. Aprove ou rejeite individualmente.</p>
           <div className="space-y-3">
+            {/* 5 Porquês — referência */}
+            {nc?.porqueUm && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">5 Porquês (referência)</p>
+                <div className="space-y-1.5">
+                  {[
+                    { label: nc.porqueUm, resp: nc.porqueUmResposta },
+                    { label: nc.porqueDois, resp: nc.porqueDoisResposta },
+                    { label: nc.porqueTres, resp: nc.porqueTresResposta },
+                    { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
+                    { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
+                  ].filter(p => p.label).map((p, i) => (
+                    <div key={i} className="flex gap-3 items-start p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                        {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <hr className="my-3 border-gray-200" />
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades Executadas</p>
+              </div>
+            )}
             {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>

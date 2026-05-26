@@ -62,6 +62,10 @@ export default function NaoConformidadeDetailPage() {
   const [buscaModal, setBuscaModal] = useState<{ normaId: string; normaTitulo: string } | null>(null)
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const [showAtivarModal, setShowAtivarModal] = useState(false)
+  const [showRevisarPlanoModal, setShowRevisarPlanoModal] = useState(false)
+  const [showRevisarAtividadesModal, setShowRevisarAtividadesModal] = useState(false)
+  const [showRevisarExecucaoModal, setShowRevisarExecucaoModal] = useState(false)
+  const [decisoesMap, setDecisoesMap] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
   const [emailManualInput, setEmailManualInput] = useState('')
   const [emailsManuaisAcao, setEmailsManuaisAcao] = useState<string[]>([])
 
@@ -597,44 +601,29 @@ export default function NaoConformidadeDetailPage() {
       {/* Ações — aprovar / rejeitar plano */}
       {nc.status === 'AGUARDANDO_APROVACAO_PLANO' && user?.perfil === 'ENGENHEIRO' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-          <h3 className="font-semibold text-slate-700 mb-3">Aprovar / Rejeitar Plano</h3>
+          <h3 className="font-semibold text-slate-700 mb-3">Revisar Plano de Ação</h3>
           {EmailManualSection}
-          <div className="flex gap-2 mt-3">
-            <button
-              type="button"
-              disabled={aprovarPlanoMutation.isPending}
-              onClick={() => aprovarPlanoMutation.mutate()}
-              className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-            >
-              {aprovarPlanoMutation.isPending ? 'Aprovando...' : 'Aprovar Plano'}
-            </button>
-            <button
-              type="button"
-              disabled={rejeitarPlanoMutation.isPending}
-              onClick={() => {
-                const motivo = window.prompt('Motivo da rejeição:')
-                if (motivo) rejeitarPlanoMutation.mutate(motivo)
-              }}
-              className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-            >
-              {rejeitarPlanoMutation.isPending ? 'Rejeitando...' : 'Rejeitar Plano'}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => { setDecisoesMap({}); setShowRevisarPlanoModal(true) }}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+          >
+            Revisar Plano →
+          </button>
         </div>
       )}
 
-      {/* Ações — revisar atividades */}
+      {/* Ações — revisar atividades (EM_AJUSTE_PELO_EXTERNO) */}
       {nc.status === 'EM_AJUSTE_PELO_EXTERNO' && user?.perfil === 'ENGENHEIRO' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
           <h3 className="font-semibold text-slate-700 mb-3">Revisar Atividades</h3>
           {EmailManualSection}
           <button
             type="button"
-            disabled={revisarAtividadesMutation.isPending}
-            onClick={() => revisarAtividadesMutation.mutate({ decisoes: [] })}
-            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            onClick={() => { setDecisoesMap({}); setShowRevisarAtividadesModal(true) }}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
           >
-            {revisarAtividadesMutation.isPending ? 'Enviando...' : 'Revisar Atividades'}
+            Revisar Atividades →
           </button>
         </div>
       )}
@@ -662,11 +651,10 @@ export default function NaoConformidadeDetailPage() {
           {EmailManualSection}
           <button
             type="button"
-            disabled={revisarExecucaoMutation.isPending}
-            onClick={() => revisarExecucaoMutation.mutate({ decisoes: [] })}
-            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            onClick={() => { setDecisoesMap({}); setShowRevisarExecucaoModal(true) }}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
           >
-            {revisarExecucaoMutation.isPending ? 'Enviando...' : 'Revisar Execução'}
+            Revisar Execução →
           </button>
         </div>
       )}
@@ -690,6 +678,314 @@ export default function NaoConformidadeDetailPage() {
           normaTitulo={buscaModal.normaTitulo}
           onClose={() => setBuscaModal(null)}
         />
+      )}
+
+      {/* Modal — Revisar Plano (AGUARDANDO_APROVACAO_PLANO) */}
+      {showRevisarPlanoModal && nc && (
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl my-6 shadow-xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-slate-800">Revisar Plano de Ação</h3>
+              <button type="button" onClick={() => setShowRevisarPlanoModal(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+              {/* 5 Porquês */}
+              {nc.porqueUm && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">5 Porquês</p>
+                  <div className="space-y-2">
+                    {[
+                      { id: 'p1', label: nc.porqueUm, resp: nc.porqueUmResposta },
+                      { id: 'p2', label: nc.porqueDois, resp: nc.porqueDoisResposta },
+                      { id: 'p3', label: nc.porqueTres, resp: nc.porqueTresResposta },
+                      { id: 'p4', label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
+                      { id: 'p5', label: nc.porqueCinco, resp: nc.porqueCincoResposta },
+                    ].filter(p => p.label).map((p, i) => {
+                      const d = decisoesMap[p.id]
+                      return (
+                        <div key={p.id} className={`rounded-lg border p-3 transition ${d?.status === 'REJEITADA' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex gap-3 items-start">
+                            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                              {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
+                              {d?.status === 'REJEITADA' && (
+                                <input
+                                  type="text"
+                                  placeholder="Motivo da rejeição..."
+                                  value={d.motivo}
+                                  onChange={e => setDecisoesMap(prev => ({ ...prev, [p.id]: { status: 'REJEITADA', motivo: e.target.value } }))}
+                                  className="mt-1.5 w-full border border-red-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button type="button" onClick={() => setDecisoesMap(prev => { const n = { ...prev }; delete n[p.id]; return n })} className={`px-2 py-1 rounded text-xs font-medium transition ${!d ? 'bg-green-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-green-100'}`}>✓ OK</button>
+                              <button type="button" onClick={() => setDecisoesMap(prev => ({ ...prev, [p.id]: { status: 'REJEITADA', motivo: '' } }))} className={`px-2 py-1 rounded text-xs font-medium transition ${d?.status === 'REJEITADA' ? 'bg-red-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-red-100'}`}>✗ Reprovar</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Atividades */}
+              {nc.atividades?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Atividades do Plano</p>
+                  <div className="space-y-2">
+                    {nc.atividades.map((a, i) => {
+                      const d = decisoesMap[a.id]
+                      return (
+                        <div key={a.id} className={`rounded-lg border p-3 transition ${d?.status === 'REJEITADA' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex gap-3 items-start">
+                            <span className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center shrink-0 bg-blue-100 text-blue-700">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 break-words">{a.titulo}</p>
+                              {a.descricao && <p className="text-xs text-slate-500 mt-0.5 break-words">{a.descricao}</p>}
+                              {d?.status === 'REJEITADA' && (
+                                <input
+                                  type="text"
+                                  placeholder="Motivo da rejeição..."
+                                  value={d.motivo}
+                                  onChange={e => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: e.target.value } }))}
+                                  className="mt-1.5 w-full border border-red-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button type="button" onClick={() => setDecisoesMap(prev => { const n = { ...prev }; delete n[a.id]; return n })} className={`px-2 py-1 rounded text-xs font-medium transition ${!d ? 'bg-green-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-green-100'}`}>✓ OK</button>
+                              <button type="button" onClick={() => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: '' } }))} className={`px-2 py-1 rounded text-xs font-medium transition ${d?.status === 'REJEITADA' ? 'bg-red-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-red-100'}`}>✗ Reprovar</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200">
+              <button type="button" onClick={() => setShowRevisarPlanoModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">Cancelar</button>
+              {(() => {
+                const rejeitados = Object.values(decisoesMap).filter(d => d.status === 'REJEITADA')
+                if (rejeitados.length > 0) {
+                  return (
+                    <button
+                      type="button"
+                      disabled={rejeitarPlanoMutation.isPending}
+                      onClick={() => {
+                        const motivo = Object.entries(decisoesMap)
+                          .filter(([, d]) => d.status === 'REJEITADA')
+                          .map(([id, d]) => {
+                            const atv = nc.atividades?.find(a => a.id === id)
+                            const pqLabels: Record<string, string> = { p1: nc.porqueUm ?? '', p2: nc.porqueDois ?? '', p3: nc.porqueTres ?? '', p4: nc.porqueQuatro ?? '', p5: nc.porqueCinco ?? '' }
+                            const label = atv ? `Atividade "${atv.titulo}"` : `Porquê ${id.replace('p', '')}: "${pqLabels[id]}"`
+                            return d.motivo ? `${label} — ${d.motivo}` : label
+                          }).join('; ')
+                        rejeitarPlanoMutation.mutate(motivo, { onSuccess: () => setShowRevisarPlanoModal(false) })
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                    >
+                      {rejeitarPlanoMutation.isPending ? 'Rejeitando...' : `Rejeitar Plano (${rejeitados.length} item${rejeitados.length > 1 ? 's' : ''})`}
+                    </button>
+                  )
+                }
+                return (
+                  <button
+                    type="button"
+                    disabled={aprovarPlanoMutation.isPending}
+                    onClick={() => aprovarPlanoMutation.mutate(undefined, { onSuccess: () => setShowRevisarPlanoModal(false) })}
+                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                  >
+                    {aprovarPlanoMutation.isPending ? 'Aprovando...' : 'Aprovar Plano ✓'}
+                  </button>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Revisar Atividades (EM_AJUSTE_PELO_EXTERNO) */}
+      {showRevisarAtividadesModal && nc && (
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl my-6 shadow-xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-slate-800">Revisar Atividades Revisadas</h3>
+              <button type="button" onClick={() => setShowRevisarAtividadesModal(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+              {/* 5 Porquês — leitura */}
+              {nc.porqueUm && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">5 Porquês (referência)</p>
+                  <div className="space-y-2">
+                    {[
+                      { label: nc.porqueUm, resp: nc.porqueUmResposta },
+                      { label: nc.porqueDois, resp: nc.porqueDoisResposta },
+                      { label: nc.porqueTres, resp: nc.porqueTresResposta },
+                      { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
+                      { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
+                    ].filter(p => p.label).map((p, i) => (
+                      <div key={i} className="flex gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                          {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Atividades pendentes */}
+              {nc.atividades?.filter(a => a.status === 'PENDENTE').length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Atividades</p>
+                  <div className="space-y-2">
+                    {nc.atividades.filter(a => a.status === 'PENDENTE').map((a, i) => {
+                      const d = decisoesMap[a.id]
+                      return (
+                        <div key={a.id} className={`rounded-lg border p-3 transition ${d?.status === 'REJEITADA' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex gap-3 items-start">
+                            <span className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center shrink-0 bg-blue-100 text-blue-700">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 break-words">{a.titulo}</p>
+                              {a.descricao && <p className="text-xs text-slate-500 mt-0.5 break-words">{a.descricao}</p>}
+                              {d?.status === 'REJEITADA' && (
+                                <input
+                                  type="text"
+                                  placeholder="Motivo da rejeição..."
+                                  value={d.motivo}
+                                  onChange={e => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: e.target.value } }))}
+                                  className="mt-1.5 w-full border border-red-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button type="button" onClick={() => setDecisoesMap(prev => { const n = { ...prev }; delete n[a.id]; return n })} className={`px-2 py-1 rounded text-xs font-medium transition ${!d ? 'bg-green-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-green-100'}`}>✓ OK</button>
+                              <button type="button" onClick={() => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: '' } }))} className={`px-2 py-1 rounded text-xs font-medium transition ${d?.status === 'REJEITADA' ? 'bg-red-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-red-100'}`}>✗ Reprovar</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200">
+              <button type="button" onClick={() => setShowRevisarAtividadesModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">Cancelar</button>
+              <button
+                type="button"
+                disabled={revisarAtividadesMutation.isPending}
+                onClick={() => {
+                  const pendentes = nc.atividades?.filter(a => a.status === 'PENDENTE') ?? []
+                  const decisoes = pendentes.map(a => {
+                    const d = decisoesMap[a.id]
+                    return { atividadeId: a.id, status: (d?.status ?? 'APROVADA') as 'APROVADA' | 'REJEITADA', motivo: d?.motivo }
+                  })
+                  revisarAtividadesMutation.mutate({ decisoes }, { onSuccess: () => setShowRevisarAtividadesModal(false) })
+                }}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {revisarAtividadesMutation.isPending ? 'Enviando...' : 'Confirmar Revisão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Revisar Execução (AGUARDANDO_VALIDACAO_FINAL) */}
+      {showRevisarExecucaoModal && nc && (
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl my-6 shadow-xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-slate-800">Revisar Execução das Atividades</h3>
+              <button type="button" onClick={() => setShowRevisarExecucaoModal(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+              {/* 5 Porquês — leitura */}
+              {nc.porqueUm && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">5 Porquês (referência)</p>
+                  <div className="space-y-2">
+                    {[
+                      { label: nc.porqueUm, resp: nc.porqueUmResposta },
+                      { label: nc.porqueDois, resp: nc.porqueDoisResposta },
+                      { label: nc.porqueTres, resp: nc.porqueTresResposta },
+                      { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
+                      { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
+                    ].filter(p => p.label).map((p, i) => (
+                      <div key={i} className="flex gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                          {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Atividades com execução */}
+              {nc.atividades?.filter(a => a.statusExecucao === 'PENDENTE').length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Atividades Executadas</p>
+                  <div className="space-y-2">
+                    {nc.atividades.filter(a => a.statusExecucao === 'PENDENTE').map((a, i) => {
+                      const d = decisoesMap[a.id]
+                      return (
+                        <div key={a.id} className={`rounded-lg border p-3 transition ${d?.status === 'REJEITADA' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex gap-3 items-start">
+                            <span className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center shrink-0 bg-blue-100 text-blue-700">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 break-words">{a.titulo}</p>
+                              {a.descricaoExecucao && <p className="text-xs text-blue-600 mt-0.5 break-words italic">Execução: {a.descricaoExecucao}</p>}
+                              {d?.status === 'REJEITADA' && (
+                                <input
+                                  type="text"
+                                  placeholder="Motivo da rejeição..."
+                                  value={d.motivo}
+                                  onChange={e => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: e.target.value } }))}
+                                  className="mt-1.5 w-full border border-red-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button type="button" onClick={() => setDecisoesMap(prev => { const n = { ...prev }; delete n[a.id]; return n })} className={`px-2 py-1 rounded text-xs font-medium transition ${!d ? 'bg-green-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-green-100'}`}>✓ OK</button>
+                              <button type="button" onClick={() => setDecisoesMap(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: '' } }))} className={`px-2 py-1 rounded text-xs font-medium transition ${d?.status === 'REJEITADA' ? 'bg-red-600 text-white' : 'bg-gray-100 text-slate-500 hover:bg-red-100'}`}>✗ Reprovar</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200">
+              <button type="button" onClick={() => setShowRevisarExecucaoModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">Cancelar</button>
+              <button
+                type="button"
+                disabled={revisarExecucaoMutation.isPending}
+                onClick={() => {
+                  const pendentes = nc.atividades?.filter(a => a.statusExecucao === 'PENDENTE') ?? []
+                  const decisoes = pendentes.map(a => {
+                    const d = decisoesMap[a.id]
+                    return { atividadeId: a.id, status: (d?.status ?? 'APROVADA') as 'APROVADA' | 'REJEITADA', motivo: d?.motivo }
+                  })
+                  revisarExecucaoMutation.mutate({ decisoes }, { onSuccess: () => setShowRevisarExecucaoModal(false) })
+                }}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {revisarExecucaoMutation.isPending ? 'Enviando...' : 'Confirmar Revisão'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
