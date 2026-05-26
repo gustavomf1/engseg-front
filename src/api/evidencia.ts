@@ -55,3 +55,7 @@ export const downloadEvidencia = async (id: string): Promise<Blob> => {
 export const deleteEvidencia = async (id: string): Promise<void> => {
   await client.delete(`/evidencias/${id}`)
 }
+
+export const desvincularAtividadeEvidencia = async (id: string): Promise<void> => {
+  await client.patch(`/evidencias/${id}/desvincular-atividade`)
+}

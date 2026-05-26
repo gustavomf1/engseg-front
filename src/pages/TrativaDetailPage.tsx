@@ -30,6 +30,26 @@ import { TipoAcaoHistorico } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
 import NcRiskMatrix from '../components/NcRiskMatrix'
 
+function SnapEvidImage({ id, nome, onClick }: { id: string; nome: string; onClick: () => void }) {
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => {
+    let url = ''
+    downloadEvidencia(id).then(blob => { url = URL.createObjectURL(blob); setSrc(url) }).catch(() => {})
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [id])
+  const isImg = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(nome)
+  if (!isImg) return (
+    <button onClick={onClick} className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[180px]">
+      <FileText size={11} className="shrink-0" /><span className="truncate">{nome}</span>
+    </button>
+  )
+  return (
+    <button onClick={onClick} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-purple-400 transition shrink-0 bg-slate-100">
+      {src ? <img src={src} alt={nome} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><div className="w-4 h-4 border-2 border-slate-300 border-t-purple-500 rounded-full animate-spin" /></div>}
+    </button>
+  )
+}
+
 const acaoLabels: Record<TipoAcaoHistorico, string> = {
   CRIACAO: 'NC Criada',
   SUBMISSAO_INVESTIGACAO: 'Investigação Submetida',
@@ -79,7 +99,7 @@ export default function TrativaDetailPage() {
   const [execucaoDescricoes, setExecucaoDescricoes] = useState<Record<string, string>>({})
   const [decisoesExecucao, setDecisoesExecucao] = useState<Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }>>({})
   const [comentarioRevisaoExecucao, setComentarioRevisaoExecucao] = useState('')
-  const [decisoesPorques, setDecisoesPorques] = useState<Record<number, 'APROVADA' | 'REJEITADA'>>({})
+  const [decisaoPorques, setDecisaoPorques] = useState<'APROVADA' | 'REJEITADA' | undefined>(undefined)
   const [atividadesMovidas, setAtividadesMovidas] = useState<Set<string>>(new Set())
 
   const [expandedSnapshotIds, setExpandedSnapshotIds] = useState<Set<string>>(new Set())
@@ -188,14 +208,14 @@ export default function TrativaDetailPage() {
 
   const mutRevisarAtividades = useMutation({
     mutationFn: () => {
-      const porqueRejeitado = Object.values(decisoesPorques).some(s => s === 'REJEITADA')
+      const porqueRejeitado = decisaoPorques === 'REJEITADA'
       return revisarAtividades(id!, {
         decisoes: Object.entries(decisoes).map(([atividadeId, d]) => ({ atividadeId, status: d.status, motivo: d.motivo || undefined })),
         comentario: comentarioRevisao || undefined,
         porqueRejeitado,
       })
     },
-    onSuccess: () => { invalidate(); setDecisoes({}); setComentarioRevisao(''); setDecisoesPorques({}) },
+    onSuccess: () => { invalidate(); setDecisoes({}); setComentarioRevisao(''); setDecisaoPorques(undefined) },
   })
 
   const mutAprovarPlano = useMutation({
@@ -819,11 +839,7 @@ export default function TrativaDetailPage() {
                               {a.evidencias?.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
                                   {a.evidencias.map(ev => (
-                                    <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]">
-                                      <FileText size={11} className="shrink-0" />
-                                      <span className="truncate">{ev.nomeArquivo}</span>
-                                    </button>
+                                    <SnapEvidImage key={ev.id} id={ev.id} nome={ev.nomeArquivo} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)} />
                                   ))}
                                 </div>
                               )}
@@ -845,8 +861,11 @@ export default function TrativaDetailPage() {
                             const sepIdx = body.indexOf(' — ')
                             const titulo = sepIdx >= 0 ? body.slice(0, sepIdx) : body
                             const descExec = sepIdx >= 0 ? body.slice(sepIdx + 3) : ''
-                            const allEvs = nc.atividades?.flatMap(at => at.evidencias ?? []) ?? []
-                            const evs = evIds.length > 0 ? evIds.map(id => allEvs.find(e => e.id === id)).filter(Boolean) as typeof allEvs : []
+                            // Usa snap.evidencias como fonte primária (preserva histórico mesmo após unlink)
+                            const snapEvPool = [...(snap.evidencias ?? []), ...(nc.atividades?.flatMap(at => at.evidencias ?? []) ?? [])]
+                            const seen = new Set<string>()
+                            const allEvPool = snapEvPool.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true })
+                            const evs = evIds.length > 0 ? evIds.map(id => allEvPool.find(e => e.id === id)).filter(Boolean) as typeof allEvPool : []
                             return (
                               <div key={i} className={`rounded-lg border p-3 ${isAprovada ? 'border-green-200 bg-green-50' : isRejeitada ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
                                 <div className="flex items-center gap-2 mb-1">
@@ -862,11 +881,7 @@ export default function TrativaDetailPage() {
                                 {evs.length > 0 && (
                                   <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
                                     {evs.map(ev => (
-                                      <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
-                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[200px]">
-                                        <FileText size={11} className="shrink-0" />
-                                        <span className="truncate">{ev.nomeArquivo}</span>
-                                      </button>
+                                      <SnapEvidImage key={ev.id} id={ev.id} nome={ev.nomeArquivo} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)} />
                                     ))}
                                   </div>
                                 )}
@@ -1124,10 +1139,7 @@ export default function TrativaDetailPage() {
             <button
               type="button"
               onClick={() => {
-                const pqs = [nc?.porqueUm, nc?.porqueDois, nc?.porqueTres, nc?.porqueQuatro, nc?.porqueCinco].filter(Boolean)
-                const novasPqs: Record<number, 'APROVADA' | 'REJEITADA'> = {}
-                pqs.forEach((_, i) => { novasPqs[i] = 'APROVADA' })
-                setDecisoesPorques(novasPqs)
+                if (nc?.porqueUm) setDecisaoPorques('APROVADA')
                 const novasAtv: Record<string, { status: 'APROVADA' | 'REJEITADA'; motivo: string }> = {}
                 nc?.atividades?.filter(a => a.status === 'PENDENTE').forEach(a => { novasAtv[a.id] = { status: 'APROVADA', motivo: '' } })
                 setDecisoes(novasAtv)
@@ -1141,8 +1153,20 @@ export default function TrativaDetailPage() {
           <div className="space-y-3">
             {/* 5 Porquês */}
             {nc?.porqueUm && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">5 Porquês</p>
+              <div className={`rounded-xl border p-4 transition ${decisaoPorques === 'REJEITADA' ? 'border-red-300 bg-red-50' : decisaoPorques === 'APROVADA' ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">5 Porquês</p>
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={() => setDecisaoPorques('APROVADA')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${decisaoPorques === 'APROVADA' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
+                      <CheckCircle size={12} /> Aprovar
+                    </button>
+                    <button type="button" onClick={() => setDecisaoPorques('REJEITADA')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${decisaoPorques === 'REJEITADA' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
+                      <XCircle size={12} /> Reprovar
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   {[
                     { label: nc.porqueUm, resp: nc.porqueUmResposta },
@@ -1150,35 +1174,26 @@ export default function TrativaDetailPage() {
                     { label: nc.porqueTres, resp: nc.porqueTresResposta },
                     { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
                     { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
-                  ].filter(p => p.label).map((p, i) => {
-                    const dec = decisoesPorques[i]
-                    return (
-                      <div key={i} className={`rounded-lg border p-3 transition ${dec === 'REJEITADA' ? 'border-red-300 bg-red-50' : dec === 'APROVADA' ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                        <div className="flex gap-3 items-start">
-                          <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
-                            {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            <button type="button" onClick={() => setDecisoesPorques(prev => ({ ...prev, [i]: 'APROVADA' }))}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${dec === 'APROVADA' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
-                              <CheckCircle size={12} /> Aprovar
-                            </button>
-                            <button type="button" onClick={() => setDecisoesPorques(prev => ({ ...prev, [i]: 'REJEITADA' }))}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${dec === 'REJEITADA' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
-                              <XCircle size={12} /> Reprovar
-                            </button>
-                          </div>
-                        </div>
+                  ].filter(p => p.label).map((p, i) => (
+                    <div key={i} className="flex gap-3 items-start">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
+                        {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
                       </div>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
-                <hr className="my-3 border-gray-200" />
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades do Plano</p>
+                {nc.causaRaiz && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Causa Raiz Identificada</p>
+                    <p className="text-sm text-slate-800 break-words">{nc.causaRaiz}</p>
+                  </div>
+                )}
               </div>
             )}
+            {nc?.porqueUm && <hr className="border-gray-200" />}
+            {nc?.porqueUm && <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Atividades do Plano</p>}
             {nc?.atividades?.some(a => a.status === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
@@ -1223,7 +1238,7 @@ export default function TrativaDetailPage() {
               )
             })}
             {(() => {
-              const temReprovacao = Object.values(decisoes).some(d => d.status === 'REJEITADA') || Object.values(decisoesPorques).some(s => s === 'REJEITADA')
+              const temReprovacao = Object.values(decisoes).some(d => d.status === 'REJEITADA') || decisaoPorques === 'REJEITADA'
               return (
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: temReprovacao ? '#dc2626' : '#64748b' }}>
@@ -1239,9 +1254,10 @@ export default function TrativaDetailPage() {
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
               <button onClick={() => mutRevisarAtividades.mutate()}
                 disabled={
+                  (nc?.porqueUm != null && decisaoPorques == null) ||
                   (nc?.atividades?.filter(a => a.status === 'PENDENTE') ?? []).some(a => !decisoes[a.id]) ||
                   Object.values(decisoes).some(d => d.status === 'REJEITADA' && !d.motivo.trim()) ||
-                  ((Object.values(decisoes).some(d => d.status === 'REJEITADA') || Object.values(decisoesPorques).some(s => s === 'REJEITADA')) && !comentarioRevisao.trim()) ||
+                  ((Object.values(decisoes).some(d => d.status === 'REJEITADA') || decisaoPorques === 'REJEITADA') && !comentarioRevisao.trim()) ||
                   mutRevisarAtividades.isPending
                 }
                 className="flex-[2] bg-blue-600 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
@@ -1279,25 +1295,43 @@ export default function TrativaDetailPage() {
                 ))}
               </div>
             )}
-            {nc?.atividades?.filter(a => a.status === 'APROVADA' && a.statusExecucao !== 'APROVADA').map(a => (
-              <div key={a.id} className={`rounded-lg border p-4 space-y-3 border-purple-200 bg-purple-50/30`}>
-                <div className="flex gap-2 items-start">
-                  <span className="w-6 h-6 rounded bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{a.ordem}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 break-words">{a.titulo}</p>
-                    <p className="text-xs text-slate-600 break-words">{a.descricao}</p>
+            {nc?.atividades?.filter(a => a.status === 'APROVADA' && a.statusExecucao !== 'APROVADA').map(a => {
+              const rejeitada = a.statusExecucao === 'REJEITADA'
+              return (
+              <div key={a.id} className={`rounded-lg border p-4 space-y-3 transition ${rejeitada ? 'border-red-300 bg-red-50/40' : 'border-purple-200 bg-purple-50/30'}`}>
+                <div className="flex gap-2 items-start justify-between">
+                  <div className="flex gap-2 items-start min-w-0">
+                    <span className={`w-6 h-6 rounded text-xs font-bold flex items-center justify-center shrink-0 ${rejeitada ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}`}>{a.ordem}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 break-words">{a.titulo}</p>
+                      <p className="text-xs text-slate-600 break-words">{a.descricao}</p>
+                    </div>
                   </div>
+                  {rejeitada && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 border border-red-200 text-red-700 text-xs font-bold shrink-0">
+                      <XCircle size={11} /> Reprovada
+                    </span>
+                  )}
                 </div>
+                {rejeitada && a.motivoRejeicaoExecucao && (
+                  <div className="flex gap-2 items-start p-2.5 bg-red-100 border border-red-200 rounded-lg">
+                    <XCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-red-700">Motivo da reprovação</p>
+                      <p className="text-xs text-red-600 break-words">{a.motivoRejeicaoExecucao}</p>
+                    </div>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">O que foi feito *</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{rejeitada ? 'Corrija e descreva o que foi feito *' : 'O que foi feito *'}</label>
                   <textarea value={execucaoDescricoes[a.id] ?? ''}
                     onChange={e => setExecucaoDescricoes(prev => ({ ...prev, [a.id]: e.target.value }))}
                     rows={3} placeholder="Descreva as ações realizadas para esta atividade..."
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                    className={`w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 transition ${rejeitada ? 'border-red-200 focus:ring-red-300' : 'border-gray-200 focus:ring-purple-400'}`} />
                 </div>
-                <EvidenciaUpload atividadeId={a.id} tipoEvidencia="TRATATIVA" titulo="Evidências desta atividade" />
+                <EvidenciaUpload atividadeId={a.id} tipoEvidencia="TRATATIVA" titulo={rejeitada ? 'Atualize as evidências' : 'Evidências desta atividade'} />
               </div>
-            ))}
+            )})}
             <div className="flex gap-3 pt-2">
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>
               <button onClick={() => mutSubmeterExecucao.mutate()}
@@ -1336,40 +1370,16 @@ export default function TrativaDetailPage() {
       )}
 
       {showAprovacaoEvidenciasForm && (
-        <div className="bg-white rounded-xl border-2 border-green-400 shadow-md p-6 ring-2 ring-green-100">
+        <div className="bg-white rounded-xl border-2 border-purple-400 shadow-md p-6 ring-2 ring-purple-100">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle size={16} className="text-green-600" />
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <CheckCircle size={16} className="text-purple-600" />
             </div>
             <h3 className="text-base font-bold text-slate-800">Validação da Execução</h3>
           </div>
-          <p className="text-sm text-green-600 mb-5 ml-11">Revise a execução de cada atividade. Aprove ou rejeite individualmente.</p>
+          <p className="text-sm text-purple-600 mb-5 ml-11">Revise a execução de cada atividade. Aprove ou rejeite individualmente.</p>
           <div className="space-y-3">
-            {/* 5 Porquês — referência */}
-            {nc?.porqueUm && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">5 Porquês (referência)</p>
-                <div className="space-y-1.5">
-                  {[
-                    { label: nc.porqueUm, resp: nc.porqueUmResposta },
-                    { label: nc.porqueDois, resp: nc.porqueDoisResposta },
-                    { label: nc.porqueTres, resp: nc.porqueTresResposta },
-                    { label: nc.porqueQuatro, resp: nc.porqueQuatroResposta },
-                    { label: nc.porqueCinco, resp: nc.porqueCincoResposta },
-                  ].filter(p => p.label).map((p, i) => (
-                    <div key={i} className="flex gap-3 items-start p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                      <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 break-words">{p.label}</p>
-                        {p.resp && <p className="text-xs text-slate-500 mt-0.5 break-words pl-2 border-l-2 border-blue-200">{p.resp}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <hr className="my-3 border-gray-200" />
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades Executadas</p>
-              </div>
-            )}
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades Executadas</p>
             {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
@@ -1428,7 +1438,7 @@ export default function TrativaDetailPage() {
               <label className="block text-xs font-medium text-slate-500 mb-1">Comentário geral (opcional)</label>
               <textarea value={comentarioRevisaoExecucao} onChange={e => setComentarioRevisaoExecucao(e.target.value)} rows={2}
                 placeholder="Comentário sobre esta revisão..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white transition" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white transition" />
             </div>
             <div className="flex gap-3 pt-1">
               <button onClick={() => navigate('/tratativas')} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">Cancelar</button>

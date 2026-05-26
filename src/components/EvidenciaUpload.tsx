@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Upload, Download, Trash2, Eye, X, FileImage, File as FileIcon, Loader2 } from 'lucide-react'
-import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, uploadEvidenciaAtividade, getEvidenciasAtividade, downloadEvidencia, deleteEvidencia } from '../api/evidencia'
+import { uploadEvidencia, getEvidencias, uploadEvidenciaDesvio, getEvidenciasDesvio, uploadEvidenciaAtividade, getEvidenciasAtividade, downloadEvidencia, deleteEvidencia, desvincularAtividadeEvidencia } from '../api/evidencia'
 import { Evidencia, TipoEvidencia } from '../types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatDate } from '../utils/date'
@@ -52,7 +52,7 @@ export default function EvidenciaUpload({ naoConformidadeId, desvioId, atividade
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteEvidencia(id),
+    mutationFn: (id: string) => atividadeId ? desvincularAtividadeEvidencia(id) : deleteEvidencia(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
     },
