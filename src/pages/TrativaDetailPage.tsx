@@ -163,6 +163,16 @@ export default function TrativaDetailPage() {
   })
 
   useEffect(() => {
+    const aprovadas = nc?.atividades?.filter(a => a.statusExecucao === 'APROVADA') ?? []
+    if (aprovadas.length === 0) return
+    setDecisoesExecucao(prev => {
+      const next = { ...prev }
+      aprovadas.forEach(a => { if (!next[a.id]) next[a.id] = { status: 'APROVADA', motivo: '' } })
+      return next
+    })
+  }, [nc?.id])
+
+  useEffect(() => {
     if (nc && !initialized.current) {
       initialized.current = true
       if (nc.porqueUm) {
@@ -1382,16 +1392,48 @@ export default function TrativaDetailPage() {
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Atividades Executadas</p>
             {nc?.atividades?.some(a => a.statusExecucao === 'APROVADA') && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas</p>
-                {nc.atividades.filter(a => a.statusExecucao === 'APROVADA').map(a => (
-                  <div key={a.id} className="flex gap-2 items-start p-3 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
-                    <CheckCircle size={15} className="text-green-500 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-green-800 break-words">{a.titulo}</p>
-                      {a.descricaoExecucao && <p className="text-xs text-green-700 mt-0.5 break-words italic">"{a.descricaoExecucao}"</p>}
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovadas anteriormente</p>
+                {nc.atividades.filter(a => a.statusExecucao === 'APROVADA').map(a => {
+                  const decisao = decisoesExecucao[a.id]
+                  const rejeitando = decisao?.status === 'REJEITADA'
+                  return (
+                    <div key={a.id} className={`rounded-lg border p-3 transition ${rejeitando ? 'border-red-300 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <CheckCircle size={12} className="text-green-500 shrink-0" />
+                        <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Já aprovada</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800 break-words mb-0.5">{a.titulo}</p>
+                      {a.descricaoExecucao && <p className="text-xs text-slate-600 break-words mb-2 italic">"{a.descricaoExecucao}"</p>}
+                      {a.evidencias?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {a.evidencias.map((ev: any) => (
+                            <button key={ev.id} onClick={() => handleDownloadEvidencia(ev.id, ev.nomeArquivo)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 max-w-[180px]">
+                              <FileText size={11} className="shrink-0" />
+                              <span className="truncate">{ev.nomeArquivo}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'APROVADA', motivo: '' } }))}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${!rejeitando ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}>
+                          <CheckCircle size={13} /> Manter aprovada
+                        </button>
+                        <button type="button" onClick={() => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { status: 'REJEITADA', motivo: prev[a.id]?.motivo ?? '' } }))}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${rejeitando ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>
+                          <XCircle size={13} /> Rejeitar
+                        </button>
+                      </div>
+                      {rejeitando && (
+                        <textarea value={decisao.motivo}
+                          onChange={e => setDecisoesExecucao(prev => ({ ...prev, [a.id]: { ...prev[a.id], motivo: e.target.value } }))}
+                          placeholder="Motivo da rejeição *" rows={2}
+                          className="mt-2 w-full border border-red-200 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-400 transition" />
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
             {nc?.atividades?.filter(a => a.statusExecucao === 'PENDENTE').map(a => {
