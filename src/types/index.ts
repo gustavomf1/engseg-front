@@ -494,6 +494,14 @@ export interface RejeitarRequest {
   emailsManuais?: string[]
 }
 
+export interface EmailPadraoEscopo {
+  estabelecimentoId: string
+  estabelecimentoNome: string
+  empresaId: string
+  empresaNome: string
+  emailCount: number
+}
+
 export interface EmailPadrao {
   id: string
   estabelecimentoId: string

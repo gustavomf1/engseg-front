@@ -1,0 +1,486 @@
+/* ============================================================
+   Emails Padrão — estilos específicos da página
+   Usa as CSS vars globais do projeto (index.css)
+   ============================================================ */
+
+:root {
+  --ep-red:          #f85149;
+  --ep-red-soft:     rgba(248, 81, 73, 0.12);
+  --ep-green:        #3fb950;
+  --ep-green-soft:   rgba(63, 185, 80, 0.14);
+  --ep-amber:        #d29922;
+  --ep-amber-soft:   rgba(210, 153, 34, 0.14);
+  --ep-purple:       #bc8cff;
+  --ep-accent-soft:  rgba(88, 166, 255, 0.10);
+  --ep-accent-str:   rgba(88, 166, 255, 0.22);
+  --ep-pulse-rgb:    88, 166, 255;
+}
+
+/* ─── Page wrapper ─────────────────────────────────────── */
+.ep-page {
+  padding-bottom: 40px;
+}
+
+/* ─── Page header ───────────────────────────────────────── */
+.ep-pageheader {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.ep-pageheader-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ep-accent-soft), rgba(188,140,255,0.16));
+  border: 1px solid rgba(88,166,255,0.3);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ep-pageheader-text { flex: 1; min-width: 0; }
+.ep-pageheader-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-0);
+  letter-spacing: -0.01em;
+}
+.ep-pageheader-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+  max-width: 640px;
+  line-height: 1.5;
+}
+.ep-pageheader-sub strong { color: var(--text-1); }
+.ep-pageheader-stat {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  font-size: 12px;
+  color: var(--text-1);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.ep-pageheader-stat-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ep-green);
+  box-shadow: 0 0 0 3px rgba(63,185,80,0.18);
+}
+
+/* ─── Card ──────────────────────────────────────────────── */
+.ep-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: ep-fade-in 0.35s ease both;
+}
+.ep-card-head {
+  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.015), transparent);
+}
+.ep-card-title {
+  font-size: 13px; font-weight: 600; color: var(--text-0);
+  display: inline-flex; align-items: center; gap: 8px;
+  letter-spacing: 0.01em;
+}
+.ep-card-body { padding: 18px; }
+
+/* ─── Master-Detail grid ────────────────────────────────── */
+.ep-md-grid {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .ep-md-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Scope list (left panel) ───────────────────────────── */
+.ep-scope-list { overflow: hidden; }
+.ep-scope-list-search {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.ep-scope-list-filter {
+  display: flex; gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-muted);
+  flex-wrap: wrap;
+}
+.ep-filter-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.ep-filter-chip.active {
+  background: var(--ep-accent-soft);
+  border-color: rgba(88,166,255,0.4);
+  color: var(--accent);
+}
+.ep-filter-chip:not(.active):hover {
+  border-color: var(--border-main);
+  color: var(--text-1);
+}
+.ep-scope-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+}
+.ep-scope-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.ep-scope-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 2px solid transparent;
+}
+.ep-scope-item:hover { background: var(--bg-muted); }
+.ep-scope-item.selected {
+  background: var(--ep-accent-soft);
+  border-left-color: var(--accent);
+}
+.ep-scope-item:last-child { border-bottom: 0; }
+.ep-scope-item-text { flex: 1; min-width: 0; }
+.ep-scope-item-est { font-size: 13px; font-weight: 600; color: var(--text-0); }
+.ep-scope-item-emp { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.ep-scope-item-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.ep-scope-item-count.has {
+  background: var(--ep-accent-soft);
+  color: var(--accent);
+  border-color: rgba(88,166,255,0.3);
+}
+.ep-scope-item-count.empty {
+  background: var(--ep-amber-soft);
+  color: var(--ep-amber);
+  border-color: rgba(210,153,34,0.3);
+}
+.ep-scope-warn {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ep-amber);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(210,153,34,0.18);
+}
+
+/* ─── Stat strip ────────────────────────────────────────── */
+.ep-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ep-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+  animation: ep-fade-in 0.35s ease both;
+}
+.ep-stat-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ep-stat-value {
+  display: flex; align-items: baseline; gap: 6px;
+  margin-top: 6px;
+}
+.ep-stat-num {
+  font-size: 22px; font-weight: 700;
+  color: var(--text-0);
+  line-height: 1;
+}
+.ep-stat-num.ok  { color: var(--ep-green); }
+.ep-stat-num.warn { color: var(--ep-amber); }
+.ep-stat-foot {
+  font-size: 11px; color: var(--text-3);
+  margin-top: 4px;
+}
+
+/* ─── Field / label ─────────────────────────────────────── */
+.ep-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ep-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.02em;
+}
+.ep-required { color: var(--ep-red); margin-left: 3px; }
+
+/* ─── Inputs (used in add-row) ──────────────────────────── */
+.ep-input-wrap { position: relative; display: flex; align-items: stretch; }
+.ep-input-wrap.has-icon .ep-input { padding-left: 36px; }
+.ep-input-icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-3); pointer-events: none; display: flex;
+}
+.ep-input {
+  width: 100%;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-main);
+  border-radius: 8px;
+  color: var(--text-0);
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ep-input:hover { border-color: var(--border-main); }
+.ep-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--ep-pulse-rgb), 0.18);
+}
+.ep-input::placeholder { color: var(--text-3); }
+
+/* ─── Add row (inline) ──────────────────────────────────── */
+.ep-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 1px minmax(0, 1fr) auto;
+  gap: 0;
+  align-items: stretch;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-main);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ep-add-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--ep-pulse-rgb), 0.12);
+}
+.ep-add-row .ep-input {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 10px 10px 10px 36px;
+  box-shadow: none !important;
+}
+.ep-add-row .ep-input-wrap.has-icon .ep-input { padding-left: 32px; }
+.ep-add-row .ep-input-icon { left: 8px; }
+.ep-add-divider { background: var(--border-soft); width: 1px; align-self: stretch; }
+.ep-add-row .ep-btn { border-radius: 0 8px 8px 0; margin: 0; }
+
+/* ─── Buttons ───────────────────────────────────────────── */
+.ep-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ep-btn-primary {
+  background: linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%);
+  color: white;
+  box-shadow: 0 4px 14px -4px rgba(29,78,216,0.4);
+}
+.ep-btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  box-shadow: 0 6px 18px -4px rgba(29,78,216,0.6);
+}
+.ep-btn-primary:disabled {
+  background: var(--bg-elevated);
+  color: var(--text-3);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.ep-btn-icon {
+  padding: 0;
+  width: 32px; height: 32px;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: 8px;
+  cursor: pointer;
+  border: 0;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.ep-btn-icon:hover { background: var(--bg-elevated); color: var(--text-0); }
+.ep-btn-icon.danger:hover { background: var(--ep-red-soft); color: var(--ep-red); }
+
+/* ─── Coverage banner ───────────────────────────────────── */
+.ep-coverage {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ep-coverage.ok {
+  background: rgba(63,185,80,0.06);
+  border: 1px solid rgba(63,185,80,0.3);
+  color: var(--ep-green);
+}
+.ep-coverage.warn {
+  background: rgba(210,153,34,0.06);
+  border: 1px solid rgba(210,153,34,0.3);
+  color: var(--ep-amber);
+}
+.ep-coverage-icon { flex-shrink: 0; margin-top: 1px; }
+.ep-coverage-text { color: var(--text-1); }
+.ep-coverage-text strong { color: var(--text-0); font-weight: 600; }
+
+/* ─── Detail header ─────────────────────────────────────── */
+.ep-detail-head {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.ep-detail-head-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--ep-accent-soft);
+  border: 1px solid rgba(88,166,255,0.25);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  flex-shrink: 0;
+}
+.ep-detail-head-text { flex: 1; min-width: 0; }
+.ep-detail-head-title { font-size: 16px; font-weight: 700; color: var(--text-0); }
+.ep-detail-head-sub {
+  font-size: 12px; color: var(--text-2); margin-top: 3px;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.ep-detail-head-dot {
+  width: 3px; height: 3px; border-radius: 50%;
+  background: var(--text-3);
+  display: inline-block;
+}
+.ep-detail-body {
+  padding: 18px 22px 22px;
+  display: flex; flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Section title ─────────────────────────────────────── */
+.ep-section-title {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.ep-section-title-num {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: var(--ep-accent-soft);
+  color: var(--accent);
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.ep-section-title-text { font-size: 13px; font-weight: 600; color: var(--text-0); }
+
+/* ─── Email list ────────────────────────────────────────── */
+.ep-list-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 4px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ep-list { display: flex; flex-direction: column; }
+.ep-list-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  gap: 8px;
+}
+.ep-list-empty-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: var(--bg-muted);
+  border: 1px dashed var(--border-main);
+  color: var(--text-3);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.ep-list-empty-title { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.ep-list-empty-sub { font-size: 12px; color: var(--text-3); max-width: 360px; line-height: 1.5; }
+
+/* ─── Email row ─────────────────────────────────────────── */
+.ep-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  transition: background 0.15s;
+  animation: ep-row-in 0.25s ease both;
+}
+.ep-row + .ep-row { margin-top: 2px; }
+.ep-row:hover { background: var(--bg-muted); }
+.ep-row:hover .ep-row-actions { opacity: 1; }
+
+.ep-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.ep-row-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ep-row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ep-row-email {
+  font-size: 13px; font-weight: 500; color: var(--text-0);
+  word-break: break-all;
+}
+.ep-row-desc { font-size: 11px; color: var(--text-3); }
+.ep-row-actions {
+  display: flex; gap: 4px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+/* ─── Avatar palette ────────────────────────────────────── */
+.ep-avatar-c1 { background: linear-gradient(135deg, #1d4ed8, #4338ca); }
+.ep-avatar-c2 { background: linear-gradient(135deg, #047857, #15803d); }
+.ep-avatar-c3 { background: linear-gradient(135deg, #b45309, #d97706); }
+.ep-avatar-c4 { background: linear-gradient(135deg, #be185d, #db2777); }
+.ep-avatar-c5 { background: linear-gradient(135deg, #6d28d9, #7c3aed); }
+.ep-avatar-c6 { background: linear-gradient(135deg, #155e75, #0e7490); }
+.ep-avatar-c7 { background: linear-gradient(135deg, #92400e, #b45309); }
+
+/* ─── Animations ────────────────────────────────────────── */
+@keyframes ep-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ep-row-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
