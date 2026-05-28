@@ -158,8 +158,8 @@ export default function OcorrenciaDetailPage() {
         descricao: nc.descricao,
         regraDeOuro: nc.regraDeOuro,
         estabelecimentoId: nc.estabelecimentoId,
-        engResponsavelConstrutoraId: nc.engResponsavelConstrutoraId ?? '',
-        engResponsavelVerificacaoId: nc.engResponsavelVerificacaoId ?? '',
+        responsavelTrativaId: nc.responsavelTrativaId ?? '',
+        responsavelNcId: nc.responsavelNcId ?? '',
         reincidencia: nc.reincidencia ?? false,
         ncAnteriorId: nc.ncAnteriorId ?? '',
       })
@@ -188,8 +188,8 @@ export default function OcorrenciaDetailPage() {
           severidade: nc?.severidade ?? 3,
           probabilidade: nc?.probabilidade ?? 3,
           estabelecimentoId: form.estabelecimentoId,
-          engResponsavelConstrutoraId: form.engResponsavelConstrutoraId || undefined,
-          engResponsavelVerificacaoId: form.engResponsavelVerificacaoId || undefined,
+          responsavelTrativaId: form.responsavelTrativaId || undefined,
+          responsavelNcId: form.responsavelNcId || undefined,
           reincidencia: form.reincidencia ?? false,
           ncAnteriorId: form.reincidencia && form.ncAnteriorId ? form.ncAnteriorId : undefined,
         })
@@ -557,25 +557,25 @@ export default function OcorrenciaDetailPage() {
                     {editando
                       ? <SearchableSelect
                           options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                          value={form.engResponsavelConstrutoraId ?? ''}
-                          onChange={id => set('engResponsavelConstrutoraId', id)}
+                          value={form.responsavelTrativaId ?? ''}
+                          onChange={id => set('responsavelTrativaId', id)}
                           placeholder="Responsável pela tratativa"
                           className={inputClass}
                         />
-                      : nc!.engConstruturaNome || nc!.engConstrutoraEmail
+                      : nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail
                         ? (
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
                               <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                                {getInitials(nc!.engConstruturaNome || nc!.engConstrutoraEmail || '?')}
+                                {getInitials(nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail || '?')}
                               </span>
                             </div>
                             <div className="min-w-0">
-                              {nc!.engConstruturaPerfil && (
-                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.engConstruturaPerfil}</div>
+                              {nc!.responsavelTrativaPerfil && (
+                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelTrativaPerfil}</div>
                               )}
-                              {nc!.engConstruturaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engConstruturaNome}</div>}
-                              {nc!.engConstrutoraEmail && <div className="text-xs text-slate-400 truncate">{nc!.engConstrutoraEmail}</div>}
+                              {nc!.responsavelTrativaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelTrativaNome}</div>}
+                              {nc!.responsavelTrativaEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelTrativaEmail}</div>}
                             </div>
                           </div>
                         )
@@ -586,25 +586,25 @@ export default function OcorrenciaDetailPage() {
                     {editando
                       ? <SearchableSelect
                           options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                          value={form.engResponsavelVerificacaoId ?? ''}
-                          onChange={id => set('engResponsavelVerificacaoId', id)}
+                          value={form.responsavelNcId ?? ''}
+                          onChange={id => set('responsavelNcId', id)}
                           placeholder="Responsável pela NC"
                           className={inputClass}
                         />
-                      : nc!.engVerificacaoNome || nc!.engVerificacaoEmail
+                      : nc!.responsavelNcNome || nc!.responsavelNcEmail
                         ? (
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
                               <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
-                                {getInitials(nc!.engVerificacaoNome || nc!.engVerificacaoEmail || '?')}
+                                {getInitials(nc!.responsavelNcNome || nc!.responsavelNcEmail || '?')}
                               </span>
                             </div>
                             <div className="min-w-0">
-                              {nc!.engVerificacaoPerfil && (
-                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.engVerificacaoPerfil}</div>
+                              {nc!.responsavelNcPerfil && (
+                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelNcPerfil}</div>
                               )}
-                              {nc!.engVerificacaoNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.engVerificacaoNome}</div>}
-                              {nc!.engVerificacaoEmail && <div className="text-xs text-slate-400 truncate">{nc!.engVerificacaoEmail}</div>}
+                              {nc!.responsavelNcNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelNcNome}</div>}
+                              {nc!.responsavelNcEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelNcEmail}</div>}
                             </div>
                           </div>
                         )
