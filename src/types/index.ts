@@ -253,14 +253,14 @@ export interface NaoConformidade {
   severidade: number
   probabilidade: number
   nivelRisco: NivelRisco
-  engResponsavelConstrutoraId: string
-  engConstruturaNome: string
-  engConstrutoraEmail: string
-  engConstruturaPerfil?: string
-  engResponsavelVerificacaoId: string
-  engVerificacaoNome: string
-  engVerificacaoEmail: string
-  engVerificacaoPerfil?: string
+  responsavelTrativaId: string
+  responsavelTrativaNome: string
+  responsavelTrativaEmail: string
+  responsavelTrativaPerfil?: string
+  responsavelNcId: string
+  responsavelNcNome: string
+  responsavelNcEmail: string
+  responsavelNcPerfil?: string
   dataLimiteResolucao: string
   usuarioCriacaoNome?: string
   usuarioCriacaoEmail?: string
@@ -303,8 +303,8 @@ export interface NaoConformidadeRequest {
   descricao: string
   severidade: number
   probabilidade: number
-  engResponsavelConstrutoraId?: string
-  engResponsavelVerificacaoId?: string
+  responsavelTrativaId?: string
+  responsavelNcId?: string
   regraDeOuro: boolean
   normaIds?: string[]
   reincidencia: boolean
