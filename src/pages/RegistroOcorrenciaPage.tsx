@@ -202,8 +202,8 @@ const schema = z.object({
   localizacaoId: z.string().optional(),
   descricao: z.string().min(1, 'Descrição obrigatória'),
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
-  engResponsavelConstrutoraId: z.string().optional(),
-  engResponsavelVerificacaoId: z.string().optional(),
+  responsavelTrativaId: z.string().optional(),
+  responsavelNcId: z.string().optional(),
   responsavelDesvioId: z.string().optional(),
   responsavelTratativaId: z.string().optional(),
 })
@@ -363,8 +363,8 @@ export default function RegistroOcorrenciaPage() {
       reset({
         titulo: ncData.titulo, localizacaoId: ncData.localizacaoId || '',
         descricao: ncData.descricao, estabelecimentoId: ncData.estabelecimentoId,
-        engResponsavelConstrutoraId: ncData.engResponsavelConstrutoraId ?? '',
-        engResponsavelVerificacaoId: ncData.engResponsavelVerificacaoId ?? '',
+        responsavelTrativaId: ncData.responsavelTrativaId ?? '',
+        responsavelNcId: ncData.responsavelNcId ?? '',
       })
       if (ncData.normas) setNormasSelecionadas(ncData.normas.map((n: { id: string }) => n.id))
       setIsReincidencia(ncData.reincidencia ?? false)
@@ -411,8 +411,8 @@ export default function RegistroOcorrenciaPage() {
           ...base,
           severidade,
           probabilidade,
-          engResponsavelConstrutoraId: data.engResponsavelConstrutoraId || undefined,
-          engResponsavelVerificacaoId: data.engResponsavelVerificacaoId || undefined,
+          responsavelTrativaId: data.responsavelTrativaId || undefined,
+          responsavelNcId: data.responsavelNcId || undefined,
           normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
           reincidencia: isReincidencia,
           ncAnteriorId: isReincidencia && ncAnteriorId ? ncAnteriorId : undefined,
@@ -480,9 +480,9 @@ export default function RegistroOcorrenciaPage() {
       const rt = [...engenheiros, ...externos].find(u => u.id === watchAll.responsavelTratativaId)
       if (rt) list.push({ name: rt.nome, email: rt.email, tag: 'Resp. Tratativa' })
     } else {
-      const rc = externos.find(u => u.id === watchAll.engResponsavelConstrutoraId)
+      const rc = externos.find(u => u.id === watchAll.responsavelTrativaId)
       if (rc) list.push({ name: rc.nome, email: rc.email, tag: 'Resp. Tratativa' })
-      const rv = engenheiros.find(u => u.id === watchAll.engResponsavelVerificacaoId)
+      const rv = engenheiros.find(u => u.id === watchAll.responsavelNcId)
       if (rv) list.push({ name: rv.nome, email: rv.email, tag: 'Resp. NC' })
     }
     return list
@@ -652,20 +652,20 @@ export default function RegistroOcorrenciaPage() {
             >
               {tipo === 'NAO_CONFORMIDADE' ? (
                 <div className="nc-form-row-2">
-                  <Field label="Eng. Responsável pela Tratativa" helper="Quem irá enviar o plano de ação (geralmente EXTERNO)">
+                  <Field label="Responsável pela Tratativa" helper="Quem irá enviar o plano de ação (geralmente EXTERNO)">
                     <SearchableSelect
                       options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                      value={watchAll.engResponsavelConstrutoraId ?? ''}
-                      onChange={id => setValue('engResponsavelConstrutoraId', id)}
+                      value={watchAll.responsavelTrativaId ?? ''}
+                      onChange={id => setValue('responsavelTrativaId', id)}
                       placeholder="Selecione..."
                       className="nc-input"
                     />
                   </Field>
-                  <Field label="Eng. Responsável pela NC" helper="Quem irá validar (aprovar/reprovar) a tratativa">
+                  <Field label="Responsável pela NC" helper="Quem irá validar (aprovar/reprovar) a tratativa">
                     <SearchableSelect
                       options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                      value={watchAll.engResponsavelVerificacaoId ?? ''}
-                      onChange={id => setValue('engResponsavelVerificacaoId', id)}
+                      value={watchAll.responsavelNcId ?? ''}
+                      onChange={id => setValue('responsavelNcId', id)}
                       placeholder="Selecione..."
                       className="nc-input"
                     />
