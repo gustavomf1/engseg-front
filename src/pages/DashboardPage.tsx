@@ -114,11 +114,11 @@ export default function DashboardPage() {
 
   const recentes = ocorrencias.filter(item => {
     if (user?.perfil === 'ENGENHEIRO') {
-      if (item.tipo === 'NAO_CONFORMIDADE') return item.engResponsavelVerificacaoId === user.id
+      if (item.tipo === 'NAO_CONFORMIDADE') return item.responsavelNcId === user.id
       return item.usuarioCriacaoEmail === user.email
     }
     if (user?.perfil === 'TECNICO') {
-      return item.usuarioCriacaoEmail === user.email || item.engResponsavelVerificacaoId === user.id
+      return item.usuarioCriacaoEmail === user.email || item.responsavelNcId === user.id
     }
     return true
   }).slice(0, 5)

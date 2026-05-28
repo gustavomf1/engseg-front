@@ -14,8 +14,7 @@ export interface OcorrenciaItem {
   severidade?: number
   probabilidade?: number
   estabelecimentoNome: string
-  engResponsavelConstrutoraId?: string
-  engResponsavelVerificacaoId?: string
+  responsavelNcId?: string
   usuarioCriacaoEmail?: string
   responsavelTratativaId?: string
   responsavelDesvioId?: string

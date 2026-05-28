@@ -157,15 +157,15 @@ async function buildTratativaPDFDoc(
     ['Usuário de Registro', nc.usuarioCriacaoNome || nc.tecnicoNome || '—'],
     [
       'Eng. Responsável pela NC',
-      nc.engVerificacaoNome
-        ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail ?? ''})`
-        : nc.engVerificacaoEmail || '—',
+      nc.responsavelNcNome
+        ? `${nc.responsavelNcNome} (${nc.responsavelNcEmail ?? ''})`
+        : nc.responsavelNcEmail || '—',
     ],
     [
       'Eng. Responsável pela Tratativa',
-      nc.engConstruturaNome
-        ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail ?? ''})`
-        : nc.engConstrutoraEmail || '—',
+      nc.responsavelTrativaNome
+        ? `${nc.responsavelTrativaNome} (${nc.responsavelTrativaEmail ?? ''})`
+        : nc.responsavelTrativaEmail || '—',
     ],
   ]
 

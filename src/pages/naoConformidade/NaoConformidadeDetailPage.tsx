@@ -326,11 +326,11 @@ export default function NaoConformidadeDetailPage() {
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável pela Tratativa</p>
-            <p className="text-slate-800 break-words">{nc.engConstruturaNome ? `${nc.engConstruturaNome} (${nc.engConstrutoraEmail})` : nc.engConstrutoraEmail || '—'}</p>
+            <p className="text-slate-800 break-words">{nc.responsavelTrativaNome ? `${nc.responsavelTrativaNome} (${nc.responsavelTrativaEmail})` : nc.responsavelTrativaEmail || '—'}</p>
           </div>
           <div>
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Eng. Responsável</p>
-            <p className="text-slate-800 break-words">{nc.engVerificacaoNome ? `${nc.engVerificacaoNome} (${nc.engVerificacaoEmail})` : nc.engVerificacaoEmail || '—'}</p>
+            <p className="text-slate-800 break-words">{nc.responsavelNcNome ? `${nc.responsavelNcNome} (${nc.responsavelNcEmail})` : nc.responsavelNcEmail || '—'}</p>
           </div>
           <div className="sm:col-span-2">
             <p className="text-slate-500 text-xs uppercase tracking-wide mb-0.5">Descrição</p>
@@ -593,7 +593,7 @@ export default function NaoConformidadeDetailPage() {
             <span className="text-orange-500 font-bold text-sm">⏳ Aguardando Investigação</span>
           </div>
           <p className="text-sm text-orange-700">
-            O responsável pela tratativa <strong>{nc.engConstruturaNome || '—'}</strong> deve preencher o plano de investigação (5 Porquês + Causa Raiz + Atividades).
+            O responsável pela tratativa <strong>{nc.responsavelTrativaNome || '—'}</strong> deve preencher o plano de investigação (5 Porquês + Causa Raiz + Atividades).
           </p>
         </div>
       )}

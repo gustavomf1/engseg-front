@@ -210,13 +210,13 @@ async function buildPDFDoc(options: ExportOptions, imagens: Evidencia[]): Promis
   if (!isDesvio) {
     rows.push(['Data Limite', formatDate(ocorrencia.dataLimiteResolucao) || '—'])
     rows.push(['Eng. Responsável pela Tratativa',
-      ocorrencia.engConstruturaNome
-        ? `${ocorrencia.engConstruturaNome} (${ocorrencia.engConstrutoraEmail ?? ''})`
-        : ocorrencia.engConstrutoraEmail || '—'])
+      ocorrencia.responsavelTrativaNome
+        ? `${ocorrencia.responsavelTrativaNome} (${ocorrencia.responsavelTrativaEmail ?? ''})`
+        : ocorrencia.responsavelTrativaEmail || '—'])
     rows.push(['Eng. Responsável pela NC',
-      ocorrencia.engVerificacaoNome
-        ? `${ocorrencia.engVerificacaoNome} (${ocorrencia.engVerificacaoEmail ?? ''})`
-        : ocorrencia.engVerificacaoEmail || '—'])
+      ocorrencia.responsavelNcNome
+        ? `${ocorrencia.responsavelNcNome} (${ocorrencia.responsavelNcEmail ?? ''})`
+        : ocorrencia.responsavelNcEmail || '—'])
   }
 
   autoTable(doc, {
@@ -437,13 +437,13 @@ export function exportOcorrenciaToExcel({ ocorrencia, trechos = [], isDesvio }: 
     resumo.push(['Nível de Risco', ocorrencia.nivelRisco || ''])
     resumo.push(['Data Limite', formatDate(ocorrencia.dataLimiteResolucao) || ''])
     resumo.push(['Eng. Responsável pela Tratativa',
-      ocorrencia.engConstruturaNome
-        ? `${ocorrencia.engConstruturaNome} (${ocorrencia.engConstrutoraEmail ?? ''})`
-        : ocorrencia.engConstrutoraEmail || ''])
+      ocorrencia.responsavelTrativaNome
+        ? `${ocorrencia.responsavelTrativaNome} (${ocorrencia.responsavelTrativaEmail ?? ''})`
+        : ocorrencia.responsavelTrativaEmail || ''])
     resumo.push(['Eng. Responsável pela NC',
-      ocorrencia.engVerificacaoNome
-        ? `${ocorrencia.engVerificacaoNome} (${ocorrencia.engVerificacaoEmail ?? ''})`
-        : ocorrencia.engVerificacaoEmail || ''])
+      ocorrencia.responsavelNcNome
+        ? `${ocorrencia.responsavelNcNome} (${ocorrencia.responsavelNcEmail ?? ''})`
+        : ocorrencia.responsavelNcEmail || ''])
   }
   const wsResumo = XLSX.utils.aoa_to_sheet(resumo)
   wsResumo['!cols'] = [{ wch: 28 }, { wch: 70 }]

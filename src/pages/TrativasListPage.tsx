@@ -70,7 +70,7 @@ export default function TrativasListPage() {
   const visiveis = ocorrencias.filter(o => {
     if (o.tipo === 'DESVIO') return true
     if (isEngenheiro || isAdmin || isTecnico) return true
-    return o.engResponsavelConstrutoraId === user?.id
+    return o.responsavelTratativaId === user?.id
   })
 
   function getStatusFiltroLabel(item: OcorrenciaItem): StatusFiltro {

@@ -33,7 +33,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
     if (o.tipo !== 'NAO_CONFORMIDADE') return false
     const aguardandoAcao = o.status === 'AGUARDANDO_APROVACAO_PLANO' || o.status === 'AGUARDANDO_VALIDACAO_FINAL'
     if (!aguardandoAcao) return false
-    return o.engResponsavelVerificacaoId === user?.id
+    return o.responsavelNcId === user?.id
   }).length
 
   function handleLogout() {
