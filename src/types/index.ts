@@ -172,6 +172,12 @@ export interface Norma {
   conteudo?: string
   ativo: boolean
   dtInativacao?: string
+  criadoEm: string
+  criadoPorNome: string
+  atualizadoEm: string
+  atualizadoPorNome: string
+  totalOcorrencias: number
+  totalNcsAtivas: number
 }
 
 export interface NormaRequest {

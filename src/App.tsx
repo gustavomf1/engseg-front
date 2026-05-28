@@ -26,6 +26,7 @@ import LocalizacaoListPage from './pages/localizacao/LocalizacaoListPage'
 import LocalizacaoFormPage from './pages/localizacao/LocalizacaoFormPage'
 import NormaListPage from './pages/norma/NormaListPage'
 import NormaFormPage from './pages/norma/NormaFormPage'
+import NormaDetailPage from './pages/norma/NormaDetailPage'
 import ConvitePage from './pages/ConvitePage'
 import EmailPadraoPage from './pages/emailPadrao/EmailPadraoPage'
 
@@ -81,7 +82,9 @@ export default function App() {
               <Route path="usuarios/novo" element={<AdminRoute><UsuarioFormPage /></AdminRoute>} />
               <Route path="usuarios/:id/editar" element={<AdminRoute><UsuarioFormPage /></AdminRoute>} />
               <Route path="normas" element={<AdminRoute><NormaListPage /></AdminRoute>} />
+              <Route path="normas/nova" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
               <Route path="normas/novo" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
+              <Route path="normas/:id" element={<AdminRoute><NormaDetailPage /></AdminRoute>} />
               <Route path="normas/:id/editar" element={<AdminRoute><NormaFormPage /></AdminRoute>} />
               <Route path="emails-padrao" element={<AdminRoute><EmailPadraoPage /></AdminRoute>} />
             </Route>

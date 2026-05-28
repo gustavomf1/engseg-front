@@ -1,35 +1,56 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createNorma, getNorma, salvarConteudoNorma, updateNorma } from '../../api/norma'
-import { ArrowLeft, FileText, Save } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { useNavigate, useParams } from 'react-router-dom'
+import { z } from 'zod'
+import {
+  AlertCircle,
+  ArrowLeft,
+  BookOpen,
+  CheckCircle2,
+  Info,
+  Save,
+  Sparkles,
+  Wand2,
+  X,
+} from 'lucide-react'
+import { createNorma, getNorma, updateNorma } from '../../api/norma'
+import { ChecklistItem, countChars, formatAuditShort, formatCount } from './NormasCommon'
+import '../../styles/normas.css'
 
 const schema = z.object({
-  titulo: z.string().min(1, 'Título obrigatório'),
-  descricao: z.string().optional(),
+  titulo: z.string().trim().min(1, 'Título obrigatório').max(120, 'Máximo de 120 caracteres'),
+  descricao: z.string().max(300, 'Máximo de 300 caracteres').optional(),
 })
 
 type FormData = z.infer<typeof schema>
 
+const TITULO_MAX = 120
+const DESC_MAX = 300
+
 export default function NormaFormPage() {
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isEditing = !!id
   const [conteudo, setConteudo] = useState('')
-  const [conteudoSalvo, setConteudoSalvo] = useState(false)
 
-  const { data: item } = useQuery({
+  const { data: item, isLoading } = useQuery({
     queryKey: ['norma', id],
     queryFn: () => getNorma(id!),
     enabled: isEditing,
   })
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { titulo: '', descricao: '' },
   })
 
   useEffect(() => {
@@ -39,122 +60,222 @@ export default function NormaFormPage() {
     }
   }, [item, reset])
 
+  const titulo = watch('titulo') || ''
+  const descricao = watch('descricao') || ''
+  const textoChars = countChars(conteudo)
+  const valid = titulo.trim().length > 0
+
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
-      isEditing ? updateNorma(id!, { ...data, conteudo }) : createNorma({ ...data, conteudo }),
-    onSuccess: () => {
+      isEditing
+        ? updateNorma(id!, { titulo: data.titulo.trim(), descricao: data.descricao?.trim(), conteudo })
+        : createNorma({ titulo: data.titulo.trim(), descricao: data.descricao?.trim(), conteudo }),
+    onSuccess: saved => {
       queryClient.invalidateQueries({ queryKey: ['normas'] })
-      navigate('/normas')
+      queryClient.invalidateQueries({ queryKey: ['norma', saved.id] })
+      navigate(`/normas/${saved.id}`)
     },
   })
 
-  const conteudoMutation = useMutation({
-    mutationFn: () => salvarConteudoNorma(id!, conteudo),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['norma', id] })
-      setConteudoSalvo(true)
-      setTimeout(() => setConteudoSalvo(false), 3000)
-    },
-  })
+  function handleCancel() {
+    navigate(isEditing && id ? `/normas/${id}` : '/normas')
+  }
 
-  const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+  function handleAutoFormat() {
+    setConteudo(current =>
+      current
+        .replace(/\r\n/g, '\n')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim(),
+    )
+  }
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft size={18} />
-        </button>
-        <h2 className="text-2xl font-bold text-slate-800">
-          {isEditing ? 'Editar Norma' : 'Nova Norma'}
-        </h2>
-      </div>
-
-      <form
-        onSubmit={handleSubmit((data) => mutation.mutate(data))}
-        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4"
-      >
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Título *</label>
-          <input
-            {...register('titulo')}
-            placeholder="Ex: NR-12, NR-35, Procedimento Interno 001/2024"
-            className={inputClass}
-          />
-          {errors.titulo && <p className="text-red-500 text-xs mt-1">{errors.titulo.message}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
-          <textarea
-            {...register('descricao')}
-            rows={3}
-            placeholder="Resumo ou observações sobre a norma"
-            className={`${inputClass} resize-y`}
-          />
-        </div>
-
-        <div className="border border-blue-100 rounded-lg p-4 bg-blue-50/40 space-y-3">
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-blue-600" />
-            <label className="block text-sm font-semibold text-blue-700">
-              Texto completo da NR
-            </label>
+    <div className="nm-screen">
+      <div className="nm-page" style={{ maxWidth: 1180 }}>
+        <div className="nm-pageheader">
+          <button className="nm-pageheader-back" onClick={handleCancel} title="Voltar">
+            <ArrowLeft size={16} />
+          </button>
+          <div className="nm-pageheader-icon">
+            <BookOpen size={22} />
           </div>
-          <p className="text-xs text-slate-500">
-            Cole aqui o texto completo da norma. Isso permite usar a busca por IA para encontrar trechos relevantes nas NCs.
-          </p>
-          <textarea
-            value={conteudo}
-            onChange={e => setConteudo(e.target.value)}
-            rows={12}
-            placeholder="Cole aqui o texto completo da NR..."
-            className={`${inputClass} resize-y font-mono text-xs`}
-          />
-          {isEditing && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => conteudoMutation.mutate()}
-                disabled={conteudoMutation.isPending || !conteudo.trim()}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
-              >
-                <Save size={14} />
-                {conteudoMutation.isPending ? 'Salvando...' : 'Salvar conteúdo'}
-              </button>
-              {conteudoSalvo && (
-                <span className="text-sm text-green-600 font-medium">Conteúdo salvo!</span>
-              )}
+          <div className="nm-pageheader-text">
+            <h1 className="nm-pageheader-title">
+              {isEditing ? 'Editar norma' : 'Nova Norma'}
+            </h1>
+            <p className="nm-pageheader-sub">
+              {isEditing
+                ? 'Atualize as informações da norma. Mudanças não removem vínculos já registrados.'
+                : 'Cadastre uma norma para vincular a ocorrências e não conformidades.'}
+            </p>
+          </div>
+        </div>
+
+        {isEditing && isLoading ? (
+          <div className="nm-card">
+            <div className="nm-empty">
+              <div className="nm-empty-icon"><BookOpen size={22} /></div>
+              <div className="nm-empty-title">Carregando norma</div>
             </div>
-          )}
-          {!isEditing && (
-            <p className="text-xs text-slate-400">O conteúdo será salvo junto com a norma.</p>
-          )}
-        </div>
-
-        {mutation.isError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
-            Erro ao salvar. Verifique os dados e tente novamente.
           </div>
-        )}
+        ) : (
+          <form className="nm-form-grid" onSubmit={handleSubmit(data => mutation.mutate(data))}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <section className="nm-card">
+                <div className="nm-card-head">
+                  <div>
+                    <div className="nm-card-title">
+                      <span className="nm-section-num">1</span>
+                      Identificação
+                    </div>
+                    <div className="nm-card-sub">Como esta norma aparece nas listagens e seleções de ocorrência.</div>
+                  </div>
+                </div>
+                <div className="nm-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="nm-field">
+                    <label className="nm-label" style={{ justifyContent: 'space-between', width: '100%' }}>
+                      <span>Título <span className="nm-required">*</span></span>
+                      <span className="nm-counter">{titulo.length}/{TITULO_MAX}</span>
+                    </label>
+                    <input
+                      className="nm-input"
+                      placeholder="Ex: Segurança no Trabalho em Máquinas e Equipamentos"
+                      maxLength={TITULO_MAX}
+                      {...register('titulo')}
+                    />
+                    {errors.titulo && <span className="nm-error">{errors.titulo.message}</span>}
+                  </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-60"
-          >
-            {mutation.isPending ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </form>
+                  <div className="nm-field">
+                    <label className="nm-label" style={{ justifyContent: 'space-between', width: '100%' }}>
+                      <span>Descrição / Resumo</span>
+                      <span className="nm-counter">{descricao.length}/{DESC_MAX}</span>
+                    </label>
+                    <textarea
+                      className="nm-input nm-textarea"
+                      placeholder="Resumo executivo da norma. 1-2 frases sobre o objetivo e escopo."
+                      maxLength={DESC_MAX}
+                      {...register('descricao')}
+                    />
+                    {errors.descricao && <span className="nm-error">{errors.descricao.message}</span>}
+                  </div>
+                </div>
+              </section>
+
+              <section className="nm-card">
+                <div className="nm-card-head">
+                  <div>
+                    <div className="nm-card-title">
+                      <span className="nm-section-num">2</span>
+                      Texto completo
+                    </div>
+                    <div className="nm-card-sub">
+                      Conteúdo integral usado na busca de trechos aplicáveis em NCs.
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="nm-btn nm-btn-soft nm-btn-sm" type="button" onClick={handleAutoFormat}>
+                      <Wand2 size={12} />
+                      Auto-formatar
+                    </button>
+                  </div>
+                </div>
+                <div className="nm-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <textarea
+                    className="nm-input nm-textarea mono"
+                    placeholder={`Cole aqui o texto completo da norma...\n\nDica: preserve a numeração das seções para facilitar citações em ocorrências.`}
+                    value={conteudo}
+                    onChange={event => setConteudo(event.target.value)}
+                  />
+                  <div className="nm-textarea-foot">
+                    <span>
+                      {textoChars > 0 ? (
+                        <>
+                          <CheckCircle2 size={12} style={{ color: 'var(--green)' }} />
+                          <span>{formatCount(textoChars)} caracteres · aprox. {Math.max(1, Math.ceil(textoChars / 1500))} página(s)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Info size={12} />
+                          <span>Opcional. O conteúdo pode ser adicionado ou editado depois.</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {mutation.isError && (
+                <div className="nm-error-panel">
+                  <AlertCircle size={15} />
+                  Erro ao salvar a norma. Verifique os dados e tente novamente.
+                </div>
+              )}
+
+              <div className="nm-form-foot">
+                <div className="nm-form-foot-status">
+                  {valid ? (
+                    <>
+                      <CheckCircle2 size={14} style={{ color: 'var(--green)' }} />
+                      <span>Pronto para salvar.</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle size={14} style={{ color: 'var(--amber)' }} />
+                      <span>Preencha o título para continuar.</span>
+                    </>
+                  )}
+                </div>
+                <div className="nm-form-foot-actions">
+                  <button className="nm-btn nm-btn-ghost" type="button" onClick={handleCancel}>
+                    <X size={14} />
+                    Cancelar
+                  </button>
+                  <button className="nm-btn nm-btn-primary" type="submit" disabled={!valid || mutation.isPending}>
+                    <Save size={14} />
+                    {mutation.isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Criar norma'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <aside className="nm-sticky-side">
+              <div className="nm-tip">
+                <div className="nm-tip-icon"><Sparkles size={14} /></div>
+                <div>
+                  <div className="nm-tip-title">Busca semântica por IA</div>
+                  <div>
+                    Quando o <strong>texto completo</strong> é informado, o sistema pode encontrar trechos aplicáveis a partir da descrição de uma NC.
+                  </div>
+                </div>
+              </div>
+
+              <div className="nm-side-card">
+                <div className="nm-side-card-head">Checklist</div>
+                <div className="nm-side-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <ChecklistItem done={titulo.trim().length > 0} label="Título preenchido" />
+                  <ChecklistItem done={descricao.trim().length > 0} label="Resumo executivo" optional />
+                  <ChecklistItem done={textoChars > 0} label="Texto completo colado" optional />
+                </div>
+              </div>
+
+              {isEditing && item && (
+                <div className="nm-side-card">
+                  <div className="nm-side-card-head">Auditoria</div>
+                  <div className="nm-side-card-body nm-audit-compact">
+                    <div><span>Criada em:</span> {formatAuditShort(item.criadoEm)}</div>
+                    <div><span>Criada por:</span> {item.criadoPorNome || '—'}</div>
+                    <div><span>Última edição:</span> {formatAuditShort(item.atualizadoEm)}</div>
+                    <div><span>Editada por:</span> {item.atualizadoPorNome || '—'}</div>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

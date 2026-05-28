@@ -719,7 +719,7 @@ export default function RegistroOcorrenciaPage() {
                 {normas.length === 0 ? (
                   <p className="nc-helper">
                     Nenhuma norma cadastrada.{' '}
-                    <a href="/normas/novo" style={{ color: 'var(--accent)' }} target="_blank" rel="noreferrer">Cadastre uma norma</a>{' '}
+                    <a href="/normas/nova" style={{ color: 'var(--accent)' }} target="_blank" rel="noreferrer">Cadastre uma norma</a>{' '}
                     para vincular aqui.
                   </p>
                 ) : (
