@@ -16,6 +16,7 @@ export interface OcorrenciaItem {
   estabelecimentoNome: string
   responsavelNcId?: string
   usuarioCriacaoEmail?: string
+  responsavelTrativaId?: string    // NC: who sends the action plan
   responsavelTratativaId?: string
   responsavelDesvioId?: string
   vencida?: boolean
