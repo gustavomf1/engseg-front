@@ -29,6 +29,7 @@ import NormaFormPage from './pages/norma/NormaFormPage'
 import NormaDetailPage from './pages/norma/NormaDetailPage'
 import ConvitePage from './pages/ConvitePage'
 import EmailPadraoPage from './pages/emailPadrao/EmailPadraoPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 
 function DefaultRedirect() {
   const { user } = useAuth()
@@ -46,6 +47,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/convite/:token" element={<ConvitePage />} />
+            <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
             <Route path="/selecionar" element={
               <PrivateRoute>
                 <SeletorPage />
