@@ -210,6 +210,21 @@ export default function LoginPage() {
                   }}
                 />
               </div>
+              <div style={{ textAlign: 'right', marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => navigate('/esqueci-senha')}
+                  style={{
+                    background: 'none', border: 0, padding: 0, cursor: 'pointer',
+                    fontSize: 13, color: dark ? 'rgba(255,255,255,0.45)' : '#64748b',
+                    fontFamily: 'inherit', transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = dark ? 'rgba(255,255,255,0.75)' : '#334155')}
+                  onMouseLeave={e => (e.currentTarget.style.color = dark ? 'rgba(255,255,255,0.45)' : '#64748b')}
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
             </div>
 
             <button
