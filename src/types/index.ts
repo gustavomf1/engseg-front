@@ -528,3 +528,8 @@ export interface EmailPadraoRequest {
 export interface SubmeterTrativaDesvioRequest {
   emailsManuais?: string[]
 }
+
+// Password reset
+export interface VerificarOtpResponse {
+  resetToken: string
+}
