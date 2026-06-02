@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { getDashboardStats } from '../api/dashboard'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
 import { getEmpresas } from '../api/empresa'
-import { getEstabelecimentos } from '../api/estabelecimento'
+import { getEstabelecimentos, getEmpresasDoEstabelecimento } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { TrendingUp, AlertTriangle, ClipboardList, Shield, FilePlus, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { formatDate } from '../utils/date'
 import {
@@ -42,6 +43,22 @@ function groupByEstabelecimento(ocorrencias: OcorrenciaItem[]) {
     if (o.tipo === 'NAO_CONFORMIDADE') counts[nome].ncs++
     else counts[nome].desvios++
   })
+  return Object.entries(counts)
+    .map(([nome, v]) => ({ nome, ...v, total: v.ncs + v.desvios }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
+}
+
+function groupByEmpresaContratada(ocorrencias: OcorrenciaItem[]) {
+  const counts: Record<string, { ncs: number; desvios: number }> = {}
+  ocorrencias
+    .filter(o => !!o.empresaContratadaNome)
+    .forEach(o => {
+      const nome = o.empresaContratadaNome!
+      if (!counts[nome]) counts[nome] = { ncs: 0, desvios: 0 }
+      if (o.tipo === 'NAO_CONFORMIDADE') counts[nome].ncs++
+      else counts[nome].desvios++
+    })
   return Object.entries(counts)
     .map(([nome, v]) => ({ nome, ...v, total: v.ncs + v.desvios }))
     .sort((a, b) => b.total - a.total)
@@ -87,9 +104,11 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { empresaFilha } = useWorkspace()
   const isAdmin = user?.isAdmin === true
   const [adminEmpresaId, setAdminEmpresaId] = useState('')
   const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
+  const [adminEmpresaContratadaId, setAdminEmpresaContratadaId] = useState('')
 
   const { data: empresasAdmin = [] } = useQuery({
     queryKey: ['empresas-admin-filter'],
@@ -103,13 +122,23 @@ export default function DashboardPage() {
     enabled: isAdmin && !!adminEmpresaId,
   })
 
+  const { data: empresasContratadas = [] } = useQuery({
+    queryKey: ['empresas-contratadas-filter', adminEstabelecimentoId],
+    queryFn: () => getEmpresasDoEstabelecimento(adminEstabelecimentoId),
+    enabled: isAdmin && !!adminEstabelecimentoId,
+  })
+
   const { data: stats } = useQuery({
-    queryKey: ['dashboard', adminEmpresaId, adminEstabelecimentoId],
-    queryFn: () => getDashboardStats(isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
+    queryKey: ['dashboard', adminEmpresaId, adminEstabelecimentoId, adminEmpresaContratadaId],
+    queryFn: () => getDashboardStats(isAdmin
+      ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined, empresaContratadaId: adminEmpresaContratadaId || undefined }
+      : { empresaContratadaId: empresaFilha?.id || undefined }),
   })
   const { data: ocorrencias = [] } = useQuery({
-    queryKey: ['ocorrencias', adminEmpresaId, adminEstabelecimentoId],
-    queryFn: () => getOcorrencias(isAdmin ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined } : undefined),
+    queryKey: ['ocorrencias', adminEmpresaId, adminEstabelecimentoId, adminEmpresaContratadaId],
+    queryFn: () => getOcorrencias(isAdmin
+      ? { empresaId: adminEmpresaId || undefined, estabelecimentoId: adminEstabelecimentoId || undefined, empresaContratadaId: adminEmpresaContratadaId || undefined }
+      : { empresaContratadaId: empresaFilha?.id || undefined }),
   })
 
   const recentes = ocorrencias.filter(item => {
@@ -144,6 +173,7 @@ export default function DashboardPage() {
   const monthData          = groupByMonth(ocorrencias)
   const severidadeData     = groupBySeveridade(ocorrencias)
   const estabelecimentoData = groupByEstabelecimento(ocorrencias)
+  const contratadaData = groupByEmpresaContratada(ocorrencias)
 
   return (
     <div className="space-y-6 max-w-full">
@@ -165,11 +195,22 @@ export default function DashboardPage() {
             className="select-std disabled:opacity-40 disabled:cursor-not-allowed"
             value={adminEstabelecimentoId}
             disabled={!adminEmpresaId}
-            onChange={e => setAdminEstabelecimentoId(e.target.value)}
+            onChange={e => { setAdminEstabelecimentoId(e.target.value); setAdminEmpresaContratadaId('') }}
           >
             <option value="">Todos os estabelecimentos</option>
             {estabelecimentosAdmin.map(e => (
               <option key={e.id} value={e.id}>{e.nome}</option>
+            ))}
+          </select>
+          <select
+            className="select-std disabled:opacity-40 disabled:cursor-not-allowed"
+            value={adminEmpresaContratadaId}
+            disabled={!adminEstabelecimentoId}
+            onChange={e => setAdminEmpresaContratadaId(e.target.value)}
+          >
+            <option value="">Todas as contratadas</option>
+            {(empresasContratadas as Array<{ id: string; razaoSocial: string }>).map(e => (
+              <option key={e.id} value={e.id}>{e.razaoSocial}</option>
             ))}
           </select>
         </div>
@@ -291,6 +332,41 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={Math.max(180, estabelecimentoData.length * 36)}>
             <BarChart
               data={estabelecimentoData}
+              layout="vertical"
+              barSize={10}
+              barGap={3}
+              margin={{ left: 0, right: 16, top: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                width={140}
+                tickFormatter={(v: string) => v.length > 20 ? v.slice(0, 18) + '…' : v}
+              />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Bar dataKey="ncs"     name="NCs"     fill="#f85149" radius={[0,4,4,0]} />
+              <Bar dataKey="desvios" name="Desvios" fill="#d29922" radius={[0,4,4,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* ── Ocorrências por Empresa Contratada ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-700 mb-1">Ocorrências por Empresa Contratada</h3>
+        <p className="text-xs text-slate-400 mb-4">NCs e desvios agrupados por contratada · top 8</p>
+        {contratadaData.length === 0 ? (
+          <div className="h-40 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={Math.max(180, contratadaData.length * 36)}>
+            <BarChart
+              data={contratadaData}
               layout="vertical"
               barSize={10}
               barGap={3}
