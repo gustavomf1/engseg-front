@@ -370,6 +370,7 @@ export default function RegistroOcorrenciaPage() {
       setIsReincidencia(ncData.reincidencia ?? false)
       setNcAnteriorId(ncData.ncAnteriorId ?? '')
       setIsRegraDeOuro(ncData.regraDeOuro ?? false)
+      if (ncData.empresaContratadaId) setAdminEmpresaFilhaId(ncData.empresaContratadaId)
       if (ncData.severidade) setSeveridade(ncData.severidade)
       if (ncData.probabilidade) setProbabilidade(ncData.probabilidade)
     }
@@ -418,6 +419,7 @@ export default function RegistroOcorrenciaPage() {
           ncAnteriorId: isReincidencia && ncAnteriorId ? ncAnteriorId : undefined,
           emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
           emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
+          empresaContratadaId: empresaFilhaEfetiva?.id,
         }
         result = isEditing ? await updateNaoConformidade(id!, req) : await createNaoConformidade(req)
       }

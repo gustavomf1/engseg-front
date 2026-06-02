@@ -16,7 +16,7 @@ export interface OcorrenciaItem {
   estabelecimentoNome: string
   responsavelNcId?: string
   usuarioCriacaoEmail?: string
-  responsavelTrativaId?: string    // NC: who sends the action plan
+  responsavelTrativaId?: string
   responsavelTratativaId?: string
   responsavelDesvioId?: string
   vencida?: boolean
@@ -24,11 +24,14 @@ export interface OcorrenciaItem {
   primeiraEvidenciaNome?: string
   quantidadeAtividades?: number
   quantidadeHistorico?: number
+  empresaContratadaId?: string
+  empresaContratadaNome?: string
 }
 
 export const getOcorrencias = async (params?: {
   estabelecimentoId?: string
   empresaId?: string
+  empresaContratadaId?: string
   meuPapel?: string
 }): Promise<OcorrenciaItem[]> => {
   const response = await client.get<OcorrenciaItem[]>('/ocorrencias', { params })

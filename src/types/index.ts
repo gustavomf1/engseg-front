@@ -294,6 +294,8 @@ export interface NaoConformidade {
   execucoes: ExecucaoAcaoResponse[]
   validacoes: ValidacaoResponse[]
   normas: Norma[]
+  empresaContratadaId?: string
+  empresaContratadaNome?: string
 }
 
 export interface NaoConformidadeRequest {
@@ -311,6 +313,7 @@ export interface NaoConformidadeRequest {
   ncAnteriorId?: string
   emailsManuais?: string[]
   emailsPadraoExcluidos?: string[]
+  empresaContratadaId?: string
 }
 
 export interface InvestigacaoRequest {
