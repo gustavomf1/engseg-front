@@ -26,6 +26,10 @@ export interface OcorrenciaItem {
   quantidadeHistorico?: number
   empresaContratadaId?: string
   empresaContratadaNome?: string
+  responsavelNcNome?: string
+  responsavelTrativaNome?: string
+  responsavelDesvioNome?: string
+  reincidencia?: boolean
 }
 
 export const getOcorrencias = async (params?: {

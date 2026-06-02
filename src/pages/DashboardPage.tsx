@@ -76,6 +76,85 @@ function groupBySeveridade(ocorrencias: OcorrenciaItem[]) {
   return Object.entries(counts).map(([name, value]) => ({ name, value }))
 }
 
+const STATUS_ORDER = [
+  'ABERTA', 'AGUARDANDO_TRATATIVA', 'AGUARDANDO_APROVACAO_PLANO',
+  'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'AGUARDANDO_VALIDACAO_FINAL',
+  'CONCLUIDO', 'EM_TRATAMENTO', 'NAO_RESOLVIDA',
+]
+const STATUS_LABEL: Record<string, string> = {
+  ABERTA:                      'Aberta',
+  AGUARDANDO_TRATATIVA:        'Aguard. Tratativa',
+  AGUARDANDO_APROVACAO_PLANO:  'Aguard. Aprovação',
+  EM_AJUSTE_PELO_EXTERNO:      'Em Ajuste (Externo)',
+  EM_EXECUCAO:                 'Em Execução',
+  AGUARDANDO_VALIDACAO_FINAL:  'Aguard. Validação',
+  CONCLUIDO:                   'Concluído',
+  EM_TRATAMENTO:               'Em Tratamento',
+  NAO_RESOLVIDA:               'Não Resolvida',
+}
+const FUNIL_COLORS: Record<string, string> = {
+  'Aberta':               '#d29922',
+  'Aguard. Tratativa':    '#f0883e',
+  'Aguard. Aprovação':    '#58a6ff',
+  'Em Ajuste (Externo)':  '#8b949e',
+  'Em Execução':          '#388bfd',
+  'Aguard. Validação':    '#a371f7',
+  'Concluído':            '#3fb950',
+  'Em Tratamento':        '#58a6ff',
+  'Não Resolvida':        '#f85149',
+}
+
+function groupByStatusFunil(ocorrencias: OcorrenciaItem[]) {
+  const counts: Record<string, number> = {}
+  ocorrencias
+    .filter(o => o.tipo === 'NAO_CONFORMIDADE')
+    .forEach(o => { counts[o.status] = (counts[o.status] ?? 0) + 1 })
+  return STATUS_ORDER
+    .filter(s => (counts[s] ?? 0) > 0)
+    .map(s => ({ status: STATUS_LABEL[s] ?? s, value: counts[s] ?? 0 }))
+}
+
+function groupByResponsavel(ocorrencias: OcorrenciaItem[]) {
+  const pending = new Set([
+    'ABERTA', 'AGUARDANDO_TRATATIVA', 'AGUARDANDO_APROVACAO_PLANO',
+    'EM_AJUSTE_PELO_EXTERNO', 'EM_EXECUCAO', 'AGUARDANDO_VALIDACAO_FINAL', 'EM_TRATAMENTO',
+  ])
+  const counts: Record<string, { abertas: number; emAndamento: number }> = {}
+  ocorrencias
+    .filter(o => o.tipo === 'NAO_CONFORMIDADE' && !!o.responsavelNcNome && pending.has(o.status))
+    .forEach(o => {
+      const nome = o.responsavelNcNome!
+      if (!counts[nome]) counts[nome] = { abertas: 0, emAndamento: 0 }
+      if (o.status === 'ABERTA') counts[nome].abertas++
+      else counts[nome].emAndamento++
+    })
+  return Object.entries(counts)
+    .map(([nome, v]) => ({ nome, ...v, total: v.abertas + v.emAndamento }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
+}
+
+function groupReincidenciaByMonth(ocorrencias: OcorrenciaItem[]) {
+  const counts: Record<string, { novas: number; reincidentes: number }> = {}
+  ocorrencias
+    .filter(o => o.tipo === 'NAO_CONFORMIDADE')
+    .forEach(o => {
+      const d = new Date(o.dataRegistro)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!counts[key]) counts[key] = { novas: 0, reincidentes: 0 }
+      if (o.reincidencia) counts[key].reincidentes++
+      else counts[key].novas++
+    })
+  return Object.entries(counts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-7)
+    .map(([key, v]) => {
+      const [year, month] = key.split('-')
+      const label = new Date(Number(year), Number(month) - 1).toLocaleString('pt-BR', { month: 'short' })
+      return { mes: label.replace('.', ''), ...v }
+    })
+}
+
 const SEVERITY_COLOR: Record<string, string> = {
   BAIXO:    '#3fb950',
   MODERADO: '#d29922',
@@ -170,10 +249,13 @@ export default function DashboardPage() {
     { name: 'Pendentes',  value: ncPendentes,  color: '#58a6ff' },
   ].filter(d => d.value > 0)
 
-  const monthData          = groupByMonth(ocorrencias)
-  const severidadeData     = groupBySeveridade(ocorrencias)
+  const monthData           = groupByMonth(ocorrencias)
+  const severidadeData      = groupBySeveridade(ocorrencias)
   const estabelecimentoData = groupByEstabelecimento(ocorrencias)
-  const contratadaData = groupByEmpresaContratada(ocorrencias)
+  const contratadaData      = groupByEmpresaContratada(ocorrencias)
+  const funnelData          = groupByStatusFunil(ocorrencias)
+  const rankingData         = groupByResponsavel(ocorrencias)
+  const reincidenciaData    = groupReincidenciaByMonth(ocorrencias)
 
   return (
     <div className="space-y-6 max-w-full">
@@ -320,6 +402,95 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* ── Funil de Status + Reincidências ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Funil de status das NCs */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Funil de Status das NCs</h3>
+          <p className="text-xs text-slate-400 mb-4">Quantas NCs em cada etapa do fluxo</p>
+          {funnelData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+          ) : (
+            <div className="space-y-3 mt-2">
+              {funnelData.map(({ status, value }) => {
+                const max = Math.max(...funnelData.map(d => d.value), 1)
+                const pct = Math.round((value / max) * 100)
+                return (
+                  <div key={status}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-600 font-medium">{status}</span>
+                      <span className="font-semibold text-slate-700">{value}</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: FUNIL_COLORS[status] ?? '#58a6ff' }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Reincidências por mês */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Reincidências por Mês</h3>
+          <p className="text-xs text-slate-400 mb-4">NCs novas vs. reincidentes · últimos 7 meses</p>
+          {reincidenciaData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={reincidenciaData} barSize={12} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+                <Bar dataKey="novas"       name="Novas"       fill="#58a6ff" radius={[4,4,0,0]} />
+                <Bar dataKey="reincidentes" name="Reincidentes" fill="#f85149" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* ── Ranking por Responsável ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-700 mb-1">Responsáveis com Mais NCs Pendentes</h3>
+        <p className="text-xs text-slate-400 mb-4">Top 8 por volume de NCs abertas ou em andamento</p>
+        {rankingData.length === 0 ? (
+          <div className="h-40 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={Math.max(180, rankingData.length * 40)}>
+            <BarChart
+              data={rankingData}
+              layout="vertical"
+              barSize={10}
+              barGap={3}
+              margin={{ left: 0, right: 16, top: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis
+                type="category"
+                dataKey="nome"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                width={160}
+                tickFormatter={(v: string) => v.length > 22 ? v.slice(0, 20) + '…' : v}
+              />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Bar dataKey="abertas"    name="Abertas"     fill="#d29922" radius={[0,4,4,0]} />
+              <Bar dataKey="emAndamento" name="Em Andamento" fill="#58a6ff" radius={[0,4,4,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* ── Ocorrências por Estabelecimento ── */}
