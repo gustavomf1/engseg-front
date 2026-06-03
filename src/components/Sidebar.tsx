@@ -8,7 +8,7 @@ import { useState } from 'react'
 import {
   Shield, LayoutDashboard, FilePlus, ClipboardList, LogOut,
   Building2, MapPin, Users, RefreshCw, X, Navigation, Sun, Moon,
-  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp, BookOpen, Briefcase
+  ChevronsLeft, ChevronsRight, Mail, ChevronDown, ChevronUp, BookOpen, Briefcase, FileBarChart2
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -238,6 +238,10 @@ export default function Sidebar({ mobileOpen, onMobileClose, collapsed, onToggle
               <NavLink to="/emails-padrao" className={navItemClass} onClick={handleNav} title={compact ? 'Emails Padrão' : undefined}>
                 <Mail size={15} />
                 {show && 'Emails Padrão'}
+              </NavLink>
+              <NavLink to="/relatorios" className={navItemClass} onClick={handleNav} title={compact ? 'Relatórios' : undefined}>
+                <FileBarChart2 size={15} />
+                {show && 'Relatórios'}
               </NavLink>
             </>
           )}
