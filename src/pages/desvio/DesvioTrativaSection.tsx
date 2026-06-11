@@ -269,9 +269,8 @@ export default function DesvioTrativaSection({ desvio, onUpdated }: Props) {
 
   const isResponsavelTratativa = desvio.responsavelTratativaId === user?.id
   const isResponsavelDesvio = desvio.responsavelDesvioId === user?.id
-  const isAdmin = user?.isAdmin === true
-  const canAddTratativa = (isResponsavelTratativa || isAdmin) && desvio.status === 'AGUARDANDO_TRATATIVA'
-  const canReview = (isResponsavelDesvio || isAdmin) && desvio.status === 'AGUARDANDO_APROVACAO'
+  const canAddTratativa = isResponsavelTratativa && desvio.status === 'AGUARDANDO_TRATATIVA'
+  const canReview = isResponsavelDesvio && desvio.status === 'AGUARDANDO_APROVACAO'
 
   const [showForm, setShowForm] = useState(false)
   const [titulo, setTitulo] = useState('')
