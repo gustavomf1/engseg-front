@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { PerfilUsuario } from '../types'
 
 interface AuthUser {
@@ -51,6 +52,7 @@ function loadUserFromStorage(): AuthUser | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage)
+  const queryClient = useQueryClient()
 
   const login = useCallback((id: string, token: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => {
     const authUser: AuthUser = { id, token, nome, email, perfil, isAdmin }
@@ -65,7 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('engseg_empresa')
     localStorage.removeItem('engseg_estabelecimento')
     setUser(null)
-  }, [])
+    queryClient.clear()
+  }, [queryClient])
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
