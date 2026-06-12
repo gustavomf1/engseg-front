@@ -8,13 +8,14 @@ import {
   aprovarDesvio,
   reprovarDesvio,
 } from '../../api/desvio'
-import { uploadEvidenciaDesvio, downloadEvidencia } from '../../api/evidencia'
+import { uploadEvidenciaDesvio } from '../../api/evidencia'
 import { Desvio, TrativaDesvio, TrativaDesvioEvidencia } from '../../types'
 import {
-  Plus, Trash2, CheckCircle, XCircle, Clock, Image,
-  Send, ChevronDown, ChevronUp, Upload, Download, FileText,
+  Plus, Trash2, CheckCircle, XCircle, Clock,
+  Send, ChevronDown, ChevronUp, Upload, FileText,
 } from 'lucide-react'
 import { formatDateTime } from '../../utils/date'
+import EvidenciaThumbnail from '../../components/EvidenciaThumbnail'
 
 interface Props {
   desvio: Desvio
@@ -80,13 +81,23 @@ function buildPlanos(tratativas: TrativaDesvio[], historico: HistoricoItem[]): P
     })
 }
 
-// ── Download de evidência ──────────────────────────────────────
-async function handleDownload(evidenciaId: string, nome: string) {
-  const blob = await downloadEvidencia(evidenciaId)
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = nome; a.click()
-  URL.revokeObjectURL(url)
+// ── Grid de evidências (thumbnails) ────────────────────────────
+function EvidenciasGrid({ evidencias, label }: { evidencias: TrativaDesvioEvidencia[]; label?: string }) {
+  if (!evidencias?.length) return null
+  return (
+    <div className="space-y-1">
+      {label && (
+        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">{label} ({evidencias.length})</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {evidencias.map(ev => (
+          <div key={ev.id} className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
+            <EvidenciaThumbnail evidenciaId={ev.id} nomeArquivo={ev.nome} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // ── Badges ─────────────────────────────────────────────────────
@@ -184,28 +195,7 @@ function HistoricoPlanosSection({ desvio }: { desvio: Desvio }) {
                               </div>
                             )}
 
-                            {/* Evidências com download */}
-                            {t.evidencias?.length > 0 && (
-                              <div className="space-y-1">
-                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Anexos ({t.evidencias.length})</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {t.evidencias.map(ev => (
-                                    <button
-                                      key={ev.id}
-                                      onClick={() => handleDownload(ev.id, ev.nome)}
-                                      className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-700 rounded-lg px-2.5 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition max-w-[200px]"
-                                    >
-                                      {ev.nome.match(/\.(jpg|jpeg|png|webp|gif)$/i)
-                                        ? <Image size={12} className="shrink-0" />
-                                        : <Download size={12} className="shrink-0" />
-                                      }
-                                      <span className="truncate">{ev.nome}</span>
-                                      <Download size={10} className="shrink-0 opacity-50" />
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            <EvidenciasGrid evidencias={t.evidencias} label="Anexos" />
                           </div>
                         </div>
                       </div>
@@ -239,17 +229,8 @@ function TrativaCard({ tratativa: t, onRemover, canRemove }: { tratativa: Trativ
         <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t.titulo}</p>
         <p className="text-xs text-slate-500 mt-0.5 break-words">{t.descricao}</p>
         {t.evidencias?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {t.evidencias.map(ev => (
-              <button
-                key={ev.id}
-                onClick={() => handleDownload(ev.id, ev.nome)}
-                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 border border-blue-200 dark:border-blue-700 rounded-lg px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition max-w-[180px]"
-              >
-                {ev.nome.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? <Image size={10} className="shrink-0" /> : <Download size={10} className="shrink-0" />}
-                <span className="truncate">{ev.nome}</span>
-              </button>
-            ))}
+          <div className="mt-1.5">
+            <EvidenciasGrid evidencias={t.evidencias} />
           </div>
         )}
       </div>
@@ -378,17 +359,7 @@ export default function DesvioTrativaSection({ desvio, onUpdated }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t.titulo}</p>
                       <p className="text-xs text-slate-500 mt-0.5 break-words mb-1">{t.descricao}</p>
-                      {t.evidencias?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {t.evidencias.map(ev => (
-                            <button key={ev.id} onClick={() => handleDownload(ev.id, ev.nome)}
-                              className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-lg px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition max-w-[180px]">
-                              {ev.nome.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? <Image size={10} className="shrink-0" /> : <Download size={10} className="shrink-0" />}
-                              <span className="truncate">{ev.nome}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <EvidenciasGrid evidencias={t.evidencias} />
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer shrink-0 ml-2">
                       <input type="checkbox" checked={dec.reprovado}
