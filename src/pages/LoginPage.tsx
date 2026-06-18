@@ -54,7 +54,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await loginApi({ email, senha })
-      login(res.id, res.token, res.nome, res.email, res.perfil, res.isAdmin)
+      login(res.id, res.token, res.refreshToken, res.nome, res.email, res.perfil, res.isAdmin)
       navigate(res.perfil === 'EXTERNO' ? '/tratativas' : res.isAdmin ? '/empresas' : '/selecionar')
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Email ou senha inválidos')

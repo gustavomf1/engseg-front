@@ -14,7 +14,7 @@ interface AuthUser {
 interface AuthContextData {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (id: string, token: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => void
+  login: (id: string, token: string, refreshToken: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => void
   logout: () => void
 }
 
@@ -54,15 +54,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage)
   const queryClient = useQueryClient()
 
-  const login = useCallback((id: string, token: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => {
+  const login = useCallback((id: string, token: string, refreshToken: string, nome: string, email: string, perfil: PerfilUsuario, isAdmin: boolean) => {
     const authUser: AuthUser = { id, token, nome, email, perfil, isAdmin }
     localStorage.setItem('engseg_token', token)
+    localStorage.setItem('engseg_refresh_token', refreshToken)
     localStorage.setItem('engseg_user', JSON.stringify(authUser))
     setUser(authUser)
   }, [])
 
   const logout = useCallback(() => {
+    // Revoga o refresh token no servidor (fire-and-forget).
+    const refreshToken = localStorage.getItem('engseg_refresh_token')
+    if (refreshToken) {
+      const base = (import.meta.env.VITE_API_URL ?? '/api') as string
+      fetch(`${base}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+        keepalive: true,
+      }).catch(() => {})
+    }
     localStorage.removeItem('engseg_token')
+    localStorage.removeItem('engseg_refresh_token')
     localStorage.removeItem('engseg_user')
     localStorage.removeItem('engseg_empresa')
     localStorage.removeItem('engseg_estabelecimento')
