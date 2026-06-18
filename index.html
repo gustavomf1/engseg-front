@@ -2,6 +2,8 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <!-- M1: a CSP estrita é injetada só no build de produção (vite.config.ts), pois no dev
+         o HMR/React-refresh usam scripts inline. X-Frame-Options/frame-ancestors via header. -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EngSeg — Gestão de Não Conformidades</title>

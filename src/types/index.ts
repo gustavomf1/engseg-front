@@ -53,6 +53,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   id: string
   token: string
+  refreshToken: string
   nome: string
   email: string
   perfil: PerfilUsuario
