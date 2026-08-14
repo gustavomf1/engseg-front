@@ -131,6 +131,7 @@ export interface Usuario {
   empresaCnpj?: string
   telefone?: string
   ativo: boolean
+  isAdmin: boolean
   dtCriacao?: string
   dtInativacao?: string
 }

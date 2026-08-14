@@ -221,6 +221,7 @@ export default function UsuarioListPage() {
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Perfil</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Empresa</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Criado em</th>
                   {user?.perfil === 'ENGENHEIRO' && (
                     <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>
                   )}
@@ -232,13 +233,19 @@ export default function UsuarioListPage() {
                     <td className="px-4 py-3 font-medium text-slate-800">{u.nome}</td>
                     <td className="px-4 py-3 text-slate-600">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${perfilColors[u.perfil]}`}>{perfilLabels[u.perfil]}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${perfilColors[u.perfil]}`}>{perfilLabels[u.perfil]}</span>
+                        {u.isAdmin && <span className="nc-pill nc-pill-amber">Admin</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{u.empresaNome}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {u.ativo ? 'Ativo' : 'Inativo'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {u.dtCriacao ? new Date(u.dtCriacao).toLocaleDateString('pt-BR') : '—'}
                     </td>
                     {user?.perfil === 'ENGENHEIRO' && (
                       <td className="px-4 py-3 text-right">
@@ -381,9 +388,12 @@ export default function UsuarioListPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">{visualizando.nome}</h3>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${perfilColors[visualizando.perfil]}`}>
-                    {perfilLabels[visualizando.perfil]}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${perfilColors[visualizando.perfil]}`}>
+                      {perfilLabels[visualizando.perfil]}
+                    </span>
+                    {visualizando.isAdmin && <span className="nc-pill nc-pill-amber">Admin</span>}
+                  </div>
                 </div>
               </div>
               <button onClick={() => setVisualizando(null)} className="text-slate-400 hover:text-slate-600 transition p-1">

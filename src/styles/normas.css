@@ -1,10 +1,40 @@
 /* ============================================================
-   Normas — page-specific styles (dark, EngSeg system)
+   Normas — page-specific styles, adaptive theme
    Reuses tokens from emails_padrao/emails.css conventions.
    ============================================================ */
 
 .nm-theme,
 .nm-screen {
+  --bg-base: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elev: #f1f5f9;
+  --bg-input: #f8fafc;
+  --bg-input-hover: #f1f5f9;
+  --border-soft: #e2e8f0;
+  --border-main: #cbd5e1;
+  --border-strong: #94a3b8;
+  --fg-0: #0f172a;
+  --fg-1: #1e293b;
+  --fg-2: #475569;
+  --fg-3: #64748b;
+  --fg-4: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.08);
+  --accent-strong: rgba(37, 99, 235, 0.18);
+  --green: #16a34a;
+  --green-soft: rgba(22, 163, 74, 0.10);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.10);
+  --red: #dc2626;
+  --red-soft: rgba(220, 38, 38, 0.08);
+  --purple: #7c3aed;
+  --pulse-rgb: 37, 99, 235;
+}
+
+/* ── Dark mode variable overrides ──────────────────────────── */
+.dark .nm-theme,
+.dark .nm-screen {
   --bg-base: #0d1117;
   --bg-card: #161b22;
   --bg-elev: #1c2128;
@@ -275,7 +305,7 @@
 .nm-pill-green  { background: var(--green-soft); color: var(--green); border-color: rgba(63,185,80,0.28); }
 .nm-pill-amber  { background: var(--amber-soft); color: var(--amber); border-color: rgba(210,153,34,0.3); }
 .nm-pill-red    { background: var(--red-soft);   color: var(--red);   border-color: rgba(248,81,73,0.3); }
-.nm-pill-blue   { background: rgba(88,166,255,0.12); color: #79b8ff; border-color: rgba(88,166,255,0.3); }
+.nm-pill-blue   { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-strong); }
 .nm-pill-purple { background: rgba(188,140,255,0.12); color: var(--purple); border-color: rgba(188,140,255,0.3); }
 .nm-pill-slate  { background: rgba(139,148,158,0.10); color: var(--fg-1); border-color: var(--border-main); }
 
@@ -813,7 +843,7 @@
 }
 .nm-meta-row {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: 120px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-soft);
@@ -823,13 +853,23 @@
   font-size: 11px; color: var(--fg-3); font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.06em;
   display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
 }
 .nm-meta-value {
   font-size: 13px; color: var(--fg-0); font-weight: 500;
   display: flex; align-items: center; gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 .nm-meta-value.muted { color: var(--fg-2); font-weight: 400; }
-.nm-meta-value-mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.nm-meta-value-mono {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
 
 .nm-avatar-sm {
   width: 22px; height: 22px;

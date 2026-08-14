@@ -263,8 +263,12 @@ export default function NormaDetailPage() {
                   <div className="nm-meta-row">
                     <span className="nm-meta-label"><User size={11} />Criada por</span>
                     <span className="nm-meta-value">
-                      <Avatar name={norma.criadoPorNome} size={20} />
-                      {norma.criadoPorNome || '—'}
+                      {norma.criadoPorNome ? (
+                        <>
+                          <Avatar name={norma.criadoPorNome} size={20} />
+                          {norma.criadoPorNome}
+                        </>
+                      ) : '—'}
                     </span>
                   </div>
                   <div className="nm-meta-row">
@@ -274,8 +278,12 @@ export default function NormaDetailPage() {
                   <div className="nm-meta-row">
                     <span className="nm-meta-label"><User size={11} />Atualizada por</span>
                     <span className="nm-meta-value">
-                      <Avatar name={norma.atualizadoPorNome} size={20} />
-                      {norma.atualizadoPorNome || '—'}
+                      {norma.atualizadoPorNome ? (
+                        <>
+                          <Avatar name={norma.atualizadoPorNome} size={20} />
+                          {norma.atualizadoPorNome}
+                        </>
+                      ) : '—'}
                     </span>
                   </div>
                 </div>
