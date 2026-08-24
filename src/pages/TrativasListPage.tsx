@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem } from '../api/ocorrencia'
-import { getEmpresas } from '../api/empresa'
-import { getEstabelecimentos } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus } from 'lucide-react'
+import { useOcorrenciasFiltro, PAGE_SIZES } from '../hooks/useOcorrenciasFiltro'
+import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, Calendar } from 'lucide-react'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
@@ -28,32 +27,19 @@ const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[
 export default function TrativasListPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<TipoFiltro>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('TODOS')
-  const [meuPapel, setMeuPapel] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const PAGE_SIZE = 10
 
   const isEngenheiro = user?.perfil === 'ENGENHEIRO'
   const isExterno = user?.perfil === 'EXTERNO'
   const isTecnico = user?.perfil === 'TECNICO'
-  const isAdmin = user?.isAdmin === true
   const { estabelecimento } = useWorkspace()
-  const [adminEmpresaId, setAdminEmpresaId] = useState('')
-  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
-
-  const { data: empresasAdmin = [] } = useQuery({
-    queryKey: ['empresas-admin-filter'],
-    queryFn: () => getEmpresas(),
-    enabled: isAdmin,
-  })
-
-  const { data: estabelecimentosAdmin = [] } = useQuery({
-    queryKey: ['estabelecimentos-admin-filter', adminEmpresaId],
-    queryFn: () => getEstabelecimentos(undefined, adminEmpresaId),
-    enabled: isAdmin && !!adminEmpresaId,
-  })
+  const {
+    isAdmin, busca, setBusca, meuPapel, setMeuPapel, page, setPage, pageSize, setPageSize,
+    dataInicio, setDataInicio, dataFim, setDataFim,
+    adminEmpresaId, setAdminEmpresaId, adminEstabelecimentoId, setAdminEstabelecimentoId,
+    empresasAdmin, estabelecimentosAdmin, matchBuscaEData,
+  } = useOcorrenciasFiltro()
 
   const estabelecimentoId = isExterno ? undefined : estabelecimento?.id
 
@@ -111,15 +97,12 @@ export default function TrativasListPage() {
 
   const filtradas = visiveis.filter(o => {
     const matchTipo = filtroTipo === 'TODOS' || o.tipo === filtroTipo
-    const matchBusca = busca === '' ||
-      o.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-      (o.localizacao || '').toLowerCase().includes(busca.toLowerCase())
     const matchStatus = filtroStatus === 'TODOS' || getStatusFiltroLabel(o) === filtroStatus
-    return matchTipo && matchBusca && matchStatus
+    return matchTipo && matchStatus && matchBuscaEData(o)
   })
 
-  const totalPages = Math.ceil(filtradas.length / PAGE_SIZE)
-  const paginadas = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(filtradas.length / pageSize)
+  const paginadas = filtradas.slice((page - 1) * pageSize, page * pageSize)
 
   const tipoFiltradas = visiveis.filter(o => filtroTipo === 'TODOS' || o.tipo === filtroTipo)
   const contadores = Object.fromEntries(
@@ -219,6 +202,33 @@ export default function TrativasListPage() {
               {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'NCs'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Filtro de data + itens por página */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Calendar size={14} className="text-gray-400" />
+          <span className="text-xs whitespace-nowrap">Criada de</span>
+          <input
+            type="date"
+            value={dataInicio}
+            onChange={e => { setDataInicio(e.target.value); setPage(1) }}
+            className="select-std"
+          />
+          <span className="text-xs whitespace-nowrap">até</span>
+          <input
+            type="date"
+            value={dataFim}
+            onChange={e => { setDataFim(e.target.value); setPage(1) }}
+            className="select-std"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-500 ml-auto">
+          <span className="whitespace-nowrap text-xs">Por página:</span>
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} className="select-std">
+            {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
       </div>
 
@@ -333,7 +343,10 @@ export default function TrativasListPage() {
                       </span>
                     )}
                   </div>
-                  <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-xs text-slate-400 flex-shrink-0">{item.codigo}</span>
+                    <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
+                  </div>
                   <div className="text-sm text-slate-500 truncate">{item.descricao}</div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
                     {item.localizacao && <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>}

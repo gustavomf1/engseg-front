@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getOcorrencias, OcorrenciaItem, deleteNaoConformidade, deleteDesvio } from '../api/ocorrencia'
-import { getEmpresas } from '../api/empresa'
-import { getEstabelecimentos } from '../api/estabelecimento'
 import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus, Trash2 } from 'lucide-react'
+import { useOcorrenciasFiltro, PAGE_SIZES } from '../hooks/useOcorrenciasFiltro'
+import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, FilePlus, Trash2, Calendar } from 'lucide-react'
 import ConfirmActionModal from '../components/ConfirmActionModal'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
@@ -15,8 +14,6 @@ import PrazoBar from '../components/PrazoBar'
 
 type TipoFiltro = 'TODOS' | 'DESVIO' | 'NAO_CONFORMIDADE'
 type StatusFiltro = 'TODOS' | 'ABERTAS' | 'AGUARD_DESVIO' | 'EM_ANDAMENTO' | 'REPROVADOS' | 'AGUARDANDO_VALIDACAO' | 'CONCLUIDAS' | 'VENCIDAS'
-
-const PAGE_SIZE = 10
 
 const STATUS_TABS_CONFIG: { key: StatusFiltro; label: string; tipos: TipoFiltro[]; activeColor: string }[] = [
   { key: 'TODOS',               label: 'Todos',              tipos: ['TODOS', 'DESVIO', 'NAO_CONFORMIDADE'], activeColor: 'bg-slate-800 text-white' },
@@ -33,30 +30,18 @@ export default function OcorrenciasPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<TipoFiltro>('TODOS')
   const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('TODOS')
-  const [meuPapel, setMeuPapel] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
   const [excluindo, setExcluindo] = useState<OcorrenciaItem | null>(null)
 
   const isTecnico = user?.perfil === 'TECNICO'
-  const isAdmin = user?.isAdmin === true
   const { estabelecimento } = useWorkspace()
-  const [adminEmpresaId, setAdminEmpresaId] = useState('')
-  const [adminEstabelecimentoId, setAdminEstabelecimentoId] = useState('')
-
-  const { data: empresasAdmin = [] } = useQuery({
-    queryKey: ['empresas-admin-filter'],
-    queryFn: () => getEmpresas(),
-    enabled: isAdmin,
-  })
-
-  const { data: estabelecimentosAdmin = [] } = useQuery({
-    queryKey: ['estabelecimentos-admin-filter', adminEmpresaId],
-    queryFn: () => getEstabelecimentos(undefined, adminEmpresaId),
-    enabled: isAdmin && !!adminEmpresaId,
-  })
+  const {
+    isAdmin, busca, setBusca, meuPapel, setMeuPapel, page, setPage, pageSize, setPageSize,
+    dataInicio, setDataInicio, dataFim, setDataFim,
+    adminEmpresaId, setAdminEmpresaId, adminEstabelecimentoId, setAdminEstabelecimentoId,
+    empresasAdmin, estabelecimentosAdmin, matchBuscaEData, resetPage,
+  } = useOcorrenciasFiltro()
 
   const { data: ocorrencias = [], isLoading } = useQuery({
     queryKey: ['ocorrencias', estabelecimento?.id, adminEmpresaId, adminEstabelecimentoId, meuPapel],
@@ -111,11 +96,8 @@ export default function OcorrenciasPage() {
 
   const filtradas = ocorrencias.filter(o => {
     const matchTipo = filtroTipo === 'TODOS' || o.tipo === filtroTipo
-    const matchBusca = busca === '' ||
-      o.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-      (o.localizacao || '').toLowerCase().includes(busca.toLowerCase())
     const matchStatus = filtroStatus === 'TODOS' || getStatusFiltroLabel(o) === filtroStatus
-    return matchTipo && matchBusca && matchStatus
+    return matchTipo && matchStatus && matchBuscaEData(o)
   })
 
   const tipoFiltradas = ocorrencias.filter(o => filtroTipo === 'TODOS' || o.tipo === filtroTipo)
@@ -124,8 +106,8 @@ export default function OcorrenciasPage() {
   ) as Record<StatusFiltro, number>
 
   const visibleTabs = STATUS_TABS_CONFIG.filter(t => t.tipos.includes(filtroTipo))
-  const totalPages = Math.ceil(filtradas.length / PAGE_SIZE)
-  const paginadas = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(filtradas.length / pageSize)
+  const paginadas = filtradas.slice((page - 1) * pageSize, page * pageSize)
 
   function getStatusLabel(item: OcorrenciaItem) {
     const map: Record<string, { label: string; color: string }> = {
@@ -215,6 +197,33 @@ export default function OcorrenciasPage() {
               {f === 'TODOS' ? 'Todos' : f === 'DESVIO' ? 'Desvios' : 'NCs'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Filtro de data + itens por página */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Calendar size={14} className="text-gray-400" />
+          <span className="text-xs whitespace-nowrap">Criada de</span>
+          <input
+            type="date"
+            value={dataInicio}
+            onChange={e => { setDataInicio(e.target.value); setPage(1) }}
+            className="select-std"
+          />
+          <span className="text-xs whitespace-nowrap">até</span>
+          <input
+            type="date"
+            value={dataFim}
+            onChange={e => { setDataFim(e.target.value); setPage(1) }}
+            className="select-std"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-500 ml-auto">
+          <span className="whitespace-nowrap text-xs">Por página:</span>
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} className="select-std">
+            {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
       </div>
 
@@ -324,7 +333,10 @@ export default function OcorrenciasPage() {
                       </span>
                     )}
                   </div>
-                  <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-xs text-slate-400 flex-shrink-0">{item.codigo}</span>
+                    <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
+                  </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
                     {item.localizacao && <span className="flex items-center gap-1"><MapPin size={11} />{item.localizacao}</span>}
                     <span className="flex items-center gap-1"><Clock size={11} />{formatDate(item.dataRegistro)}</span>
