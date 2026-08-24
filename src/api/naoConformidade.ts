@@ -10,6 +10,7 @@ import {
   RevisarExecucaoRequest,
   HistoricoNcResponse,
   StatusNaoConformidade,
+  NcResumo,
 } from '../types'
 
 export const getNaoConformidades = async (params?: {
@@ -17,6 +18,15 @@ export const getNaoConformidades = async (params?: {
   estabelecimentoId?: string
 }): Promise<NaoConformidade[]> => {
   const res = await client.get<NaoConformidade[]>('/nao-conformidades', { params })
+  return res.data
+}
+
+export const buscarNcParaReincidencia = async (params: {
+  estabelecimentoId: string
+  q?: string
+  excludeId?: string
+}): Promise<NcResumo[]> => {
+  const res = await client.get<NcResumo[]>('/nao-conformidades/busca-reincidencia', { params })
   return res.data
 }
 

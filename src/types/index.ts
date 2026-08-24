@@ -213,6 +213,7 @@ export interface LocalizacaoRequest {
 
 export interface NcResumo {
   id: string
+  codigo: string
   titulo: string
   dataRegistro: string
   status: StatusNaoConformidade
@@ -243,6 +244,7 @@ export interface HistoricoNcResponse {
 
 export interface NaoConformidade {
   id: string
+  codigo: string
   estabelecimentoId: string
   estabelecimentoNome: string
   titulo: string
@@ -389,6 +391,7 @@ export interface TrativaDesvio {
 
 export interface Desvio {
   id: string
+  codigo: string
   estabelecimentoId: string
   estabelecimentoNome: string
   titulo: string

@@ -3,6 +3,7 @@ import client from './client'
 export interface OcorrenciaItem {
   tipo: 'DESVIO' | 'NAO_CONFORMIDADE'
   id: string
+  codigo: string
   titulo: string
   localizacao: string
   descricao: string
