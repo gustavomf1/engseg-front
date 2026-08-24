@@ -10,8 +10,13 @@ const client = axios.create({
 })
 
 client.interceptors.request.use((config) => {
+  const isAuthRoute =
+    config.url?.includes('/auth/login') ||
+    config.url?.includes('/auth/refresh') ||
+    config.url?.includes('/auth/logout')
+
   const token = localStorage.getItem('engseg_token')
-  if (token) {
+  if (token && !isAuthRoute) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config

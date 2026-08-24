@@ -1,12 +1,12 @@
 import './registro-ocorrencia.css'
-import { useState, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useCallback, type CSSProperties, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDesvio, updateDesvio, getDesvio } from '../api/desvio'
-import { createNaoConformidade, updateNaoConformidade, getNaoConformidade, getNaoConformidades } from '../api/naoConformidade'
+import { createNaoConformidade, updateNaoConformidade, getNaoConformidade, getNaoConformidades, buscarNcParaReincidencia } from '../api/naoConformidade'
 import { uploadEvidencia, uploadEvidenciaDesvio } from '../api/evidencia'
 import { getLocalizacoes } from '../api/localizacao'
 import { getUsuarios } from '../api/usuario'
@@ -22,12 +22,14 @@ import {
   Repeat, ShieldAlert, BookOpen, Users, Send, Building2,
 } from 'lucide-react'
 import SearchableSelect from '../components/SearchableSelect'
+import AsyncSearchableSelect from '../components/AsyncSearchableSelect'
+import StatusBadge from '../components/StatusBadge'
 import BuscaTrechoModal from '../components/BuscaTrechoModal'
 import TrechoManualModal from '../components/TrechoManualModal'
 import NcRiskMatrix from '../components/NcRiskMatrix'
 import ConfirmModalOcorrencia from '../components/ConfirmModalOcorrencia'
 import { getEmailsPadrao } from '../api/emailPadrao'
-import type { EmailPadrao } from '../types'
+import type { EmailPadrao, StatusNaoConformidade } from '../types'
 
 // ─── Local UI components ──────────────────────────────────────────────────────
 
@@ -123,8 +125,8 @@ function RampPicker({ value, onChange, options }: {
             type="button"
             className={`nc-ramp-pill ${active ? 'active' : ''}`}
             style={active ? { '--ramp-color': o.color, '--ramp-color-bg': o.color + '22' } as CSSProperties : {}}
-            onClick={() => onChange(o.value)}
-            title={o.label}
+            onClick={() => onChange(active ? 0 : o.value)}
+            title={active ? `${o.label} (clique para desmarcar)` : o.label}
           >
             <span className="nc-ramp-num">{o.value}</span>
             <span className="nc-ramp-label">{o.label}</span>
@@ -233,6 +235,7 @@ export default function RegistroOcorrenciaPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [formDataPendente, setFormDataPendente] = useState<FormData | null>(null)
   const [normaSearch, setNormaSearch] = useState('')
+  const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -297,10 +300,19 @@ export default function RegistroOcorrenciaPage() {
     enabled: !isEditing && !!estabelecimentoEfetivo?.id && !!empresaFilhaEfetiva?.id,
   })
 
-  type NcItem = { id: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
-  const ncsParaAnterior = useMemo(
-    () => (ncsEstabelecimento as NcItem[]).filter(nc => nc.id !== id),
-    [ncsEstabelecimento, id]
+  type NcItem = { id: string; codigo: string; titulo: string; status: string; dataRegistro: string; ncAnteriorId?: string }
+  type NcOption = { id: string; label: string; codigo: string; titulo: string; status: StatusNaoConformidade }
+  const fetchNcsParaAnterior = useCallback(
+    (q: string): Promise<NcOption[]> => {
+      if (!estabelecimentoEfetivo?.id) return Promise.resolve([])
+      return buscarNcParaReincidencia({ estabelecimentoId: estabelecimentoEfetivo.id, q, excludeId: id }).then(
+        list => list.map(nc => ({
+          id: nc.id, codigo: nc.codigo, titulo: nc.titulo, status: nc.status,
+          label: `${nc.codigo} — ${nc.titulo} — ${nc.status}`,
+        }))
+      )
+    },
+    [estabelecimentoEfetivo?.id, id]
   )
   type NormaItem = { id: string; titulo: string; descricao?: string; conteudo?: string }
   const filteredNormas = useMemo(
@@ -329,6 +341,9 @@ export default function RegistroOcorrenciaPage() {
     queryFn: () => getNaoConformidade(ncAnteriorId),
     enabled: isReincidencia && !!ncAnteriorId,
   })
+  const ncAnteriorSelecionadaLabel = ncAnteriorData
+    ? `${ncAnteriorData.codigo} — ${ncAnteriorData.titulo} — ${ncAnteriorData.status}`
+    : undefined
 
   const { data: desvioData } = useQuery({
     queryKey: ['desvio', id],
@@ -451,11 +466,22 @@ export default function RegistroOcorrenciaPage() {
   const watchAll = watch()
   const estabelecimentoId = user?.isAdmin ? adminEstabelecimentoId : estabelecimentoSelecionado?.id || ''
   const requiredValues = tipo === 'NAO_CONFORMIDADE'
-    ? [watchAll.titulo, watchAll.descricao, estabelecimentoId, severidade > 0, probabilidade > 0]
+    ? [watchAll.titulo, watchAll.descricao, estabelecimentoId, severidade > 0, probabilidade > 0, !!empresaFilhaEfetiva?.id]
     : [watchAll.titulo, watchAll.descricao, estabelecimentoId, watchAll.responsavelDesvioId, watchAll.responsavelTratativaId]
   const filledCount = requiredValues.filter(Boolean).length
   const totalRequired = requiredValues.length
   const progress = Math.round((filledCount / totalRequired) * 100)
+
+  const missingFields = tipo === 'NAO_CONFORMIDADE'
+    ? [
+        severidade === 0 && 'Severidade',
+        probabilidade === 0 && 'Probabilidade',
+        !empresaFilhaEfetiva?.id && 'Empresa Contratada',
+      ].filter((v): v is string => !!v)
+    : [
+        !watchAll.responsavelDesvioId && 'Responsável pelo Desvio',
+        !watchAll.responsavelTratativaId && 'Responsável pela Tratativa',
+      ].filter((v): v is string => !!v)
 
   // ── Score ─────────────────────────────────────────────────────────────────
   const score = severidade * probabilidade
@@ -492,6 +518,9 @@ export default function RegistroOcorrenciaPage() {
 
   // ── Submit handlers ───────────────────────────────────────────────────────
   const onFormValid = (data: FormData) => {
+    setSubmitAttempted(true)
+    if (missingFields.length > 0) return
+
     if (isEditing) {
       mutation.mutate({ formData: data, emailsManuais: [], emailsPadraoExcluidos: [] })
       return
@@ -579,10 +608,14 @@ export default function RegistroOcorrenciaPage() {
                     )}
                   </div>
                   {adminEstabelecimentoId && (
-                    <Field label="Empresa Contratada">
+                    <Field
+                      label="Empresa Contratada"
+                      required
+                      error={submitAttempted && !adminEmpresaFilhaId ? 'Selecione a empresa contratada' : undefined}
+                    >
                       <div className="nc-input-wrap nc-select-wrap">
                         <select value={adminEmpresaFilhaId} onChange={e => setAdminEmpresaFilhaId(e.target.value)} className="nc-input nc-select">
-                          <option value="">Nenhuma</option>
+                          <option value="">Selecione...</option>
                           {(empresasFilhaAdmin as Array<{ id: string; razaoSocial: string }>).map(e => (
                             <option key={e.id} value={e.id}>{e.razaoSocial}</option>
                           ))}
@@ -706,10 +739,10 @@ export default function RegistroOcorrenciaPage() {
                 icon={<ShieldAlert size={18} />}
                 accent={severidade > 0 && probabilidade > 0 ? scoreColor : '#58a6ff'}
               >
-                <Field label="Severidade" required>
+                <Field label="Severidade" required error={submitAttempted && severidade === 0 ? 'Selecione a severidade' : undefined}>
                   <RampPicker value={severidade} onChange={setSeveridade} options={SEV_OPTS} />
                 </Field>
-                <Field label="Probabilidade" required>
+                <Field label="Probabilidade" required error={submitAttempted && probabilidade === 0 ? 'Selecione a probabilidade' : undefined}>
                   <RampPicker value={probabilidade} onChange={setProbabilidade} options={PROB_OPTS} />
                 </Field>
               </Section>
@@ -837,20 +870,23 @@ export default function RegistroOcorrenciaPage() {
                   accent="#f85149"
                 >
                   <Field label="NC Anterior" required>
-                    <div className="nc-input-wrap nc-select-wrap">
-                      <select
-                        value={ncAnteriorId}
-                        onChange={e => setNcAnteriorId(e.target.value)}
-                        className="nc-input nc-select"
-                        style={reincidenciaWarning ? { borderColor: '#f97316', boxShadow: '0 0 0 3px rgba(249,115,22,0.18)' } : {}}
-                      >
-                        <option value="">Selecione a NC anterior</option>
-                        {ncsParaAnterior.map(nc => (
-                          <option key={nc.id} value={nc.id}>{nc.titulo} — {nc.status}</option>
-                        ))}
-                      </select>
-                      <span className="nc-select-chev"><ChevronDown size={16} /></span>
-                    </div>
+                    <AsyncSearchableSelect<NcOption>
+                      value={ncAnteriorId}
+                      onChange={setNcAnteriorId}
+                      fetchOptions={fetchNcsParaAnterior}
+                      selectedLabel={ncAnteriorSelecionadaLabel}
+                      placeholder="Selecione a NC anterior"
+                      emptyLabel="— Nenhuma —"
+                      className="nc-input"
+                      style={reincidenciaWarning ? { borderColor: '#f97316', boxShadow: '0 0 0 3px rgba(249,115,22,0.18)' } : undefined}
+                      renderOption={o => (
+                        <>
+                          <span className="nc-async-option-code">{o.codigo}</span>
+                          <span className="nc-async-option-title">{o.titulo}</span>
+                          <StatusBadge type="nc" status={o.status} />
+                        </>
+                      )}
+                    />
                   </Field>
 
                   {reincidenciaWarning && (
@@ -859,7 +895,9 @@ export default function RegistroOcorrenciaPage() {
                       <div className="nc-reinc-warn-body">Para manter o rastro linear, selecione a última NC da cadeia:</div>
                       <div className="nc-reinc-warn-last" style={{ marginTop: 8, padding: 8, background: 'rgba(249,115,22,0.1)', borderRadius: 6, border: '1px solid rgba(249,115,22,0.3)' }}>
                         <div style={{ fontSize: 12, color: '#f97316', fontWeight: 500, marginBottom: 6 }}>📍 Última NC da cadeia:</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#d58a15', marginBottom: 6, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{reincidenciaWarning.titulo}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#d58a15', marginBottom: 6, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          <span style={{ fontFamily: 'monospace', opacity: 0.85 }}>{reincidenciaWarning.codigo}</span> — {reincidenciaWarning.titulo}
+                        </div>
                         <button
                           type="button"
                           onClick={() => setNcAnteriorId(reincidenciaWarning.id)}
@@ -876,15 +914,17 @@ export default function RegistroOcorrenciaPage() {
                     <div className="nc-reinc-trail">
                       <div className="nc-reinc-trail-label">Rastro de reincidências</div>
                       <div className="nc-reinc-trail-row">
-                        {(ncAnteriorData as { cadeiaReincidencias: { id: string; titulo: string }[] }).cadeiaReincidencias.map(item => (
+                        {(ncAnteriorData as { cadeiaReincidencias: { id: string; codigo: string; titulo: string }[] }).cadeiaReincidencias.map(item => (
                           <span key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className="nc-pill nc-pill-red" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.titulo}>{item.titulo}</span>
+                            <span className="nc-pill nc-pill-red" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${item.codigo} — ${item.titulo}`}>{item.codigo} — {item.titulo}</span>
                             <span className="nc-reinc-arrow">→</span>
                           </span>
                         ))}
-                        <span className="nc-pill nc-pill-red" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(ncAnteriorData as { titulo: string }).titulo}</span>
+                        <span className="nc-pill nc-pill-red" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${(ncAnteriorData as { codigo: string; titulo: string }).codigo} — ${(ncAnteriorData as { titulo: string }).titulo}`}>{(ncAnteriorData as { codigo: string }).codigo} — {(ncAnteriorData as { titulo: string }).titulo}</span>
                         <span className="nc-reinc-arrow">→</span>
-                        <span className="nc-pill nc-pill-slate" style={{ boxShadow: '0 0 0 1px rgba(88,166,255,0.6)' }}>Esta NC</span>
+                        <span className="nc-pill nc-pill-slate" style={{ boxShadow: '0 0 0 1px rgba(88,166,255,0.6)' }}>
+                          {isEditing && ncData?.codigo ? `${ncData.codigo} — Esta NC` : 'Esta NC'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -975,6 +1015,16 @@ export default function RegistroOcorrenciaPage() {
                 </div>
               )}
             </Section>
+
+            {/* Aviso de campos obrigatórios pendentes */}
+            {submitAttempted && missingFields.length > 0 && (
+              <div className="nc-form-error-banner">
+                <AlertCircle size={16} />
+                <span>
+                  Preencha os campos obrigatórios antes de continuar: <strong>{missingFields.join(', ')}</strong>.
+                </span>
+              </div>
+            )}
 
             {/* Action bar */}
             <div className="nc-action-bar">
