@@ -39,10 +39,11 @@ export function useOcorrenciasFiltro() {
   }
 
   function matchBuscaEData(item: OcorrenciaItem) {
-    const q = busca.toLowerCase()
+    const q = busca.trim().toLowerCase()
     const matchBusca = q === '' ||
       item.titulo.toLowerCase().includes(q) ||
-      (item.localizacao || '').toLowerCase().includes(q)
+      (item.localizacao || '').toLowerCase().includes(q) ||
+      item.codigo.toLowerCase().includes(q)
     const dataItem = item.dataRegistro.slice(0, 10)
     const matchInicio = !dataInicio || dataItem >= dataInicio
     const matchFim = !dataFim || dataItem <= dataFim

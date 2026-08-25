@@ -7,6 +7,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useOcorrenciasFiltro, PAGE_SIZES } from '../hooks/useOcorrenciasFiltro'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, Calendar } from 'lucide-react'
 import CodigoBadge from '../components/CodigoBadge'
+import MeuPapelFilter, { PAPEL_OPTIONS } from '../components/MeuPapelFilter'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
@@ -78,14 +79,6 @@ export default function TrativasListPage() {
     if (dias !== null && dias < 0) return 'VENCIDAS'
     return 'TODOS'
   }
-
-  const PAPEL_OPTIONS: { value: string; label: string; tipos: TipoFiltro[] }[] = [
-    { value: 'REGISTRANTE',              label: 'Sou o registrante',                   tipos: ['TODOS', 'NAO_CONFORMIDADE', 'DESVIO'] },
-    { value: 'RESPONSAVEL_NC',           label: 'Responsável pela NC',                 tipos: ['TODOS', 'NAO_CONFORMIDADE'] },
-    { value: 'RESPONSAVEL_TRATATIVA_NC', label: 'Responsável pela tratativa (NC)',     tipos: ['TODOS', 'NAO_CONFORMIDADE'] },
-    { value: 'RESPONSAVEL_DESVIO',       label: 'Responsável pelo desvio',             tipos: ['TODOS', 'DESVIO'] },
-    { value: 'RESPONSAVEL_TRATATIVA_DESVIO', label: 'Responsável pela tratativa (desvio)', tipos: ['TODOS', 'DESVIO'] },
-  ]
 
   function handleTipoChange(tipo: TipoFiltro) {
     const available = STATUS_TABS_CONFIG.filter(t => t.tipos.includes(tipo)).map(t => t.key)
@@ -164,7 +157,7 @@ export default function TrativasListPage() {
           <input
             value={busca}
             onChange={e => { setBusca(e.target.value); setPage(1) }}
-            placeholder="Buscar por título ou localização..."
+            placeholder="Buscar por título, localização ou código (NC-0005)..."
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
@@ -258,31 +251,11 @@ export default function TrativasListPage() {
       </div>
 
       {/* Filtro Meu Papel */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Meu papel:</span>
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="radio"
-            name="meuPapelTratativas"
-            checked={meuPapel === null}
-            onChange={() => { setMeuPapel(null); setPage(1) }}
-            className="accent-slate-700"
-          />
-          <span className="text-xs text-slate-600">Todos</span>
-        </label>
-        {PAPEL_OPTIONS.filter(o => o.tipos.includes(filtroTipo)).map(o => (
-          <label key={o.value} className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="radio"
-              name="meuPapelTratativas"
-              checked={meuPapel === o.value}
-              onChange={() => { setMeuPapel(o.value); setPage(1) }}
-              className="accent-slate-700"
-            />
-            <span className="text-xs text-slate-600">{o.label}</span>
-          </label>
-        ))}
-      </div>
+      <MeuPapelFilter
+        filtroTipo={filtroTipo}
+        meuPapel={meuPapel}
+        onChange={v => { setMeuPapel(v); setPage(1) }}
+      />
 
       {/* List */}
       {isLoading && <div className="text-center text-slate-400 py-12">Carregando...</div>}
