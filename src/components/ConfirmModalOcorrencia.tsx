@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   FileCheck, X, Mail, Building2, MapPin, ShieldAlert,
-  Calendar, Send, CheckCheck, Plus, Check, ArrowUp,
+  Calendar, Send, CheckCheck, Plus, Check, ArrowUp, Info,
 } from 'lucide-react'
 import type { EmailPadrao } from '../types'
 
@@ -10,6 +10,22 @@ interface DynamicRecipient {
   email: string
   tag: string
 }
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="nc-info-tip" tabIndex={0}>
+      <Info size={11} />
+      <span className="nc-info-tip-bubble">{text}</span>
+    </span>
+  )
+}
+
+const DINAMICOS_TIP: Record<Props['tipo'], string> = {
+  DESVIO: 'Essa lista é preenchida sozinha: você, que está registrando, e o responsável pelo Desvio. Os dois recebem um email a cada mudança de status, do começo ao fim do fluxo do Desvio. O responsável pela tratativa também aparece aqui, mas só passa a receber a partir da etapa seguinte — por isso não recebe este email de abertura. Você não consegue remover esses três; só os emails que você adicionar ou mover pra cá manualmente podem ser removidos.',
+  NAO_CONFORMIDADE: 'Essa lista é preenchida sozinha: você, que está registrando, e o responsável pela NC. Os dois recebem um email a cada mudança de status, do começo ao fim do fluxo da NC. O responsável pela tratativa também aparece aqui, mas só passa a receber a partir da etapa seguinte — por isso não recebe este email de abertura. Você não consegue remover esses três; só os emails que você adicionar ou mover pra cá manualmente podem ser removidos.',
+}
+
+const PADRAO_TIP = 'Lista de emails cadastrados pelo admin para este Estabelecimento + Empresa (compartilhada entre NC e Desvio). Vêm marcados por padrão, mas podem ser desmarcados. Só são usados no email de abertura e no de conclusão — atualizações intermediárias de status notificam apenas os Dinâmicos.'
 
 interface Props {
   open: boolean
@@ -229,7 +245,10 @@ export default function ConfirmModalOcorrencia({
 
                 {/* Dynamic */}
                 <div className="nc-recipients-group">
-                  <div className="nc-recipients-group-label">Dinâmicos (automáticos)</div>
+                  <div className="nc-recipients-group-label">
+                    Dinâmicos (automáticos)
+                    <InfoTip text={DINAMICOS_TIP[tipo]} />
+                  </div>
                   {dynamicRecipients.map((r, i) => (
                     <div key={i} className="nc-recipient-row">
                       <span className="nc-recipient-dot" style={{ background: '#58a6ff' }} />
@@ -272,7 +291,10 @@ export default function ConfirmModalOcorrencia({
                 {/* Default (toggleable) */}
                 {(emailsPadraoFiltrados.length > 0 || localManuaisPadrao.length > 0) && (
                   <div className="nc-recipients-group">
-                    <div className="nc-recipients-group-label">Padrão (desmarcáveis)</div>
+                    <div className="nc-recipients-group-label">
+                      Padrão (desmarcáveis)
+                      <InfoTip text={PADRAO_TIP} />
+                    </div>
                     {emailsPadraoFiltrados.map(ep => {
                       const excluido = localExcluidos.includes(ep.email)
                       return (

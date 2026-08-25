@@ -721,7 +721,21 @@
 .nc-confirm-section-head { display: flex; align-items: center; justify-content: space-between; }
 .nc-confirm-section-title { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--nc-fg-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 0; }
 .nc-recipients-group { display: flex; flex-direction: column; gap: 4px; }
-.nc-recipients-group-label { font-size: 10px; font-weight: 700; color: var(--nc-fg-3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.nc-recipients-group-label { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: var(--nc-fg-3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+
+.nc-info-tip { position: relative; display: inline-flex; align-items: center; color: var(--nc-fg-3); cursor: help; letter-spacing: normal; text-transform: none; }
+.nc-info-tip:hover, .nc-info-tip:focus-within { color: var(--nc-accent); outline: none; }
+.nc-info-tip-bubble {
+  position: absolute; z-index: 20; left: 0; top: calc(100% + 8px); transform: translateY(-4px);
+  width: min(260px, 80vw); max-width: 260px; padding: 9px 11px; border-radius: 8px;
+  background: var(--nc-bg-card); border: 1px solid var(--nc-border-soft); box-shadow: var(--nc-shadow-lg);
+  font-size: 11px; font-weight: 500; line-height: 1.5; color: var(--nc-fg-1); text-transform: none; letter-spacing: normal;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.nc-info-tip:hover .nc-info-tip-bubble, .nc-info-tip:focus-within .nc-info-tip-bubble {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
 .nc-recipient-row { display: flex; align-items: center; gap: 8px; padding: 8px 11px; background: var(--nc-bg-elev); border: 1px solid var(--nc-border-soft); border-radius: 8px; font-size: 12px; }
 .nc-recipient-row.toggleable { cursor: pointer; }
 .nc-recipient-row.toggleable:hover { border-color: var(--nc-border-str); background: var(--nc-bg-card); }
