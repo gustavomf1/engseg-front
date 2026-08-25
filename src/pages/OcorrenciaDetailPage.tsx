@@ -5,6 +5,7 @@ import { getDesvio, updateDesvio, deleteDesvio, abrirTratativaDesvio } from '../
 import { getNaoConformidade, updateNaoConformidade, deleteNaoConformidade, ativarNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade, Norma } from '../types'
 import StatusBadge from '../components/StatusBadge'
+import CodigoBadge from '../components/CodigoBadge'
 import { getTrechosNorma } from '../api/ncTrechoNorma'
 import { getEstabelecimentos } from '../api/estabelecimento'
 import { getLocalizacoes } from '../api/localizacao'
@@ -378,6 +379,7 @@ export default function OcorrenciaDetailPage() {
         {/* Page header: tags + title + subtitle */}
         <div className="overflow-hidden min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-2">
+            <CodigoBadge codigo={(ocorrencia as any).codigo} />
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${isDesvio ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
               {isDesvio ? 'Desvio' : 'Não Conformidade'}
             </span>

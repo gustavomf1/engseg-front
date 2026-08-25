@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useOcorrenciasFiltro, PAGE_SIZES } from '../hooks/useOcorrenciasFiltro'
 import { Search, AlertTriangle, CheckCircle2, MapPin, Clock, Shield, Calendar } from 'lucide-react'
+import CodigoBadge from '../components/CodigoBadge'
 import EvidenciaThumbnail from '../components/EvidenciaThumbnail'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/date'
@@ -344,7 +345,7 @@ export default function TrativasListPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-xs text-slate-400 flex-shrink-0">{item.codigo}</span>
+                    <CodigoBadge codigo={item.codigo} size="sm" />
                     <div className="font-semibold text-slate-800 truncate">{item.titulo}</div>
                   </div>
                   <div className="text-sm text-slate-500 truncate">{item.descricao}</div>
