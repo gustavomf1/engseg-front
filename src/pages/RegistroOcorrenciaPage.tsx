@@ -478,6 +478,7 @@ export default function RegistroOcorrenciaPage() {
     : [
         !watchAll.responsavelDesvioId && 'Responsável pelo Desvio',
         !watchAll.responsavelTratativaId && 'Responsável pela Tratativa',
+        !empresaFilhaEfetiva?.id && 'Empresa Contratada',
       ].filter((v): v is string => !!v)
 
   // ── Score ─────────────────────────────────────────────────────────────────
@@ -516,6 +517,7 @@ export default function RegistroOcorrenciaPage() {
   // ── Submit handlers ───────────────────────────────────────────────────────
   const onFormValid = (data: FormData) => {
     setSubmitAttempted(true)
+    if (!empresaFilhaEfetiva?.id) return
 
     if (isEditing) {
       mutation.mutate({ formData: data, emailsManuais: [], emailsPadraoExcluidos: [] })
@@ -654,7 +656,7 @@ export default function RegistroOcorrenciaPage() {
                 </div>
               </Field>
 
-              <Field label={tipo === 'NAO_CONFORMIDADE' ? 'Descrição Detalhada' : 'Descrição Curta'} required error={errors.descricao?.message}>
+              <Field label={tipo === 'NAO_CONFORMIDADE' ? 'Descrição Detalhada' : 'Descrição Curta'} error={errors.descricao?.message}>
                 <div className="nc-textarea-wrap">
                   <textarea
                     {...register('descricao')}
