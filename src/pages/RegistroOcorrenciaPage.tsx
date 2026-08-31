@@ -201,8 +201,8 @@ interface TrechoPendente {
 
 const schema = z.object({
   titulo: z.string().min(1, 'Título obrigatório'),
-  localizacaoId: z.string().optional(),
-  descricao: z.string().min(1, 'Descrição obrigatória'),
+  localizacaoId: z.string().min(1, 'Localização obrigatória'),
+  descricao: z.string().optional(),
   estabelecimentoId: z.string().min(1, 'Selecione um estabelecimento'),
   responsavelTrativaId: z.string().optional(),
   responsavelNcId: z.string().optional(),
@@ -403,20 +403,18 @@ export default function RegistroOcorrenciaPage() {
     mutationFn: async ({ formData: data, emailsManuais, emailsPadraoExcluidos }: MutationPayload) => {
       const base = {
         titulo: data.titulo,
-        localizacaoId: data.localizacaoId || undefined,
-        descricao: data.descricao,
+        localizacaoId: data.localizacaoId,
+        descricao: data.descricao || '',
         estabelecimentoId: data.estabelecimentoId,
         regraDeOuro: isRegraDeOuro,
       }
       let result
       if (tipo === 'DESVIO') {
-        if (!data.responsavelDesvioId) throw new Error('Responsável pelo desvio obrigatório')
-        if (!data.responsavelTratativaId) throw new Error('Responsável pela tratativa obrigatório')
         const req = {
           ...base,
-          orientacaoRealizada: data.descricao,
-          responsavelDesvioId: data.responsavelDesvioId,
-          responsavelTratativaId: data.responsavelTratativaId,
+          orientacaoRealizada: data.descricao || '',
+          responsavelDesvioId: data.responsavelDesvioId || undefined,
+          responsavelTratativaId: data.responsavelTratativaId || undefined,
           emailsManuais: emailsManuais.length > 0 ? emailsManuais : undefined,
           emailsPadraoExcluidos: emailsPadraoExcluidos.length > 0 ? emailsPadraoExcluidos : undefined,
           empresaContratadaId: empresaFilhaEfetiva?.id,
@@ -425,8 +423,9 @@ export default function RegistroOcorrenciaPage() {
       } else {
         const req = {
           ...base,
-          severidade,
-          probabilidade,
+          descricao: data.descricao || undefined,
+          severidade: severidade > 0 ? severidade : undefined,
+          probabilidade: probabilidade > 0 ? probabilidade : undefined,
           responsavelTrativaId: data.responsavelTrativaId || undefined,
           responsavelNcId: data.responsavelNcId || undefined,
           normaIds: normasSelecionadas.length > 0 ? normasSelecionadas : undefined,
@@ -465,9 +464,7 @@ export default function RegistroOcorrenciaPage() {
   // ── Progress ──────────────────────────────────────────────────────────────
   const watchAll = watch()
   const estabelecimentoId = user?.isAdmin ? adminEstabelecimentoId : estabelecimentoSelecionado?.id || ''
-  const requiredValues = tipo === 'NAO_CONFORMIDADE'
-    ? [watchAll.titulo, watchAll.descricao, estabelecimentoId, severidade > 0, probabilidade > 0, !!empresaFilhaEfetiva?.id]
-    : [watchAll.titulo, watchAll.descricao, estabelecimentoId, watchAll.responsavelDesvioId, watchAll.responsavelTratativaId]
+  const requiredValues = [watchAll.titulo, estabelecimentoId, watchAll.localizacaoId, !!empresaFilhaEfetiva?.id]
   const filledCount = requiredValues.filter(Boolean).length
   const totalRequired = requiredValues.length
   const progress = Math.round((filledCount / totalRequired) * 100)
@@ -519,7 +516,6 @@ export default function RegistroOcorrenciaPage() {
   // ── Submit handlers ───────────────────────────────────────────────────────
   const onFormValid = (data: FormData) => {
     setSubmitAttempted(true)
-    if (missingFields.length > 0) return
 
     if (isEditing) {
       mutation.mutate({ formData: data, emailsManuais: [], emailsPadraoExcluidos: [] })
@@ -640,7 +636,7 @@ export default function RegistroOcorrenciaPage() {
               )}
 
               <div className="nc-form-row-2">
-                <Field label="Localização">
+                <Field label="Localização" required error={errors.localizacaoId?.message}>
                   <div className="nc-input-wrap nc-select-wrap">
                     <select {...register('localizacaoId')} className="nc-input nc-select">
                       <option value="">Selecione...</option>

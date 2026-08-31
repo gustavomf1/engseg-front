@@ -82,8 +82,10 @@ export default function ConfirmModalOcorrencia({
 
   if (!open) return null
 
+  const hasRisco = severidade > 0 && probabilidade > 0
   const score = severidade * probabilidade
-  const scoreLevel = score <= 4 ? { label: 'Baixo', color: '#3fb950' }
+  const scoreLevel = !hasRisco ? { label: 'Não avaliado', color: '#8b949e' }
+    : score <= 4 ? { label: 'Baixo', color: '#3fb950' }
     : score <= 9 ? { label: 'Moderado', color: '#d29922' }
     : score <= 16 ? { label: 'Alto', color: '#f97316' }
     : { label: 'Crítico', color: '#f85149' }
