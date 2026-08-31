@@ -254,8 +254,8 @@ export interface NaoConformidade {
   dataRegistro: string
   tecnicoNome?: string
   regraDeOuro: boolean
-  severidade: number
-  probabilidade: number
+  severidade: number | null
+  probabilidade: number | null
   nivelRisco: NivelRisco
   responsavelTrativaId: string
   responsavelTrativaNome: string
@@ -305,10 +305,10 @@ export interface NaoConformidade {
 export interface NaoConformidadeRequest {
   estabelecimentoId: string
   titulo: string
-  localizacaoId?: string
-  descricao: string
-  severidade: number
-  probabilidade: number
+  localizacaoId: string
+  descricao?: string
+  severidade?: number
+  probabilidade?: number
   responsavelTrativaId?: string
   responsavelNcId?: string
   regraDeOuro: boolean
@@ -421,12 +421,12 @@ export interface Desvio {
 export interface DesvioRequest {
   estabelecimentoId: string
   titulo: string
-  localizacaoId?: string
+  localizacaoId: string
   descricao: string
   orientacaoRealizada: string
   regraDeOuro: boolean
-  responsavelDesvioId: string
-  responsavelTratativaId: string
+  responsavelDesvioId?: string
+  responsavelTratativaId?: string
   empresaContratadaId?: string
 }
 
