@@ -24,6 +24,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { exportOcorrenciaBundle, exportOcorrenciaToExcel } from '../utils/exportOcorrencia'
 import { getEvidencias, getEvidenciasDesvio } from '../api/evidencia'
 import NcRiskMatrix from '../components/NcRiskMatrix'
+import { missingCamposNc, missingCamposDesvio, CAMPO_OBRIGATORIO_LABELS } from '../utils/camposObrigatorios'
 
 const SEV_LABELS: Record<number, string> = {
   1: 'Insignificante', 2: 'Menor', 3: 'Moderada', 4: 'Maior', 5: 'Catastrófica',
@@ -77,6 +78,7 @@ export default function OcorrenciaDetailPage() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showAvancarModal, setShowAvancarModal] = useState(false)
+  const [showCamposFaltantesAviso, setShowCamposFaltantesAviso] = useState(false)
 
   const { data: desvio } = useQuery({
     queryKey: ['desvio', id],
@@ -136,6 +138,9 @@ export default function OcorrenciaDetailPage() {
   const isCriador = user?.id === usuarioCriacaoId && user?.perfil !== 'EXTERNO'
   const podeAvancar = isAberto && (isCriador || isAdmin)
   const podeEditarExcluir = isAberto ? (isCriador || isAdmin) : isAdmin
+  const camposFaltantes = ocorrencia
+    ? (isDesvio ? missingCamposDesvio(ocorrencia as Desvio) : missingCamposNc(ocorrencia as NaoConformidade))
+    : []
 
   useEffect(() => {
     if (desvio && isDesvio) {
@@ -179,6 +184,7 @@ export default function OcorrenciaDetailPage() {
           orientacaoRealizada: form.descricao,
           responsavelDesvioId: form.responsavelDesvioId || desvio?.responsavelDesvioId || '',
           responsavelTratativaId: form.responsavelTratativaId || desvio?.responsavelTratativaId || '',
+          empresaContratadaId: desvio?.empresaContratadaId,
         })
       } else {
         return updateNaoConformidade(id!, {
@@ -186,13 +192,14 @@ export default function OcorrenciaDetailPage() {
           localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
-          severidade: nc?.severidade ?? 3,
-          probabilidade: nc?.probabilidade ?? 3,
+          severidade: nc?.severidade ?? undefined,
+          probabilidade: nc?.probabilidade ?? undefined,
           estabelecimentoId: form.estabelecimentoId,
           responsavelTrativaId: form.responsavelTrativaId || undefined,
           responsavelNcId: form.responsavelNcId || undefined,
           reincidencia: form.reincidencia ?? false,
           ncAnteriorId: form.reincidencia && form.ncAnteriorId ? form.ncAnteriorId : undefined,
+          empresaContratadaId: nc?.empresaContratadaId,
         })
       }
     },
@@ -336,7 +343,14 @@ export default function OcorrenciaDetailPage() {
             )}
 
             {podeAvancar && !editando && (
-              <button onClick={() => setShowAvancarModal(true)}
+              <button
+                onClick={() => {
+                  if (camposFaltantes.length > 0) {
+                    setShowCamposFaltantesAviso(true)
+                  } else {
+                    setShowAvancarModal(true)
+                  }
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition">
                 <ChevronRight size={15} /> {isDesvio ? 'Enviar para Tratativa' : 'Enviar para Plano de Ação'}
               </button>
@@ -351,7 +365,13 @@ export default function OcorrenciaDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                     <X size={15} /> Cancelar
                   </button>
-                  <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+                  <button onClick={() => {
+                    if (!form.localizacaoId) {
+                      alert('Selecione uma localização antes de salvar.')
+                      return
+                    }
+                    mutation.mutate()
+                  }} disabled={mutation.isPending}
                     className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition">
                     <Save size={15} /> {mutation.isPending ? 'Salvando...' : 'Salvar'}
                   </button>
@@ -813,9 +833,21 @@ export default function OcorrenciaDetailPage() {
                 Após confirmar, <strong>não será possível editar</strong> os dados desta {isDesvio ? 'ocorrência' : 'NC'}.
               </p>
               {avancarMutation.isError && (
-                <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
-                  Erro: {avancarMutation.error?.message || 'Tente novamente.'}
-                </p>
+                <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
+                  Erro: {(() => {
+                    const data = (avancarMutation.error as { response?: { data?: { message?: string; camposFaltantes?: string[] } } } | null)?.response?.data
+                    if (data?.camposFaltantes?.length) {
+                      return (
+                        <ul className="list-disc list-inside">
+                          {data.camposFaltantes.map(codigo => (
+                            <li key={codigo}>{CAMPO_OBRIGATORIO_LABELS[codigo] ?? codigo}</li>
+                          ))}
+                        </ul>
+                      )
+                    }
+                    return data?.message || avancarMutation.error?.message || 'Tente novamente.'
+                  })()}
+                </div>
               )}
             </div>
             <div className="flex justify-end gap-2 p-6 pt-0">
@@ -823,6 +855,37 @@ export default function OcorrenciaDetailPage() {
               <button onClick={() => avancarMutation.mutate()} disabled={avancarMutation.isPending}
                 className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-60 transition">
                 {avancarMutation.isPending ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Campos obrigatórios faltantes */}
+      {showCamposFaltantesAviso && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCamposFaltantesAviso(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-slate-800">Faltam campos obrigatórios</h3>
+            <p className="text-sm text-slate-600">
+              Preencha os campos abaixo antes de {isDesvio ? 'enviar para tratativa' : 'enviar para o Plano de Ação'}:
+            </p>
+            <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
+              {camposFaltantes.map(codigo => (
+                <li key={codigo}>{CAMPO_OBRIGATORIO_LABELS[codigo] ?? codigo}</li>
+              ))}
+            </ul>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCamposFaltantesAviso(false)}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-gray-100 rounded-lg"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={() => navigate(`/ocorrencias/${tipo}/${id}/editar`)}
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              >
+                Editar
               </button>
             </div>
           </div>
