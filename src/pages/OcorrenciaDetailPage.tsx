@@ -1,26 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getDesvio, updateDesvio, deleteDesvio, abrirTratativaDesvio } from '../api/desvio'
-import { getNaoConformidade, updateNaoConformidade, deleteNaoConformidade, ativarNaoConformidade } from '../api/naoConformidade'
+import { getDesvio, deleteDesvio, abrirTratativaDesvio } from '../api/desvio'
+import { getNaoConformidade, deleteNaoConformidade, ativarNaoConformidade } from '../api/naoConformidade'
 import { Desvio, NaoConformidade, Norma } from '../types'
 import StatusBadge from '../components/StatusBadge'
 import CodigoBadge from '../components/CodigoBadge'
 import { getTrechosNorma } from '../api/ncTrechoNorma'
-import { getEstabelecimentos } from '../api/estabelecimento'
-import { getLocalizacoes } from '../api/localizacao'
-import { getUsuarios } from '../api/usuario'
 import {
-  ArrowLeft, Pencil, X, Save, MapPin, Calendar, Shield, AlertTriangle,
+  ArrowLeft, Pencil, X, MapPin, Calendar, Shield, AlertTriangle,
   FileText, User, Building2, Clock, CheckCircle, Ban, BookOpen, RefreshCw, Trash2, Eye,
   FileDown, FileSpreadsheet, Download, ChevronRight
 } from 'lucide-react'
 import EvidenciaUpload from '../components/EvidenciaUpload'
-import SearchableSelect from '../components/SearchableSelect'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { formatDate } from '../utils/date'
-import { useWorkspace } from '../contexts/WorkspaceContext'
 import { exportOcorrenciaBundle, exportOcorrenciaToExcel } from '../utils/exportOcorrencia'
 import { getEvidencias, getEvidenciasDesvio } from '../api/evidencia'
 import NcRiskMatrix from '../components/NcRiskMatrix'
@@ -66,13 +61,10 @@ export default function OcorrenciaDetailPage() {
   const { user } = useAuth()
   const { theme } = useTheme()
   const dark = theme === 'dark'
-  const { empresaFilha } = useWorkspace()
   const isDesvio = tipo === 'DESVIO'
   const isTecnico = user?.perfil === 'TECNICO'
   const isAdmin = user?.isAdmin ?? false
 
-  const [editando, setEditando] = useState(false)
-  const [form, setForm] = useState<Record<string, any>>({})
   const [normaModal, setNormaModal] = useState<Norma | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
@@ -98,39 +90,6 @@ export default function OcorrenciaDetailPage() {
     enabled: !isDesvio && !!id,
   })
 
-  const { data: estabelecimentos = [] } = useQuery({
-    queryKey: ['estabelecimentos'],
-    queryFn: () => getEstabelecimentos(true),
-    enabled: editando,
-  })
-
-  const { data: localizacoes = [] } = useQuery({
-    queryKey: ['localizacoes'],
-    queryFn: () => getLocalizacoes(),
-    enabled: editando,
-  })
-
-  const localizacoesAtivas = (localizacoes as Array<{ id: string; nome: string; ativo: boolean; estabelecimentoId: string }>)
-    .filter(l => l.ativo && l.estabelecimentoId === form.estabelecimentoId)
-
-  const { data: usuarios = [] } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => getUsuarios(true),
-    enabled: editando && !isDesvio,
-  })
-
-  const { data: usuariosFilha = [] } = useQuery({
-    queryKey: ['usuarios', 'empresa', empresaFilha?.id],
-    queryFn: () => getUsuarios(true, empresaFilha!.id),
-    enabled: editando && !isDesvio && !!empresaFilha,
-  })
-
-  const engenheiros = (usuarios as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
-    .filter(u => (u.perfil === 'ENGENHEIRO' || u.perfil === 'TECNICO') && u.ativo)
-
-  const externos = (usuariosFilha as Array<{ id: string; nome: string; perfil: string; ativo: boolean }>)
-    .filter(u => (u.perfil === 'EXTERNO' || u.perfil === 'ENGENHEIRO') && u.ativo)
-
   const ocorrencia = isDesvio ? desvio : nc
   const statusAtual = isDesvio ? desvio?.status : nc?.status
   const isAberto = isDesvio ? statusAtual === 'ABERTO' : statusAtual === 'ABERTA'
@@ -141,74 +100,6 @@ export default function OcorrenciaDetailPage() {
   const camposFaltantes = ocorrencia
     ? (isDesvio ? missingCamposDesvio(ocorrencia as Desvio) : missingCamposNc(ocorrencia as NaoConformidade))
     : []
-
-  useEffect(() => {
-    if (desvio && isDesvio) {
-      setForm({
-        titulo: desvio.titulo,
-        localizacaoId: desvio.localizacaoId || '',
-        descricao: desvio.descricao,
-        regraDeOuro: desvio.regraDeOuro,
-        estabelecimentoId: desvio.estabelecimentoId,
-        responsavelDesvioId: desvio.responsavelDesvioId || '',
-        responsavelTratativaId: desvio.responsavelTratativaId || '',
-      })
-    }
-  }, [desvio, isDesvio])
-
-  useEffect(() => {
-    if (nc && !isDesvio) {
-      setForm({
-        titulo: nc.titulo,
-        localizacaoId: nc.localizacaoId || '',
-        descricao: nc.descricao,
-        regraDeOuro: nc.regraDeOuro,
-        estabelecimentoId: nc.estabelecimentoId,
-        responsavelTrativaId: nc.responsavelTrativaId ?? '',
-        responsavelNcId: nc.responsavelNcId ?? '',
-        reincidencia: nc.reincidencia ?? false,
-        ncAnteriorId: nc.ncAnteriorId ?? '',
-      })
-    }
-  }, [nc, isDesvio])
-
-  const mutation = useMutation<Desvio | NaoConformidade, Error, void>({
-    mutationFn: () => {
-      if (isDesvio) {
-        return updateDesvio(id!, {
-          titulo: form.titulo,
-          localizacaoId: form.localizacaoId || undefined,
-          descricao: form.descricao,
-          regraDeOuro: form.regraDeOuro,
-          estabelecimentoId: form.estabelecimentoId,
-          orientacaoRealizada: form.descricao,
-          responsavelDesvioId: form.responsavelDesvioId || desvio?.responsavelDesvioId || '',
-          responsavelTratativaId: form.responsavelTratativaId || desvio?.responsavelTratativaId || '',
-          empresaContratadaId: desvio?.empresaContratadaId,
-        })
-      } else {
-        return updateNaoConformidade(id!, {
-          titulo: form.titulo,
-          localizacaoId: form.localizacaoId || undefined,
-          descricao: form.descricao,
-          regraDeOuro: form.regraDeOuro,
-          severidade: nc?.severidade ?? undefined,
-          probabilidade: nc?.probabilidade ?? undefined,
-          estabelecimentoId: form.estabelecimentoId,
-          responsavelTrativaId: form.responsavelTrativaId || undefined,
-          responsavelNcId: form.responsavelNcId || undefined,
-          reincidencia: form.reincidencia ?? false,
-          ncAnteriorId: form.reincidencia && form.ncAnteriorId ? form.ncAnteriorId : undefined,
-          empresaContratadaId: nc?.empresaContratadaId,
-        })
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
-      queryClient.invalidateQueries({ queryKey: [isDesvio ? 'desvio' : 'nc', id] })
-      setEditando(false)
-    },
-  })
 
   const deleteMutation = useMutation<void, Error, void>({
     mutationFn: () => isDesvio ? deleteDesvio(id!) : deleteNaoConformidade(id!),
@@ -226,10 +117,6 @@ export default function OcorrenciaDetailPage() {
       setShowAvancarModal(false)
     },
   })
-
-  function set(field: string, value: any) {
-    setForm(prev => ({ ...prev, [field]: value }))
-  }
 
   async function handleExportPDF() {
     if (!ocorrencia || !id) return
@@ -264,7 +151,6 @@ export default function OcorrenciaDetailPage() {
     : 0
 
 
-  const inputClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-700 transition"
   const valueClass = "text-sm text-slate-800 dark:text-slate-200"
 
   function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -275,8 +161,6 @@ export default function OcorrenciaDetailPage() {
       </div>
     )
   }
-
-  const estabList = estabelecimentos as Array<{ id: string; nome: string; ativo: boolean }>
 
   const chainNodes = [
     ...(nc?.cadeiaReincidencias ?? []).map(item => ({ ...item, isCurrent: false, isPast: true })),
@@ -342,7 +226,7 @@ export default function OcorrenciaDetailPage() {
               </button>
             )}
 
-            {podeAvancar && !editando && (
+            {podeAvancar && (
               <button
                 onClick={() => {
                   if (camposFaltantes.length > 0) {
@@ -359,37 +243,17 @@ export default function OcorrenciaDetailPage() {
             {(() => {
               if (!podeEditarExcluir) return null
               const isConcluido = statusAtual === 'CONCLUIDO'
-              return editando ? (
+              if (isConcluido) return null
+              return (
                 <>
-                  <button onClick={() => setEditando(false)}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
-                    <X size={15} /> Cancelar
+                  <button onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition">
+                    <Trash2 size={15} /> Excluir
                   </button>
-                  <button onClick={() => {
-                    if (!form.localizacaoId) {
-                      alert('Selecione uma localização antes de salvar.')
-                      return
-                    }
-                    mutation.mutate()
-                  }} disabled={mutation.isPending}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition">
-                    <Save size={15} /> {mutation.isPending ? 'Salvando...' : 'Salvar'}
+                  <button onClick={() => navigate(`/ocorrencias/${tipo}/${id}/editar`)}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition">
+                    <Pencil size={15} /> Editar
                   </button>
-                </>
-              ) : (
-                <>
-                  {!isConcluido && (
-                    <button onClick={() => setConfirmDelete(true)}
-                      className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition">
-                      <Trash2 size={15} /> Excluir
-                    </button>
-                  )}
-                  {!isConcluido && (
-                    <button onClick={() => setEditando(true)}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-700 hover:bg-gray-50 transition">
-                      <Pencil size={15} /> Editar
-                    </button>
-                  )}
                 </>
               )
             })()}
@@ -425,10 +289,7 @@ export default function OcorrenciaDetailPage() {
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Vencida</span>
             )}
           </div>
-          {editando
-            ? <input value={form.titulo} onChange={e => set('titulo', e.target.value)} className={`${inputClass} text-xl font-bold mb-1`} />
-            : <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1 truncate w-full" title={(ocorrencia as any).titulo}>{(ocorrencia as any).titulo}</h1>
-          }
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1 truncate w-full" title={(ocorrencia as any).titulo}>{(ocorrencia as any).titulo}</h1>
           <p className="text-sm text-slate-400 dark:text-slate-500">
             {(ocorrencia as any).estabelecimentoNome}
             {(ocorrencia as any).localizacaoNome ? ` · ${(ocorrencia as any).localizacaoNome}` : ''}
@@ -447,21 +308,10 @@ export default function OcorrenciaDetailPage() {
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Identificação</div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <Field label="Estabelecimento">
-                  {editando
-                    ? <select value={form.estabelecimentoId} onChange={e => set('estabelecimentoId', e.target.value)} className={inputClass}>
-                        {estabList.filter(e => e.ativo).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                      </select>
-                    : <div className={`${valueClass} flex items-center gap-1.5`}><Building2 size={13} className="text-slate-400" />{(ocorrencia as any).estabelecimentoNome}</div>
-                  }
+                  <div className={`${valueClass} flex items-center gap-1.5`}><Building2 size={13} className="text-slate-400" />{(ocorrencia as any).estabelecimentoNome}</div>
                 </Field>
                 <Field label="Localização">
-                  {editando
-                    ? <select value={form.localizacaoId} onChange={e => set('localizacaoId', e.target.value)} className={inputClass}>
-                        <option value="">— Nenhuma —</option>
-                        {localizacoesAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-                      </select>
-                    : <div className={`${valueClass} flex items-center gap-1.5`}><MapPin size={13} className="text-slate-400" />{(ocorrencia as any).localizacaoNome || '—'}</div>
-                  }
+                  <div className={`${valueClass} flex items-center gap-1.5`}><MapPin size={13} className="text-slate-400" />{(ocorrencia as any).localizacaoNome || '—'}</div>
                 </Field>
                 <Field label="Data de Registro">
                   <div className={`${valueClass} flex items-center gap-1.5`}><Calendar size={13} className="text-slate-400" />{formatDate((ocorrencia as any).dataRegistro)}</div>
@@ -487,23 +337,14 @@ export default function OcorrenciaDetailPage() {
                 </Field>
                 {!isDesvio && (
                   <Field label="Regra de Ouro">
-                    {editando
-                      ? <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={form.regraDeOuro} onChange={e => set('regraDeOuro', e.target.checked)} className="h-4 w-4 rounded" />
-                          <span className="text-sm text-slate-700">Sim, viola uma regra crítica</span>
-                        </label>
-                      : <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.regraDeOuro ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-slate-500'}`}>
-                          {form.regraDeOuro ? 'Sim' : 'Não'}
-                        </span>
-                    }
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${(ocorrencia as any).regraDeOuro ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-slate-500'}`}>
+                      {(ocorrencia as any).regraDeOuro ? 'Sim' : 'Não'}
+                    </span>
                   </Field>
                 )}
                 <div className="col-span-2">
                   <Field label="Descrição">
-                    {editando
-                      ? <textarea value={form.descricao} onChange={e => set('descricao', e.target.value)} rows={3} className={inputClass} />
-                      : <div className={`${valueClass} whitespace-pre-wrap break-words overflow-hidden`}>{(ocorrencia as any).descricao}</div>
-                    }
+                    <div className={`${valueClass} whitespace-pre-wrap break-words overflow-hidden`}>{(ocorrencia as any).descricao || '—'}</div>
                   </Field>
                 </div>
                 {!isDesvio && nc!.normas && nc!.normas.length > 0 && (
@@ -576,61 +417,45 @@ export default function OcorrenciaDetailPage() {
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Responsáveis</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    {editando
-                      ? <SearchableSelect
-                          options={externos.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                          value={form.responsavelTrativaId ?? ''}
-                          onChange={id => set('responsavelTrativaId', id)}
-                          placeholder="Responsável pela tratativa"
-                          className={inputClass}
-                        />
-                      : nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail
-                        ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                                {getInitials(nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail || '?')}
-                              </span>
-                            </div>
-                            <div className="min-w-0">
-                              {nc!.responsavelTrativaPerfil && (
-                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelTrativaPerfil}</div>
-                              )}
-                              {nc!.responsavelTrativaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelTrativaNome}</div>}
-                              {nc!.responsavelTrativaEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelTrativaEmail}</div>}
-                            </div>
+                    {nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail
+                      ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                              {getInitials(nc!.responsavelTrativaNome || nc!.responsavelTrativaEmail || '?')}
+                            </span>
                           </div>
-                        )
-                        : <div className={valueClass}>—</div>
+                          <div className="min-w-0">
+                            {nc!.responsavelTrativaPerfil && (
+                              <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelTrativaPerfil}</div>
+                            )}
+                            {nc!.responsavelTrativaNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelTrativaNome}</div>}
+                            {nc!.responsavelTrativaEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelTrativaEmail}</div>}
+                          </div>
+                        </div>
+                      )
+                      : <div className={valueClass}>—</div>
                     }
                   </div>
                   <div>
-                    {editando
-                      ? <SearchableSelect
-                          options={engenheiros.map(u => ({ id: u.id, label: `${u.nome} (${u.perfil})` }))}
-                          value={form.responsavelNcId ?? ''}
-                          onChange={id => set('responsavelNcId', id)}
-                          placeholder="Responsável pela NC"
-                          className={inputClass}
-                        />
-                      : nc!.responsavelNcNome || nc!.responsavelNcEmail
-                        ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
-                                {getInitials(nc!.responsavelNcNome || nc!.responsavelNcEmail || '?')}
-                              </span>
-                            </div>
-                            <div className="min-w-0">
-                              {nc!.responsavelNcPerfil && (
-                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelNcPerfil}</div>
-                              )}
-                              {nc!.responsavelNcNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelNcNome}</div>}
-                              {nc!.responsavelNcEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelNcEmail}</div>}
-                            </div>
+                    {nc!.responsavelNcNome || nc!.responsavelNcEmail
+                      ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                              {getInitials(nc!.responsavelNcNome || nc!.responsavelNcEmail || '?')}
+                            </span>
                           </div>
-                        )
-                        : <div className={valueClass}>—</div>
+                          <div className="min-w-0">
+                            {nc!.responsavelNcPerfil && (
+                              <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">{nc!.responsavelNcPerfil}</div>
+                            )}
+                            {nc!.responsavelNcNome && <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{nc!.responsavelNcNome}</div>}
+                            {nc!.responsavelNcEmail && <div className="text-xs text-slate-400 truncate">{nc!.responsavelNcEmail}</div>}
+                          </div>
+                        </div>
+                      )
+                      : <div className={valueClass}>—</div>
                     }
                   </div>
                 </div>

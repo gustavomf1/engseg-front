@@ -137,9 +137,9 @@ function RampPicker({ value, onChange, options }: {
   )
 }
 
-function NormCheck({ code, name, checked, hasConteudo, isEditing, onToggle, onSearch, onWrite }: {
+function NormCheck({ code, name, checked, hasConteudo, onToggle, onSearch, onWrite }: {
   code: string; name: string; checked: boolean; hasConteudo: boolean
-  isEditing: boolean; onToggle: () => void; onSearch: () => void; onWrite: () => void
+  onToggle: () => void; onSearch: () => void; onWrite: () => void
 }) {
   return (
     <div className={`nc-norm-row ${checked ? 'checked' : ''}`}>
@@ -152,7 +152,7 @@ function NormCheck({ code, name, checked, hasConteudo, isEditing, onToggle, onSe
           <span className="nc-norm-name">{name}</span>
         </span>
       </button>
-      {checked && !isEditing && (
+      {checked && (
         <div className="nc-norm-actions">
           {hasConteudo && (
             <button type="button" onClick={onSearch} className="nc-btn nc-btn-blue-soft" style={{ fontSize: 12, padding: '6px 10px' }}>
@@ -370,6 +370,7 @@ export default function RegistroOcorrenciaPage() {
         responsavelTratativaId: desvioData.responsavelTratativaId || '',
       })
       setIsRegraDeOuro(desvioData.regraDeOuro ?? false)
+      if (desvioData.estabelecimentoId) setAdminEstabelecimentoId(desvioData.estabelecimentoId)
       if (desvioData.empresaContratadaId) setAdminEmpresaFilhaId(desvioData.empresaContratadaId)
     }
   }, [desvioData, reset])
@@ -386,6 +387,7 @@ export default function RegistroOcorrenciaPage() {
       setIsReincidencia(ncData.reincidencia ?? false)
       setNcAnteriorId(ncData.ncAnteriorId ?? '')
       setIsRegraDeOuro(ncData.regraDeOuro ?? false)
+      if (ncData.estabelecimentoId) setAdminEstabelecimentoId(ncData.estabelecimentoId)
       if (ncData.empresaContratadaId) setAdminEmpresaFilhaId(ncData.empresaContratadaId)
       if (ncData.severidade) setSeveridade(ncData.severidade)
       if (ncData.probabilidade) setProbabilidade(ncData.probabilidade)
@@ -444,7 +446,7 @@ export default function RegistroOcorrenciaPage() {
           else await uploadEvidencia(result.id, file)
         }
       }
-      if (!isEditing && tipo === 'NAO_CONFORMIDADE' && result?.id && trechosPendentes.length > 0) {
+      if (tipo === 'NAO_CONFORMIDADE' && result?.id && trechosPendentes.length > 0) {
         for (const t of trechosPendentes) {
           await vincularTrechoNorma(result.id, {
             normaId: t.normaId,
@@ -641,7 +643,11 @@ export default function RegistroOcorrenciaPage() {
               <div className="nc-form-row-2">
                 <Field label="Localização" required error={errors.localizacaoId?.message}>
                   <div className="nc-input-wrap nc-select-wrap">
-                    <select {...register('localizacaoId')} className="nc-input nc-select">
+                    <select
+                      value={watchAll.localizacaoId ?? ''}
+                      onChange={e => setValue('localizacaoId', e.target.value, { shouldValidate: true })}
+                      className="nc-input nc-select"
+                    >
                       <option value="">Selecione...</option>
                       {localizacoesAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                     </select>
@@ -811,7 +817,6 @@ export default function RegistroOcorrenciaPage() {
                             name={norma.descricao || ''}
                             checked={normasSelecionadas.includes(norma.id)}
                             hasConteudo={!!norma.conteudo}
-                            isEditing={isEditing}
                             onToggle={() => setNormasSelecionadas(prev =>
                               prev.includes(norma.id) ? prev.filter(n => n !== norma.id) : [...prev, norma.id]
                             )}
