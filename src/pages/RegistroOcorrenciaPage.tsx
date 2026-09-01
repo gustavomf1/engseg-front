@@ -370,6 +370,7 @@ export default function RegistroOcorrenciaPage() {
         responsavelTratativaId: desvioData.responsavelTratativaId || '',
       })
       setIsRegraDeOuro(desvioData.regraDeOuro ?? false)
+      if (desvioData.empresaContratadaId) setAdminEmpresaFilhaId(desvioData.empresaContratadaId)
     }
   }, [desvioData, reset])
 

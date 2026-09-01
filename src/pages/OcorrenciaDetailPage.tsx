@@ -184,6 +184,7 @@ export default function OcorrenciaDetailPage() {
           orientacaoRealizada: form.descricao,
           responsavelDesvioId: form.responsavelDesvioId || desvio?.responsavelDesvioId || '',
           responsavelTratativaId: form.responsavelTratativaId || desvio?.responsavelTratativaId || '',
+          empresaContratadaId: desvio?.empresaContratadaId,
         })
       } else {
         return updateNaoConformidade(id!, {
@@ -191,13 +192,14 @@ export default function OcorrenciaDetailPage() {
           localizacaoId: form.localizacaoId || undefined,
           descricao: form.descricao,
           regraDeOuro: form.regraDeOuro,
-          severidade: nc?.severidade ?? 3,
-          probabilidade: nc?.probabilidade ?? 3,
+          severidade: nc?.severidade ?? undefined,
+          probabilidade: nc?.probabilidade ?? undefined,
           estabelecimentoId: form.estabelecimentoId,
           responsavelTrativaId: form.responsavelTrativaId || undefined,
           responsavelNcId: form.responsavelNcId || undefined,
           reincidencia: form.reincidencia ?? false,
           ncAnteriorId: form.reincidencia && form.ncAnteriorId ? form.ncAnteriorId : undefined,
+          empresaContratadaId: nc?.empresaContratadaId,
         })
       }
     },
@@ -363,7 +365,13 @@ export default function OcorrenciaDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-slate-600 hover:bg-gray-50 transition">
                     <X size={15} /> Cancelar
                   </button>
-                  <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+                  <button onClick={() => {
+                    if (!form.localizacaoId) {
+                      alert('Selecione uma localização antes de salvar.')
+                      return
+                    }
+                    mutation.mutate()
+                  }} disabled={mutation.isPending}
                     className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-60 transition">
                     <Save size={15} /> {mutation.isPending ? 'Salvando...' : 'Salvar'}
                   </button>

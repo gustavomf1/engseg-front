@@ -416,6 +416,8 @@ export interface Desvio {
   evidenciaTrativaUrl?: string
   historico: HistoricoDesvioResponse[]
   tratativas: TrativaDesvio[]
+  empresaContratadaId?: string
+  empresaContratadaNome?: string
 }
 
 export interface DesvioRequest {
