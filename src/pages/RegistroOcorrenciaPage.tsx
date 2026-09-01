@@ -460,7 +460,10 @@ export default function RegistroOcorrenciaPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ocorrencias'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      if (isEditing) navigate('/ocorrencias')
+      if (isEditing) {
+        queryClient.invalidateQueries({ queryKey: [tipo === 'DESVIO' ? 'desvio' : 'nc', id] })
+        navigate('/ocorrencias')
+      }
     },
   })
 
